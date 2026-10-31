@@ -140,6 +140,36 @@ class TeacherSettingsTest extends TestCase
         $this->assertFalse($room->fresh()->enrollment_open);
     }
 
+    public function test_classroom_creation_accepts_an_empty_optional_schedule_and_generates_a_usable_join_code(): void
+    {
+        extract($this->fixture());
+
+        $this->post(route('teacher.settings.classes.store'), [...$this->classPayload(), 'section' => 'AM', 'period' => '', 'weekly_xp_goal' => 1000, 'sequential_learning' => 0])
+            ->assertRedirect(route('teacher.settings').'#classes')->assertSessionHasNoErrors();
+
+        $created = Classroom::where('teacher_account_id', $teacher->id)->where('section', 'AM')->sole();
+        $this->assertSame('', $created->period);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{8}$/', $created->join_code);
+        $this->assertDatabaseCount('classrooms', 3);
+        $this->postJson(route('student.register.verify'), ['classroom_id' => $created->id, 'grade_level' => 'Grade 8', 'class_code' => $created->join_code])->assertOk();
+    }
+
+    public function test_optional_schedule_can_be_cleared_or_omitted_when_editing_a_classroom(): void
+    {
+        extract($this->fixture());
+        $code = $room->join_code;
+
+        $this->put(route('teacher.settings.classes.update', $room), [...$this->classPayload(), 'section' => 'AM', 'period' => null])
+            ->assertRedirect(route('teacher.settings').'#classes')->assertSessionHasNoErrors();
+        $this->assertSame('', $room->fresh()->period);
+        $this->assertSame($code, $room->fresh()->join_code);
+        $payload = $this->classPayload();
+        unset($payload['period']);
+        $this->post(route('teacher.settings.classes.store'), $payload)->assertRedirect(route('teacher.settings').'#classes')->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('classrooms', ['teacher_account_id' => $teacher->id, 'section' => 'B', 'period' => '']);
+        $this->assertSame(100, $student->fresh()->xp);
+    }
+
     public function test_paused_enrollment_blocks_verification_and_completion_but_existing_students_can_log_in(): void
     {
         extract($this->fixture());
@@ -200,6 +230,6 @@ class TeacherSettingsTest extends TestCase
         LabSubmission::create(['code_workspace_id' => $work->id, 'teacher_account_id' => $teacher->id, 'revision' => 1, 'title' => 'Practice', 'code' => 'int main(){}', 'reflection' => 'I traced my program.']);
         LabSubmission::create(['code_workspace_id' => $work->id, 'teacher_account_id' => $teacher->id, 'revision' => 2, 'title' => 'Practice', 'code' => 'int main(){}', 'reflection' => 'I tested a new case.']);
         LessonProgress::create(['student_id' => $student->id, 'lesson_key' => 'output', 'started_at' => now(), 'last_opened_at' => now(), 'confidence' => 'need_help']);
-        $this->get(route('teacher.settings'))->assertOk()->assertViewHas('activity',fn ($activity) => $activity['submissions'] === 1 && $activity['support'] === 1 && $activity['enrollment'] === 1);
+        $this->get(route('teacher.settings'))->assertOk()->assertViewHas('activity', fn ($activity) => $activity['submissions'] === 1 && $activity['support'] === 1 && $activity['enrollment'] === 1);
     }
 }

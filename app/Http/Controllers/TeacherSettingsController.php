@@ -45,7 +45,7 @@ class TeacherSettingsController extends Controller
             return redirect()->route('teacher.login');
         }
         $teacher = $this->teacher();
-        $classrooms = Classroom::where('teacher_account_id',$teacher->id)->withCount('students')->orderBy('grade')->orderBy('section')->get();
+        $classrooms = Classroom::where('teacher_account_id', $teacher->id)->withCount('students')->orderBy('grade')->orderBy('section')->get();
         $studentIds = Student::whereIn('classroom_id', $classrooms->pluck('id'))->pluck('id');
         $latest = LabSubmission::where('teacher_account_id', $teacher->id)->whereHas('workspace', fn ($query) => $query->whereIn('student_id', $studentIds))
             ->orderByDesc('id')->get(['id', 'code_workspace_id', 'reviewed_at'])->unique('code_workspace_id');
@@ -145,10 +145,14 @@ class TeacherSettingsController extends Controller
 
     private function classData(Request $request, TeacherAccount $teacher, ?Classroom $classroom = null): array
     {
-        return $request->validate(['name' => ['required', 'string', 'max:255'], 'grade' => ['required', Rule::in(config('teacher_settings.grades'))],
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'grade' => ['required', Rule::in(config('teacher_settings.grades'))],
             'section' => ['required', 'string', 'max:80', Rule::unique('classrooms', 'section')->where('teacher_account_id', $teacher->id)->where('grade', $request->input('grade'))->ignore($classroom?->id)],
             'period' => ['nullable', 'string', 'max:80'], 'enrollment_open' => ['required', 'boolean'],
-            'sequential_learning'=>['sometimes','boolean'], 'weekly_xp_goal'=>['sometimes','integer','between:100,100000']]);
+            'sequential_learning' => ['sometimes', 'boolean'], 'weekly_xp_goal' => ['sometimes', 'integer', 'between:100,100000']]);
+
+        $data['period'] = $data['period'] ?? '';
+
+        return $data;
     }
 
     private function joinCode(): string
@@ -246,6 +250,6 @@ class TeacherSettingsController extends Controller
         abort_unless($allowed, 403);
         abort_unless($teacher->avatar_path && str_starts_with($teacher->avatar_path, 'teacher-avatars/'.$teacher->id.'/') && Storage::disk('local')->exists($teacher->avatar_path), 404);
 
-        return Storage::disk('local')->response($teacher->avatar_path,null,['Content-Type' => $teacher->avatar_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+        return Storage::disk('local')->response($teacher->avatar_path, null, ['Content-Type' => $teacher->avatar_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 }
