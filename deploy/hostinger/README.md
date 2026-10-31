@@ -57,11 +57,13 @@ For an existing production installation, preserve APP_KEY, storage, and the data
 
 Use writable account-owned storage and bootstrap/cache directories; do not use world-writable permissions. The platform stores private discussion images, voice messages, and excuse documents in storage/app/private and serves them through authenticated routes. Do not expose that directory with a public storage link.
 
-Set a once-per-minute cron job in hPanel using the verified PHP binary and absolute server path:
+Hostinger disables proc_open, so Laravel's general schedule:run command cannot launch its child process here. The application's only scheduled task is blog response expiry. Run that command directly once per minute in hPanel, with flock preventing overlap:
 
 ```cron
-* * * * * /PATH/TO/PHP /home/HOSTINGER_USER/domains/rsmimaropa.com/ngf_lms/artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/bin/flock -n /home/HOSTINGER_USER/domains/rsmimaropa.com/ngf_lms/storage/framework/blog-expiry.lock /opt/alt/php85/usr/bin/php /home/HOSTINGER_USER/domains/rsmimaropa.com/ngf_lms/artisan blog:finalize-responses >> /dev/null 2>&1
 ```
+
+Choose Custom in hPanel and enter the command after the five time fields; set each time field to *. If additional scheduled tasks are introduced later, configure them explicitly or revisit scheduler support. PHP subprocess functions are not needed for this direct command or the remote Judge0 connection.
 
 ## Verify before use
 
