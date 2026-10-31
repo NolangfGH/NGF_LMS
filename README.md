@@ -9,6 +9,7 @@ Source repository: [NolangfGH/NGF_LMS](https://github.com/NolangfGH/NGF_LMS).
 - [Grading sheet](docs/grading-sheet.md)
 - [Private classroom blog](docs/classroom-blog.md)
 - [GitHub setup and saving changes](docs/github-setup.md)
+- [Hostinger production deployment](deploy/hostinger/README.md)
 
 Run `composer install`, configure your local `.env`, then `php artisan migrate --force` and `php artisan serve`. No Node/npm build is needed to serve the app. Code execution requires the separately deployed compiler described above; until connected, saving and teacher review remain available.
 
