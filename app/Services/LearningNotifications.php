@@ -19,6 +19,18 @@ use Illuminate\Support\Str;
 
 class LearningNotifications
 {
+    public function registrationSubmitted(Student $student): void
+    {
+        $this->send('teacher', $student->classroom?->teacher_account_id, 'registrations', 'registration-submitted:'.$student->id.':'.$student->registration_revision,
+            'Student registration awaiting approval', $student->first_name.' '.$student->surname.' requested to join '.$student->grade_level.' · '.$student->section.'. Verify the student before approving access.', 'student_registration', $student->id);
+    }
+
+    public function registrationApproved(Student $student): void
+    {
+        $this->send('student', $student->id, 'registrations', 'registration-approved:'.$student->id, 'Registration approved',
+            'Your class administrator approved your account. Your 100 welcome XP is ready. Start your C++ learning journey.', 'student_registration', $student->id);
+    }
+
     private function row(string $role, int $recipient, string $category, string $event, string $title, string $message, string $type, int $target): array
     {
         return ['coding_match_id' => null, 'student_id' => $role === 'student' ? $recipient : null, 'teacher_account_id' => $role === 'teacher' ? $recipient : null,
@@ -185,12 +197,12 @@ class LearningNotifications
                 BlogComment::whereHas('post', fn ($q) => $q->where('teacher_account_id', $actor->id))->chunkById(100, fn ($rows) => $rows->each(fn ($row) => $this->blogComment($row)));
                 BlogResponse::where('author_role', 'student')->whereHas('comment.post', fn ($q) => $q->where('teacher_account_id', $actor->id))->chunkById(100, fn ($rows) => $rows->each(fn ($row) => $this->blogResponse($row)));
                 LabSubmission::where('teacher_account_id', $actor->id)->chunkById(100, fn ($rows) => $rows->each(fn ($row) => $this->labSubmitted($row)));
-                DB::table('quiz_submissions')->whereIn('teacher_quiz_id', TeacherQuiz::withTrashed()->where('teacher_account_id', $actor->id)->select('id'))->orderBy('id')->chunkById(100,function ($rows) {
+                DB::table('quiz_submissions')->whereIn('teacher_quiz_id', TeacherQuiz::withTrashed()->where('teacher_account_id', $actor->id)->select('id'))->orderBy('id')->chunkById(100, function ($rows) {
                     foreach ($rows as $row) {
-                        $this->quizSubmitted($row->teacher_quiz_id,$row->student_id,$row->attempt_number);
+                        $this->quizSubmitted($row->teacher_quiz_id, $row->student_id, $row->attempt_number);
                     }
                 });
-                LessonProgress::whereNotNull('completed_at')->whereHas('student.classroom',fn ($q) => $q->where('teacher_account_id',$actor->id))->chunkById(100,fn ($rows) => $rows->each(fn ($row) => $this->lessonCompleted($row)));
+                LessonProgress::whereNotNull('completed_at')->whereHas('student.classroom', fn ($q) => $q->where('teacher_account_id', $actor->id))->chunkById(100, fn ($rows) => $rows->each(fn ($row) => $this->lessonCompleted($row)));
             }
             $current->forceFill(['notifications_initialized_at' => now()])->saveQuietly();
         });

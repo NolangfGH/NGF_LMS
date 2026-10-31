@@ -42,7 +42,10 @@ class DashboardService
             }
         }
         arsort($errors);
+        $registrationQueue = app(StudentRegistrationApproval::class)->owned($teacher)->where('registration_status', 'pending');
+        $pendingRegistrations = (clone $registrationQueue)->count();
+        $recentRegistrations = $registrationQueue->with('classroom')->oldest()->limit(5)->get();
 
-        return compact('rooms','report','assignments','errors','passed','total');
+        return compact('rooms', 'report', 'assignments', 'errors', 'passed', 'total', 'pendingRegistrations', 'recentRegistrations');
     }
 }

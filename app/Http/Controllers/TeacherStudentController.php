@@ -7,6 +7,7 @@ use App\Models\CodingMatch;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\CodingMatchService;
+use App\Services\StudentRegistrationApproval;
 use App\Services\StudentRosterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -124,8 +125,11 @@ class TeacherStudentController extends Controller
         $student = DB::transaction(function () use ($data, $teacher) {
             $room = Classroom::where('teacher_account_id', $teacher->id)->lockForUpdate()->findOrFail($data['classroom_id']);
 
-            return Student::create([...collect($data)->except('classroom_id')->all(), 'classroom_id' => $room->id, 'grade_level' => $room->grade,
+            $student = Student::create([...collect($data)->except('classroom_id')->all(), 'classroom_id' => $room->id, 'grade_level' => $room->grade,
                 'section' => $room->section ?: $room->period, 'avatar' => 'Astro Bot', 'xp' => Student::REGISTRATION_XP, 'level' => 1]);
+            app(StudentRegistrationApproval::class)->teacherEnrolled($student, $teacher);
+
+            return $student;
         }, 3);
 
         return redirect()->route('teacher.students.show', $student->id)->with('student_notice', 'Student created with 100 welcome XP. Share the Student ID and password privately; the student can change their password in Settings.');

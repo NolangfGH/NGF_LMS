@@ -129,10 +129,10 @@ class StudentSettingsController extends Controller
 
     public function logout(Request $request)
     {
-        $request->session()->forget(['student_id', 'student_session_version', 'student_name', 'student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code']);
+        $request->session()->forget(['student_id', 'student_session_version', 'student_name', 'student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code', 'pending_registration_id']);
         $request->session()->regenerate(true);
         $request->session()->regenerateToken();
 
-        return redirect()->route('student.login')->with('auth_notice','You have signed out safely.');
+        return redirect()->route('student.login')->with('auth_notice', 'You have signed out safely.');
     }
 }

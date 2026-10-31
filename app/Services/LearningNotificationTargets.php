@@ -42,6 +42,18 @@ class LearningNotificationTargets
             return route($role.'.matches.show', $match);
         }
         $id = (int) $notice->target_id;
+        if ($notice->target_type === 'student_registration') {
+            $student = Student::withUnapproved()->with('classroom')->find($id);
+            if (! $student) {
+                return null;
+            }
+            if ($teacher) {
+                return $student->classroom?->teacher_account_id === $actor->id
+                    ? route('teacher.registrations', ['status' => $student->registration_status, 'focus' => $id]).'#registration-'.$id : null;
+            }
+
+            return $student->id === $actor->id && $student->isRegistrationApproved() ? route('student.dashboard') : null;
+        }
         if (in_array($notice->target_type, ['assignment', 'quiz'], true)) {
             $quiz = $notice->target_type === 'quiz';
             $activity = $this->find($quiz ? TeacherQuiz::class : TeacherAssignment::class, $id);

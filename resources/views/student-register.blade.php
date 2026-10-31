@@ -14,10 +14,10 @@
 <a href="{{ route('student.login') }}" class="rounded-xl border bg-white px-4 py-3 text-sm font-bold text-primary">Student Sign-In</a></div></header>
 <main class="mx-auto max-w-5xl px-5 pb-8 pt-24">
 <p class="text-xs font-bold uppercase tracking-widest text-secondary">Student onboarding</p><h1 class="my-4 text-3xl font-extrabold text-primary">Join your C++ flight deck</h1>
-<p class="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900"><span aria-hidden="true">★</span> Start your coding journey with {{ \App\Models\Student::REGISTRATION_XP }} welcome XP after registration.</p>
+<p class="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900"><span aria-hidden="true">★</span> Start your coding journey with {{ \App\Models\Student::REGISTRATION_XP }} welcome XP after your teacher approves your registration.</p>
 <div class="overflow-hidden rounded-3xl bg-white shadow-lg">
 <ol class="grid grid-cols-3 gap-3 border-b bg-green-50 p-5 text-xs font-bold sm:text-sm" aria-label="Registration steps">
-<li id="indicator1" aria-current="step" class="text-primary">1. Student & class details</li><li id="indicator2" class="text-slate-400">2. Account setup</li><li id="indicator3" class="text-slate-400">3. Ready to learn</li></ol>
+<li id="indicator1" aria-current="step" class="text-primary">1. Student & class details</li><li id="indicator2" class="text-slate-400">2. Account setup</li><li id="indicator3" class="text-slate-400">3. Awaiting approval</li></ol>
 <div class="grid md:grid-cols-[.65fr_1.35fr]">
 <aside class="bg-slate-50 p-7"><div class="rounded-3xl bg-green-100 p-4 text-center"><img src="{{ asset('images/branding/nf-codequest-tab-icon.png') }}" alt="NGF C++ Classroom logo" width="1100" height="1430" class="mx-auto h-40 w-32 object-contain" decoding="async"></div><p class="mt-6 rounded-xl bg-white p-4 text-sm leading-6"><b class="text-primary">Greetings, Coder Cadet!</b> Enter your student details, choose your grade and section, then use your teacher’s class code to join.</p></aside>
 <div class="p-6 sm:p-8"><div id="feedback" role="alert" class="mb-5 hidden rounded-xl bg-red-50 p-4 text-sm text-red-800" tabindex="-1"></div>
@@ -42,12 +42,10 @@
 <label class="block"><span class="mb-2 block text-sm font-bold">Password *</span><input name="password" type="password" required minlength="8" autocomplete="new-password" class="w-full rounded-xl border p-3"><small>At least 8 characters.</small></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Confirm password *</span><input name="password_confirmation" type="password" required minlength="8" autocomplete="new-password" class="w-full rounded-xl border p-3"></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Cadet companion</span><select name="avatar" class="w-full rounded-xl border bg-white p-3"><option>Astro Bot</option><option>Byte Owl</option><option>Solar Cadet</option></select></label>
-<label class="flex gap-3 text-xs leading-5"><input type="checkbox" required class="mt-1"><span>I understand that my nickname and code submissions are visible to my teacher and classmates.</span></label>
-<div class="flex gap-3"><button type="button" id="backButton" class="rounded-xl border p-3 font-bold">← Back</button><button class="flex-1 rounded-xl bg-primary p-3 font-bold text-white">Create student account →</button></div>
+<label class="flex gap-3 text-xs leading-5"><input type="checkbox" required class="mt-1"><span>I understand that my registration will be reviewed by my class administrator. My teacher can review my learning work, and my nickname may appear in classroom rankings.</span></label>
+<div class="flex gap-3"><button type="button" id="backButton" class="rounded-xl border p-3 font-bold">← Back</button><button class="flex-1 rounded-xl bg-primary p-3 font-bold text-white">Submit for approval →</button></div>
 </form>
-<section id="success" class="hidden" aria-labelledby="registrationCompleteTitle"><h2 id="registrationCompleteTitle" class="text-2xl font-extrabold text-primary">Your account is ready!</h2><p id="enrolledClass" class="my-5 text-sm"></p>
-<div class="mb-6 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-green-50 p-6" role="status"><p class="text-xs font-bold uppercase tracking-widest text-amber-800">Welcome reward credited</p><p id="welcomeReward" class="mt-3 text-4xl font-extrabold text-primary"></p><p class="mt-3 text-sm leading-6 text-secondary">Your initial XP is saved to your account and counts toward your classroom leaderboard ranking. Earn more XP by completing quizzes.</p><p class="mt-3 text-sm font-bold text-primary">Total XP: <span id="registrationXpTotal"></span></p></div>
-<div class="flex flex-wrap gap-3"><a href="{{ route('student.dashboard') }}" class="inline-block rounded-xl bg-primary p-4 font-bold text-white">Enter Student Dashboard →</a><a href="{{ route('student.leaderboard') }}" class="inline-block rounded-xl border border-green-200 bg-white p-4 font-bold text-primary">View my leaderboard ranking →</a></div></section>
+<section id="success" class="hidden"><h2 class="text-2xl font-extrabold text-primary">Registration submitted</h2><p class="mt-4 text-sm">Your class administrator will review your details before enabling access. You will receive 100 welcome XP on approval.</p><a href="{{ route('student.registration.status') }}" class="mt-5 inline-block rounded-xl bg-primary p-4 font-bold text-white">Check my registration status →</a></section>
 </div></div></div>
 </main>
 <script>
@@ -106,10 +104,8 @@ accountForm.onsubmit = async event => {
         const data = new FormData(accountForm);
         Object.entries(verifiedDetails).forEach(([key,value])=>data.set(key,value));
         const result = await postForm('{{ route('student.register.store') }}',data);
-        document.getElementById('welcomeReward').textContent = '+' + result.welcome_xp + ' XP';
-        document.getElementById('registrationXpTotal').textContent = result.xp + ' XP';
-        document.getElementById('enrolledClass').textContent = document.getElementById('verifiedClass').textContent;
         setStep(3);
+        window.location.assign(result.redirect);
     } catch(error) { showError(error.message); } finally { button.disabled = false; }
 };
 </script>
