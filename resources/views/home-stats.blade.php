@@ -1,5 +1,5 @@
 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-@foreach([['students','Registered students','school'],['educators','System Admin accounts','co_present'],['sections','Teaching sections','groups'],['published_activities','Published activities','assignment_turned_in']] as [$key,$label,$icon])
+@foreach([['students','Registered students','school'],['educators','Active staff accounts','co_present'],['sections','Teaching sections','groups'],['published_activities','Published activities','assignment_turned_in']] as [$key,$label,$icon])
 <article class="rounded-2xl border border-black/5 bg-white p-5 shadow-card"><div class="flex items-center gap-2 text-secondary"><span class="material-symbols-outlined text-xl" aria-hidden="true">{{ $icon }}</span><h3 class="text-xs font-bold">{{ $label }}</h3></div><strong class="mt-3 block text-3xl font-extrabold text-primary">{{ $home['metrics'] !== null ? number_format($home['metrics'][$key]) : '—' }}</strong></article>
 @endforeach
 </div>

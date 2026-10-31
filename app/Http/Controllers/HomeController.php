@@ -26,6 +26,7 @@ use App\Services\LearningNotifications;
 use App\Services\LessonService;
 use App\Services\QuizAttemptService;
 use App\Services\QuizRewards;
+use App\Services\StaffAccessService;
 use App\Services\StudentSettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -203,51 +204,37 @@ class HomeController extends Controller
 
     public function registerTeacher(Request $request)
     {
+        $email = $request->input('email', '');
+        $code = $request->input('class_code', '');
+        $request->merge(['email' => is_string($email) ? strtolower(trim($email)) : $email, 'requested_role' => $request->input('requested_role', 'teacher'),
+            'class_code' => is_string($code) ? strtoupper(trim($code)) : $code]);
+        $teaching = $request->input('requested_role') === 'teacher';
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:80'],
             'middle_initial' => ['nullable', 'string', 'max:2', 'regex:/^\p{L}\.?$/u'],
             'last_name' => ['required', 'string', 'max:80'],
-            'email' => ['required', 'email', 'max:255', 'unique:teacher_accounts,email'],
+            'email' => ['bail', 'required', 'string', 'email', 'max:255', 'unique:teacher_accounts,email'],
             'school' => ['required', 'string', 'max:255'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'class_name' => ['required', 'string', 'max:255'],
-            'grade' => ['required', 'string', 'max:50'],
-            'period' => ['required', 'string', 'max:50'],
-            'class_code' => ['nullable', 'string', 'max:20'],
+            'password' => ['required', 'string', 'min:10', 'confirmed'],
+            'requested_role' => ['required', Rule::in(array_keys(TeacherAccount::ROLES))],
+            'class_name' => [Rule::requiredIf($teaching), 'nullable', 'string', 'max:255'],
+            'grade' => [Rule::requiredIf($teaching), 'nullable', Rule::in(config('teacher_settings.grades'))],
+            'section' => [Rule::requiredIf($teaching), 'nullable', 'string', 'max:80'],
+            'period' => ['nullable', 'string', 'max:80'],
+            'class_code' => ['bail', 'nullable', 'string', 'regex:/^[A-Z0-9-]{4,20}$/', 'unique:classrooms,join_code'],
         ]);
 
-        $teacher = TeacherAccount::create([
-            'first_name' => $data['first_name'],
-            'middle_initial' => $data['middle_initial'] ?? null,
-            'last_name' => $data['last_name'],
-            'email' => strtolower($data['email']),
-            'school' => $data['school'],
-            'password' => Hash::make($data['password']),
-        ]);
+        $teacher = app(StaffAccessService::class)->register($data);
+        session()->regenerate();
+        session()->forget(['teacher_id', 'teacher_session_version', 'teacher_authenticated_at', 'pending_staff_registration_id']);
+        if (! $teacher->hasStaffAccess()) {
+            session(['pending_staff_registration_id' => $teacher->id]);
 
-        $joinCode = strtoupper(trim($data['class_code'] ?? ''));
-        $joinCode = preg_replace('/[^A-Z0-9-]/', '', $joinCode);
-        if ($joinCode === '') {
-            $joinCode = strtoupper(Str::random(4)).'-'.strtoupper(Str::random(2));
-        } elseif (! str_contains($joinCode, '-')) {
-            $joinCode = substr($joinCode, 0, 4).'-'.substr($joinCode, 4, 4);
+            return response()->json(['message' => 'Your role request is awaiting System Admin approval.', 'status' => 'pending', 'redirect' => route('staff.registration.status')]);
         }
-
-        while (Classroom::where('join_code', $joinCode)->exists()) {
-            $joinCode = strtoupper(Str::random(4)).'-'.strtoupper(Str::random(2));
-        }
-
-        Classroom::create([
-            'teacher_account_id' => $teacher->id,
-            'name' => $data['class_name'],
-            'grade' => $data['grade'],
-            'period' => $data['period'],
-            'join_code' => $joinCode,
-        ]);
-
         session(['teacher_id' => $teacher->id, 'teacher_session_version' => $teacher->session_version, 'teacher_authenticated_at' => now()->toIso8601String()]);
 
-        return response()->json(['message' => 'Teacher account created.', 'join_code' => $joinCode]);
+        return response()->json(['message' => 'Teacher account and classroom created.', 'join_code' => $teacher->classrooms()->first()->join_code, 'status' => 'active', 'redirect' => route($teacher->dashboardRoute())]);
     }
 
     public function loginTeacher(Request $request)
@@ -264,9 +251,16 @@ class HomeController extends Controller
         }
 
         session()->regenerate();
+        if (! $teacher->hasStaffAccess()) {
+            session()->forget(['teacher_id', 'teacher_session_version', 'teacher_authenticated_at']);
+            session(['pending_staff_registration_id' => $teacher->id]);
+
+            return response()->json(['message' => 'Check your staff access request.', 'status' => $teacher->staff_access_status, 'redirect' => route('staff.registration.status')]);
+        }
+        session()->forget('pending_staff_registration_id');
         session(['teacher_id' => $teacher->id, 'teacher_session_version' => $teacher->session_version, 'teacher_authenticated_at' => now()->toIso8601String()]);
 
-        return response()->json(['message' => 'Signed in successfully.', 'redirect' => route('teacher.dashboard')]);
+        return response()->json(['message' => 'Signed in successfully.', 'redirect' => route($teacher->dashboardRoute())]);
     }
 
     public function registerStudent(Request $request)
@@ -680,7 +674,7 @@ class HomeController extends Controller
 
     public function logoutTeacher(Request $request)
     {
-        $request->session()->forget(['teacher_id', 'teacher_session_version', 'teacher_authenticated_at']);
+        $request->session()->forget(['teacher_id', 'teacher_session_version', 'teacher_authenticated_at', 'pending_staff_registration_id']);
         $request->session()->regenerateToken();
 
         return redirect()->route('teacher.login')->with('logged_out', 'You have been signed out safely.');
@@ -845,10 +839,10 @@ class HomeController extends Controller
             $data['test_cases'] = array_values(array_map(fn ($case) => ['input' => $case['input'] ?? '', 'output' => $case['output'] ?? '', 'hidden' => (bool) $case['hidden'], 'weight' => (int) $case['weight']], $data['test_cases'] ?? []));
         }
         if (array_key_exists('hints', $data)) {
-            $data['hints'] = array_values(array_filter($data['hints'] ?? [],fn ($hint) => filled($hint)));
+            $data['hints'] = array_values(array_filter($data['hints'] ?? [], fn ($hint) => filled($hint)));
         }
         $data['due_at'] = ! empty($data['due_at'])
-            ? Carbon::createFromFormat('Y-m-d\\TH:i',$data['due_at'],config('learning.timezone'))->utc()
+            ? Carbon::createFromFormat('Y-m-d\\TH:i', $data['due_at'], config('learning.timezone'))->utc()
             : null;
 
         return $data;

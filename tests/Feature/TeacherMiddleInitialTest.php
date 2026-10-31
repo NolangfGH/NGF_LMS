@@ -16,7 +16,7 @@ class TeacherMiddleInitialTest extends TestCase
     private function registration(array $changes = []): array
     {
         return array_replace(['first_name' => 'Nolan', 'last_name' => 'Fadriquilan', 'email' => 'middle@example.test', 'school' => 'Our School',
-            'password' => 'Password123', 'password_confirmation' => 'Password123', 'class_name' => 'Grade 8 C++', 'grade' => 'Grade 8', 'period' => 'Period 3'], $changes);
+            'password' => 'Password123', 'password_confirmation' => 'Password123', 'class_name' => 'Grade 8 C++', 'grade' => 'Grade 8', 'section' => 'AM', 'period' => 'Period 3'], $changes);
     }
 
     public function test_registration_saves_a_normalized_initial_and_displays_it_in_account_names(): void

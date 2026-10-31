@@ -45,7 +45,8 @@ class DashboardService
         $registrationQueue = app(StudentRegistrationApproval::class)->owned($teacher)->where('registration_status', 'pending');
         $pendingRegistrations = (clone $registrationQueue)->count();
         $recentRegistrations = $registrationQueue->with('classroom')->oldest()->limit(5)->get();
+        $pendingStaffRequests = $teacher->isSchoolAdmin() ? TeacherAccount::where('staff_access_status', 'pending')->count() : 0;
 
-        return compact('rooms', 'report', 'assignments', 'errors', 'passed', 'total', 'pendingRegistrations', 'recentRegistrations');
+        return compact('rooms', 'report', 'assignments', 'errors', 'passed', 'total', 'pendingRegistrations', 'recentRegistrations', 'pendingStaffRequests');
     }
 }

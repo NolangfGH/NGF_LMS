@@ -1,19 +1,31 @@
 <?php
 
+use App\Models\TeacherAccount;
 use App\Services\BlogLearningService;
+use App\Services\Judge0Client;
+use App\Services\StaffAccessService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('compiler:check', function (\App\Services\Judge0Client $client) {
-    try { $this->info('Compiler connected. C++ language ID '.$client->health()['language_id'].' is available.'); }
-    catch (\Throwable $error) { $this->error('Compiler unavailable. Configure JUDGE0_URL, JUDGE0_AUTH_TOKEN and JUDGE0_CPP_LANGUAGE_ID, then start the separate service.'); return 1; }
+Artisan::command('compiler:check', function (Judge0Client $client) {
+    try {
+        $this->info('Compiler connected. C++ language ID '.$client->health()['language_id'].' is available.');
+    } catch (Throwable $error) {
+        $this->error('Compiler unavailable. Configure JUDGE0_URL, JUDGE0_AUTH_TOKEN and JUDGE0_CPP_LANGUAGE_ID, then start the separate service.');
+
+        return 1;
+    }
 })->purpose('Check the private school compiler connection without running student code');
 
 Artisan::command('school:promote-admin {email}', function () {
-    $teacher=\App\Models\TeacherAccount::where('email',$this->argument('email'))->first();
-    if(!$teacher){$this->error('No registered teacher has this email.');return 1;}
-    $teacher->forceFill(['role'=>'school_admin','session_version'=>$teacher->session_version+1])->save();
+    $teacher = TeacherAccount::where('email', $this->argument('email'))->first();
+    if (! $teacher) {
+        $this->error('No registered teacher has this email.');
+
+        return 1;
+    }
+    app(StaffAccessService::class)->bootstrapAdmin($teacher);
     $this->info('School administrator role assigned. Sign in again to use School Administration.');
 })->purpose('Bootstrap an administrator from an existing trusted teacher account using server access');
 

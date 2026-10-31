@@ -35,7 +35,7 @@ class HomepageService
             $assignments = TeacherAssignment::where('status', 'published')->count();
             $quizzes = TeacherQuiz::where('status', 'published')->count();
             $snapshot['metrics'] = [
-                'students' => Student::count(), 'educators' => TeacherAccount::count(), 'sections' => Classroom::count(),
+                'students' => Student::count(), 'educators' => TeacherAccount::where('staff_access_status', 'active')->count(), 'sections' => Classroom::count(),
                 'published_activities' => $assignments + $quizzes, 'published_assignments' => $assignments, 'published_quizzes' => $quizzes,
             ];
             if ($studentId && ($student = Student::with('classroom')->find($studentId))) {
@@ -75,7 +75,7 @@ class HomepageService
         }
         $stable = $snapshot;
         unset($stable['updated_at'],$stable['updated_label']);
-        $snapshot['revision'] = hash('sha256',json_encode($stable,JSON_THROW_ON_ERROR));
+        $snapshot['revision'] = hash('sha256', json_encode($stable, JSON_THROW_ON_ERROR));
 
         return $snapshot;
     }

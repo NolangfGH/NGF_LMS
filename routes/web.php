@@ -18,6 +18,7 @@ use App\Http\Controllers\LessonController;
 use App\Http\Controllers\QuizSubmissionController;
 use App\Http\Controllers\SchoolAdminController;
 use App\Http\Controllers\SecondChanceController;
+use App\Http\Controllers\StaffRegistrationStatusController;
 use App\Http\Controllers\StudentRegistrationApprovalController;
 use App\Http\Controllers\StudentRegistrationStatusController;
 use App\Http\Controllers\StudentSettingsController;
@@ -25,6 +26,10 @@ use App\Http\Controllers\TeacherLessonController;
 use App\Http\Controllers\TeacherSettingsController;
 use App\Http\Controllers\TeacherStudentController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
+Route::get('/staff-registration-status/check', [StaffRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('staff.registration.check');
+Route::get('/school-overview', [SchoolAdminController::class, 'overview'])->name('school.overview');
 
 Route::get('/student-registration-status', [StudentRegistrationStatusController::class, 'show'])->name('student.registration.status');
 Route::get('/student-registration-status/check', [StudentRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('student.registration.check');

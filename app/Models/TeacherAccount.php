@@ -12,15 +12,17 @@ class TeacherAccount extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $attributes = ['session_version' => 1, 'profile_visible' => true];
+    public const ROLES = ['teacher' => 'Teacher', 'principal' => 'Principal', 'school_admin' => 'System Admin'];
+
+    protected $attributes = ['session_version' => 1, 'profile_visible' => true, 'role' => 'teacher', 'staff_access_status' => 'active', 'staff_revision' => 1];
 
     protected $fillable = ['first_name', 'middle_initial', 'last_name', 'email', 'school', 'password', 'display_name', 'bio', 'profile_visible', 'preferences'];
 
-    protected $hidden = ['password', 'remember_token', 'avatar_path', 'avatar_mime', 'session_version'];
+    protected $hidden = ['password', 'remember_token', 'avatar_path', 'avatar_mime', 'session_version', 'staff_review_note', 'staff_revision'];
 
     protected function casts(): array
     {
-        return ['password' => 'hashed', 'email_verified_at' => 'datetime', 'preferences' => 'array', 'profile_visible' => 'boolean', 'session_version' => 'integer', 'password_changed_at' => 'datetime'];
+        return ['password' => 'hashed', 'email_verified_at' => 'datetime', 'preferences' => 'array', 'profile_visible' => 'boolean', 'session_version' => 'integer', 'password_changed_at' => 'datetime', 'staff_reviewed_at' => 'datetime', 'staff_revision' => 'integer'];
     }
 
     public function classrooms()
@@ -28,7 +30,44 @@ class TeacherAccount extends Authenticatable
         return $this->hasMany(Classroom::class)->whereNull('archived_at');
     }
 
-    public function isSchoolAdmin(): bool { return $this->role === 'school_admin'; }
+    public function isSchoolAdmin(): bool
+    {
+        return $this->role === 'school_admin';
+    }
+
+    public function isPrincipal(): bool
+    {
+        return $this->role === 'principal';
+    }
+
+    public function hasStaffAccess(): bool
+    {
+        return $this->staff_access_status === 'active' && isset(self::ROLES[$this->role]);
+    }
+
+    public function roleLabel(): string
+    {
+        return self::ROLES[$this->role] ?? 'Staff';
+    }
+
+    public function dashboardRoute(): string
+    {
+        return $this->isPrincipal() ? 'school.overview' : 'teacher.dashboard';
+    }
+
+    public function portalLabel(): string
+    {
+        return $this->isPrincipal() ? 'Principal Portal' : ($this->isSchoolAdmin() ? 'Admin Portal' : 'Teacher Portal');
+    }
+
+    public static function roleRules(): array
+    {
+        return [
+            'teacher' => ['Manage your own classes and join codes', 'Approve students enrolled in your own sections', 'Create lessons, assignments, quizzes, challenges and articles', 'Review student work, give private feedback and maintain your grading sheets'],
+            'principal' => ['View school-wide totals and class summaries', 'Monitor aggregate participation and assessment results', 'Manage your own account and password', 'Read-only access: no grading, staff role changes or private student conversations'],
+            'school_admin' => ['Approve or decline Principal and System Admin requests', 'Create staff accounts; confirm your password for access approvals and role changes', 'Check the compiler connection and archive or restore classes', 'Manage teaching and private student work only within your own sections'],
+        ];
+    }
 
     protected function middleInitial(): Attribute
     {

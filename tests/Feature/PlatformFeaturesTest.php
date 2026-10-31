@@ -213,7 +213,7 @@ class PlatformFeaturesTest extends TestCase
         $this->get(route('teacher.dashboard'))->assertOk()->assertSee('Your classes')->assertSee('PLATAM')->assertDontSee('PLATDB');
         $teacher->forceFill(['role' => 'school_admin'])->save();
         $this->get(route('school.admin'))->assertOk()->assertSee('Teaching accounts');
-        $this->put(route('school.roles', $other), ['role' => 'school_admin', 'current_password' => 'password123'])->assertRedirect();
+        $this->put(route('school.roles', $other), ['role' => 'school_admin', 'current_password' => 'password123', 'revision' => 1])->assertRedirect();
         $this->assertTrue($other->fresh()->isSchoolAdmin());
         $this->post(route('teacher.classes.archive', $room), ['archive' => 1])->assertRedirect();
         $this->assertFalse($room->fresh()->acceptsStudentRegistration());
@@ -233,16 +233,16 @@ class PlatformFeaturesTest extends TestCase
         $urls = [...$urls, route('teacher.dashboard'), route('teacher.assignments'), route('teacher.quizzes'), route('teacher.content'), route('teacher.content.edit', 'arrays'), route('teacher.grading'), route('teacher.reports'), route('teacher.settings')];
         foreach ($urls as $page => $url) {
             $response = $this->get($url)->assertOk();
-            preg_match_all('~<script\b[^>]*>(.*?)</script>~s',$response->getContent(),$scripts);
+            preg_match_all('~<script\b[^>]*>(.*?)</script>~s', $response->getContent(), $scripts);
             foreach ($scripts[1] as $index => $script) {
                 if (trim($script) !== '') {
-                    file_put_contents($directory.'/'.$page.'-'.$index.'.js',$script);
+                    file_put_contents($directory.'/'.$page.'-'.$index.'.js', $script);
                 }
             }
         }
         foreach (config('lessons') as $lesson) {
-            $this->assertArrayHasKey($lesson['practice'],config('code_lab.activities'));
-            $this->assertStringNotContainsString("'\n'",$lesson['code']);
+            $this->assertArrayHasKey($lesson['practice'], config('code_lab.activities'));
+            $this->assertStringNotContainsString("'\n'", $lesson['code']);
         }
     }
 }
