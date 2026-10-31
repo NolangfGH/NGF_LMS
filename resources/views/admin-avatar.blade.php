@@ -1,0 +1,1 @@
+<img src="{{ asset('images/branding/system-admin-profile.png') }}" alt="System Admin profile photo" class="app-admin-avatar app-admin-avatar--{{ $adminAvatarSize ?? 'small' }}" width="1254" height="1254" decoding="async">

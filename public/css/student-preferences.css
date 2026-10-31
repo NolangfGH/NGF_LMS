@@ -1,0 +1,7 @@
+html[data-student-text=small] { font-size: 14px; --student-reading-size: 14px; }
+html[data-student-text=medium] { font-size: 16px; --student-reading-size: 16px; }
+html[data-student-text=large] { font-size: 18px; --student-reading-size: 18px; }
+html[data-student-text] :is(.student-reading-text,.student-settings-form input,.student-settings-form textarea,.student-settings-form select,#student-code-preview,#codeEditor,#lineNumbers,textarea[name=code]) { font-size: var(--student-reading-size) !important; }
+html[data-student-contrast=high] :is(.text-muted,.text-on-surface-variant,.text-secondary,.text-slate-400,.student-settings-hint) { color: #233c19 !important; }
+html[data-student-contrast=high] main :is(article,section,fieldset,input,select,textarea) { border: 1px solid #47673b !important; }
+html[data-student-motion=reduce] *, html[data-student-motion=reduce] *::before, html[data-student-motion=reduce] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

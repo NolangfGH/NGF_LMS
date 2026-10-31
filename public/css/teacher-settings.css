@@ -1,0 +1,17 @@
+.settings-shell { font-family: 'Plus Jakarta Sans', sans-serif; }
+.settings-card { scroll-margin-top: 90px; border-radius: 16px; padding: 24px; background: #fff; box-shadow: 0 1px 8px rgb(0 0 0 / .05); }
+.settings-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; }
+.settings-heading > .material-symbols-outlined { color: #0b4e00; font-size: 28px; }
+.settings-heading h2 { font-size: 22px; font-weight: 700; line-height: 1.4; }
+.settings-heading p { margin-top: 6px; font-size: 14px; color: #40493b; line-height: 1.6; }
+.settings-form label { font-size: 14px; font-weight: 600; }
+.settings-form input:not([type=checkbox]):not([type=radio]):not([type=hidden]), .settings-form textarea, .settings-form select { display: block; margin-top: 8px; width: 100%; border-radius: 12px; border: 1px solid #c0cab7; background: #fff; padding: 12px 14px; font-size: 14px; font-weight: 400; line-height: 1.5; }
+.settings-form input:is([type=checkbox],[type=radio]) { margin-top: 4px; width: 18px; height: 18px; flex-shrink: 0; accent-color: #0b4e00; }
+.settings-hint { display: block; margin-top: 6px; font-size: 12px; font-weight: 400; color: #40493b; line-height: 1.6; }
+.settings-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e4eadd; }
+.settings-primary, .settings-secondary, .settings-actions > button { border-radius: 12px; padding: 10px 16px; font-size: 14px; font-weight: 700; }
+.settings-primary { background: #0b4e00; color: #fff; box-shadow: 0 3px 0 #022100; }
+.settings-secondary { background: #eaf0e2; color: #0b4e00; }
+.settings-shell :is(a,button,input,textarea,select,summary):focus-visible { outline: 3px solid #47673b; outline-offset: 3px; }
+.settings-shell button:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 640px) { .settings-card { padding: 18px; } .settings-heading h2 { font-size: 20px; } .settings-heading { gap: 8px; } }

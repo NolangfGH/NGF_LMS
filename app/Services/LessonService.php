@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\CodeWorkspace;
+use App\Models\LessonProgress;
+use App\Models\Student;
+use App\Models\TeacherLessonPlan;
+
+class LessonService
+{
+    public function catalog(): array
+    {
+        $route = request()->route()?->getName() ?? '';
+        $teacherId = str_starts_with($route, 'teacher.') || str_starts_with($route, 'school.')
+            ? session('teacher_id') : Student::find(session('student_id'))?->classroom?->teacher_account_id;
+        if (!$teacherId) $teacherId = session('teacher_id');
+        return $this->catalogForTeacher($teacherId);
+    }
+
+    public function catalogForTeacher(?int $teacherId): array
+    {
+        $catalog = config('lessons');
+        if (!$teacherId) return $catalog;
+        foreach (\App\Models\LessonContent::where('teacher_account_id', $teacherId)->get() as $content) {
+            if ($content->status === 'published') $catalog[$content->lesson_key] = $content->definition + ['content_id' => $content->id];
+            else unset($catalog[$content->lesson_key]);
+        }
+        return $catalog;
+    }
+
+    public function lesson(string $key): array
+    {
+        abort_unless(array_key_exists($key, $this->catalog()), 404);
+
+        return ['key' => $key, ...$this->catalog()[$key]];
+    }
+
+    public function path(Student $student): array
+    {
+        $progress = LessonProgress::where('student_id', $student->id)->get()->keyBy('lesson_key');
+        $plans = TeacherLessonPlan::where('classroom_id', $student->classroom_id)->whereHas('classroom', fn ($query) => $query->whereColumn('classrooms.teacher_account_id', 'teacher_lesson_plans.teacher_account_id'))
+            ->where('status', 'published')->get()->keyBy('lesson_key');
+        $workspaces = CodeWorkspace::with(['submissions' => fn ($query) => $query->select('id', 'code_workspace_id', 'rubric', 'score', 'feedback', 'reviewed_at')])
+            ->where('student_id', $student->id)->whereIn('activity_key', collect($this->catalog())->pluck('practice')->map(fn ($key) => 'practice:'.$key))->get(['id', 'student_id', 'activity_key']);
+        $workspaces = $workspaces->keyBy('activity_key');
+        $cards = [];
+        $catalog = $this->catalogForTeacher($student->classroom?->teacher_account_id);
+        $previousComplete = true;
+        foreach ($catalog as $key => $lesson) {
+            $record = $progress->get($key);
+            $locked = (bool) $student->classroom?->sequential_learning && !$previousComplete && !$record?->completed_at;
+            $cards[] = ['key' => $key, ...$lesson, 'locked' => $locked, 'progress' => $record, 'plan' => $plans->get($key), 'status' => $record?->completed_at ? 'completed' : ($record ? 'in_progress' : 'not_started'), 'practice_progress' => app(ChallengeService::class)->describe($workspaces->get('practice:'.$lesson['practice']))];
+            $previousComplete = $previousComplete && (bool) $record?->completed_at;
+        }
+        $cards = collect($cards);
+        $available = $cards->where('locked', false);
+        $next = $available->where('status', 'in_progress')->sortByDesc(fn ($item) => $item['progress']->last_opened_at)->first()
+            ?? $available->filter(fn ($item) => $item['status'] !== 'completed' && $item['plan'])->first()
+            ?? $available->firstWhere('status', 'not_started');
+
+        return ['cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key',array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key',array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count()];
+    }
+}

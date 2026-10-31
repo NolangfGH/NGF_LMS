@@ -1,0 +1,19 @@
+.report-shell { font-family: 'Plus Jakarta Sans', sans-serif; }
+.report-shell select, .report-shell input { border: 1px solid #e4eadd; }
+.report-shell a:focus-visible, .report-shell button:focus-visible, .report-shell input:focus-visible, .report-shell select:focus-visible, .report-shell summary:focus-visible { outline: 3px solid #47673b; outline-offset: 3px; }
+.report-dialog { max-height: 85vh; overflow-y: auto; }
+.report-dialog::backdrop { background: rgb(4 33 1 / .55); }
+@media (max-width: 1023px) { .report-shell aside.is-open { display: flex; } }
+@media print {
+    @page { margin: 12mm; }
+    .report-shell { background: white; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .report-shell > aside, .report-shell header, .report-shell .report-controls, .report-shell dialog, .report-shell template { display: none !important; }
+    .report-shell > div { padding-left: 0 !important; }
+    .report-shell main { padding: 0 !important; }
+    .report-shell .report-card { box-shadow: none; border: 1px solid #ddd; }
+    .report-shell tr { break-inside: avoid; }
+    .report-shell thead { display: table-header-group; }
+    .report-shell .overflow-x-auto { overflow: visible; }
+    .report-shell table { font-size: 9px; }
+    .report-shell th, .report-shell td { padding: 6px; }
+}

@@ -1,0 +1,9 @@
+.home-anchor { scroll-margin-top: 90px; }
+.home-primary, .home-secondary { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; }
+.home-primary { background: #0b4e00; color: white; box-shadow: 0 3px 0 #022100; }
+.home-secondary { border: 1px solid #dce6d5; background: #fff; color: #0b4e00; }
+.home-status-dot { width: 8px; height: 8px; border-radius: 999px; background: #47673b; flex-shrink: 0; }
+[data-home-state=error] .home-status-dot, [data-home-state=offline] .home-status-dot { background: #b45309; }
+.home-shell :is(a,button,input,summary):focus-visible { outline: 3px solid #47673b; outline-offset: 4px; }
+.home-shell button:disabled { opacity: .6; cursor: wait; }
+@media (prefers-reduced-motion: reduce) { .home-shell *, .home-shell *::before, .home-shell *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

@@ -1,0 +1,31 @@
+/* Local fallback asset. Tailwind utilities are loaded from the CDN in the Blade view. */
+/* Keep fixed navigation usable on short screens. */
+aside.fixed.inset-y-0 {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #c5eab3 transparent;
+}
+
+aside.fixed.inset-y-0::-webkit-scrollbar {
+    width: 7px;
+}
+
+aside.fixed.inset-y-0::-webkit-scrollbar-thumb {
+    background: #c5eab3;
+    border-radius: 999px;
+}
+
+[hidden] { display: none !important; }
+.lesson-progress { border: 0; border-radius: 999px; background: #e3eedb; overflow: hidden; }
+.lesson-progress::-webkit-progress-bar { background: #e3eedb; }
+.lesson-progress::-webkit-progress-value { background: #47673b; border-radius: 999px; }
+.lesson-progress::-moz-progress-bar { background: #47673b; border-radius: 999px; }
+
+@media (max-width: 640px) {
+    .student-shell header { gap: 8px; padding-left: 12px; padding-right: 12px; }
+    .student-shell header > div:first-child { min-width: 0; max-width: 43%; padding: 6px; }
+    .student-shell header input { width: 100%; min-width: 0; }
+    .student-shell header > div:nth-child(2) { gap: 6px; }
+    .student-shell header > div:nth-child(2) > span:first-child { display: none; }
+    .student-shell header > div:nth-child(2) > div span { display: block; font-size: 9px; }
+}

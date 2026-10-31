@@ -1,0 +1,23 @@
+.student-settings-shell { font-family: 'Plus Jakarta Sans', sans-serif; }
+.student-settings-card { scroll-margin-top: 90px; padding: 24px; border-radius: 16px; background: #fff; box-shadow: 0 1px 8px rgb(0 0 0 / .05); }
+.student-settings-title { font-size: 22px; font-weight: 700; line-height: 1.4; }
+.student-settings-intro { margin-top: 8px; font-size: 14px; line-height: 1.7; color: #40493b; }
+.student-settings-form label { font-size: 14px; font-weight: 600; }
+.student-settings-form input:not([type=checkbox]):not([type=radio]):not([type=hidden]), .student-settings-form select { display: block; width: 100%; margin-top: 8px; padding: 12px 14px; border: 1px solid #c0cab7; border-radius: 12px; background: #fff; font-weight: 400; }
+.student-settings-form input:is([type=checkbox],[type=radio]) { width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; accent-color: #0b4e00; }
+.student-settings-hint { display: block; margin-top: 6px; color: #40493b; font-size: 12px; font-weight: 400; line-height: 1.6; }
+.student-settings-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e4eadd; }
+.student-settings-primary, .student-settings-secondary, .student-settings-actions > button { padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 700; }
+.student-settings-primary { background: #0b4e00; color: #fff; box-shadow: 0 3px 0 #022100; }
+.student-settings-secondary { background: #eaf0e2; color: #0b4e00; }
+.student-avatar-option { position: relative; display: block; cursor: pointer; }
+.student-avatar-option > input { position: absolute; left: 14px; top: 14px; }
+.student-avatar-tile { display: block; height: 100%; border: 2px solid #e4eadd; border-radius: 16px; padding: 24px 16px 16px; text-align: center; }
+.student-avatar-option input:checked + .student-avatar-tile { border-color: #0b4e00; background: #f0f6e8; }
+.student-avatar-option input:focus-visible + .student-avatar-tile { outline: 3px solid #47673b; outline-offset: 3px; }
+.student-avatar-locked { opacity: .65; cursor: default; }
+.student-password-dialog { max-height: 85vh; overflow-y: auto; }
+.student-password-dialog::backdrop { background: rgb(4 33 1 / .55); }
+.student-settings-shell :is(a,button,input,select,summary):focus-visible { outline: 3px solid #47673b; outline-offset: 3px; }
+.student-settings-shell button:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 640px) { .student-settings-card { padding: 18px; } .student-settings-title { font-size: 20px; } }

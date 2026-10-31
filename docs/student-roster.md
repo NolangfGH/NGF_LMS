@@ -1,0 +1,18 @@
+# Teacher student management
+
+Open **Teacher Dashboard → Students** (`/teacher-students`). The default roster combines **all sections owned by the signed-in teacher**, including any empty sections. Section counts come from the database; no section names or learner counts are invented.
+
+- **Search and filters:** find first, middle, or last names, classroom nicknames, and Student IDs. Filter by section, active/deleted accounts, or saved learning progress. Sort by name, XP, or enrollment date. The default page shows up to 100 learners; 25/50/100 row options and pagination are available.
+- **Live data:** search and filter changes refresh the roster, and visible pages poll every 15 seconds. Failed updates keep the last successful data. Automatic replacement pauses while a roster action has keyboard focus. Editing occurs on a separate page so live updates cannot overwrite an unfinished account form.
+- **Learning information:** full identity, section, XP, level, actual saved badge count, completed lessons, graded quiz averages, teacher-confirmed coding solutions, work awaiting review, support flags, and recorded learning activity. These summaries use the same evidence rules as Class Reports. Last activity describes saved lessons, quiz submissions, and Code Lab submissions; it does not claim online presence.
+- **Add:** set names, nickname, section, unique Student ID, and a password with confirmation. The server derives the grade and section from the owned classroom. Teacher enrollment works even while public join-code registration is paused. New accounts receive the existing 100 welcome XP award once.
+- **Edit/update:** change identity, classroom placement, Student ID, or set a new password. Leave both password fields empty to retain the password. XP, avatar, privacy preferences, and saved work are preserved. Credential and section changes revoke existing student sessions; the student signs in again. Passwords are hashed, never displayed or exported. Share new credentials privately; students can change their own passwords in Settings.
+- **Delete:** open the student details, type their exact Student ID, and check the confirmation. The account is soft-deleted: login is blocked and it disappears from active rosters, counts, and rankings. Open two-student matches involving the student close without awarding additional XP; drafts and submissions remain. Code, quizzes, feedback, and awards are retained.
+- **Restore:** filter by **Deleted students**, then restore. The original account, XP, password, and saved learning work return without a second welcome award. Old sessions and cancelled matches remain closed. IDs of deleted accounts remain reserved, preventing accidental duplicate accounts.
+- **CSV:** exports every matching record across all pages, using current filters. Passwords and session information are excluded. Formula-like cells are escaped for spreadsheet safety. Import Student IDs as text when preserving leading zeros in spreadsheet software.
+
+Every read, edit, delete, restore, and export checks the teacher's ownership on the server. Profile requests whitelist editable fields and cannot change XP, level, session versions, or another teacher's classroom. Revision checks reject stale roster edits from another tab. Student history associations retain deleted account identities so existing teacher review pages remain readable.
+
+Deployment: run `php artisan migrate --force` to add `students.deleted_at` and `students.roster_revision`. Existing accounts are retained as active records. No npm, extra worker, or hosting service is required.
+
+Checks: `php artisan test --filter=TeacherStudentsTest` and `node --test tests/Frontend/student-roster.test.cjs`.
