@@ -12,6 +12,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class TeacherSettingsTest extends TestCase
@@ -221,6 +223,53 @@ class TeacherSettingsTest extends TestCase
         $this->delete(route('teacher.settings.avatar.destroy'))->assertRedirect();
         Storage::disk('local')->assertMissing($path);
         $this->assertNull($teacher->fresh()->avatar_path);
+    }
+
+    #[TestWith(['principal'])]
+    #[TestWith(['teacher'])]
+    #[TestWith(['school_admin'])]
+    public function test_uploaded_profile_photo_updates_staff_headers_and_profile_card(string $role): void
+    {
+        extract($this->fixture());
+        $teacher->forceFill(['role' => $role, 'profile_visible' => false])->save();
+        Storage::fake('local');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=');
+
+        $this->post(route('teacher.settings.avatar.store'), ['avatar' => UploadedFile::fake()->createWithContent('profile.png', $png)])->assertRedirect();
+        $initialPath = $teacher->fresh()->avatar_path;
+        Storage::disk('local')->assertExists($initialPath);
+        $response = $this->get(route('teacher.settings'))->assertOk();
+        $sources = $this->staffAvatarSources($response);
+        $this->assertCount(2, $sources);
+        $this->assertSame($sources[0], $sources[1]);
+        $this->assertStringStartsWith(route('teacher.settings.avatar', $teacher).'?v=', $sources[0]);
+        $this->assertStringNotContainsString('teacher-avatars/', $sources[0]);
+        $this->get($sources[0])->assertOk()->assertStreamedContent($png)->assertHeader('Content-Type', 'image/png');
+        $dashboard = $this->get(route($teacher->dashboardRoute()))->assertOk();
+        $this->assertSame([$sources[0]], $this->staffAvatarSources($dashboard));
+
+        $this->post(route('teacher.settings.avatar.store'), ['avatar' => UploadedFile::fake()->createWithContent('replacement.png', $png)])->assertRedirect();
+        Storage::disk('local')->assertMissing($initialPath);
+        Storage::disk('local')->assertExists($teacher->fresh()->avatar_path);
+        $replacementSources = $this->staffAvatarSources($this->get(route('teacher.settings'))->assertOk());
+        $this->assertCount(2, $replacementSources);
+        $this->assertSame($replacementSources[0], $replacementSources[1]);
+        $this->assertNotSame($sources[0], $replacementSources[0]);
+        $this->get($replacementSources[0])->assertOk()->assertStreamedContent($png);
+
+        $this->delete(route('teacher.settings.avatar.destroy'))->assertRedirect();
+        $this->assertNull($teacher->fresh()->avatar_path);
+        $fallback = asset($role === 'school_admin' ? 'images/branding/system-admin-profile.png' : 'images/branding/nf-codequest-tab-icon.png');
+        $this->assertSame([$fallback, $fallback], $this->staffAvatarSources($this->get(route('teacher.settings'))->assertOk()));
+    }
+
+    private function staffAvatarSources(TestResponse $response): array
+    {
+        $document = new \DOMDocument;
+        $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $images = (new \DOMXPath($document))->query('//img[contains(concat(" ", normalize-space(@class), " "), " app-admin-avatar ")]/@src');
+
+        return array_map(fn (\DOMAttr $source): string => $source->value, iterator_to_array($images));
     }
 
     public function test_activity_summaries_use_latest_owned_submissions_and_saved_help_signals(): void
