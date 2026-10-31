@@ -68,11 +68,13 @@ class TeacherSettingsController extends Controller
             'middle_initial' => ['nullable', 'string', 'max:2', 'regex:/^\p{L}\.?$/u'],
             'email' => ['required', 'email', 'max:255', Rule::unique('teacher_accounts', 'email')->ignore($teacher->id)],
             'school' => ['required', 'string', 'max:255']]);
+        abort_if($teacher->isPrincipal() && $data['school'] !== $teacher->school, 422, 'School affiliation for Principal access must be confirmed by the System Admin.');
         if ($data['email'] !== $teacher->email) {
             $this->confirmPassword($request, $teacher);
         }
         DB::transaction(function () use ($request, $teacher, $data) {
             $current = TeacherAccount::whereKey($teacher->id)->lockForUpdate()->firstOrFail();
+            abort_if($current->isPrincipal() && $data['school'] !== $current->school, 422, 'School affiliation for Principal access must be confirmed by the System Admin.');
             if ($data['email'] !== $current->email) {
                 $this->confirmPassword($request, $current);
                 $current->forceFill(['email_verified_at' => null, 'session_version' => $current->session_version + 1]);

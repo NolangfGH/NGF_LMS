@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Classroom;
-use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\Judge0Client;
+use App\Services\SchoolOverviewService;
 use App\Services\StaffAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,21 +46,12 @@ class SchoolAdminController extends Controller
         return back()->with('lesson_notice', ($data['decision'] ?? 'approved') === 'rejected' ? 'Access request declined. The reason is available privately to the applicant.' : 'Role and access saved. The account must sign in again.');
     }
 
-    public function overview()
+    public function overview(Request $request, SchoolOverviewService $service)
     {
         $teacher = TeacherAccount::find(session('teacher_id'));
         abort_unless($teacher?->hasStaffAccess() && ($teacher->isPrincipal() || $teacher->isSchoolAdmin()), 403);
-        $classrooms = Classroom::whereNull('archived_at')->with('teacher')->withCount('students')->orderBy('grade')->orderBy('section')->get();
-        $students = Student::whereIn('classroom_id', $classrooms->pluck('id'));
-        $quizAverage = DB::table('quiz_submissions')->join('students', 'students.id', '=', 'quiz_submissions.student_id')
-            ->whereIn('students.classroom_id', $classrooms->pluck('id'))->whereNull('students.deleted_at')->where('students.registration_status', 'approved')
-            ->where('quiz_submissions.total_questions', '>', 0)->whereColumn('quiz_submissions.graded_questions', 'quiz_submissions.total_questions')
-            ->selectRaw('ROUND(AVG(100.0 * quiz_submissions.score / quiz_submissions.total_questions), 1) as average')->value('average');
 
-        return response()->view('school-overview', ['teacher' => $teacher, 'classrooms' => $classrooms, 'studentCount' => $students->count(),
-            'staffCount' => TeacherAccount::where('staff_access_status', 'active')->count(), 'quizAverage' => $quizAverage,
-            'completedLessons' => LessonProgress::whereNotNull('completed_at')->whereHas('student', fn ($q) => $q->whereIn('classroom_id', $classrooms->pluck('id')))->count(),
-            'updatedAt' => now('Asia/Singapore')->format('M j, Y · g:i A')])->header('Cache-Control', 'private, no-store');
+        return response()->view('school-overview', $service->build($teacher, $request))->header('Cache-Control', 'private, no-store');
     }
 
     public function store(Request $request)

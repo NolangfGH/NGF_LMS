@@ -64,7 +64,7 @@ class TeacherAccount extends Authenticatable
     {
         return [
             'teacher' => ['Manage your own classes and join codes', 'Approve students enrolled in your own sections', 'Create lessons, assignments, quizzes, challenges and articles', 'Review student work, give private feedback and maintain your grading sheets'],
-            'principal' => ['View school-wide totals and class summaries', 'Monitor aggregate participation and assessment results', 'Manage your own account and password', 'Read-only access: no grading, staff role changes or private student conversations'],
+            'principal' => ['View your school’s student progress, achievements and XP rankings', 'Browse teacher-prepared lessons, quizzes, assignments and challenges', 'Manage your own profile and password; school affiliation requires System Admin confirmation', 'Read-only learning access: no grading, editing, answer keys or private student conversations'],
             'school_admin' => ['Approve or decline Principal and System Admin requests', 'Create staff accounts; confirm your password for access approvals and role changes', 'Check the compiler connection and archive or restore classes', 'Manage teaching and private student work only within your own sections'],
         ];
     }
