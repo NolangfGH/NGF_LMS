@@ -133,7 +133,9 @@ class GradingSheetController extends Controller
     public function weights(Request $request, GradingSheet $sheet)
     {
         $this->change($request, $sheet, function ($sheet) use ($request) {
-            if(is_array($request->input('weights'))) $request->merge(['weights'=>['CH'=>0,...$request->input('weights')]]);
+            if (is_array($request->input('weights'))) {
+                $request->merge(['weights' => ['CH' => 0, ...$request->input('weights')]]);
+            }
             $rules = ['weights' => ['required', 'array:WW,PT,CP,CH,QA'], 'passing_score' => ['required', 'numeric', 'between:0,100', 'decimal:0,2']];
             foreach (array_keys(config('grading.categories')) as $key) {
                 $rules['weights.'.$key] = ['required', 'integer', 'between:0,100'];
@@ -150,8 +152,39 @@ class GradingSheetController extends Controller
 
     public function assessment(Request $request, GradingSheet $sheet, GradingSheetService $service, ?GradingAssessment $assessment = null)
     {
-        $this->change($request, $sheet, function ($sheet) use ($request, $service, $assessment) {
+        $automaticCount = null;
+        $this->change($request, $sheet, function ($sheet) use ($request, $service, $assessment, &$automaticCount) {
             abort_if($assessment && (int) $assessment->grading_sheet_id !== $sheet->id, 404);
+            $source = null;
+            if (! $assessment) {
+                $entry = $request->validate(['entry_mode' => ['nullable', Rule::in(['manual', 'automatic', 'automatic_batch'])]]);
+                if (($entry['entry_mode'] ?? null) === 'automatic_batch') {
+                    $selected = $request->validate(['source_keys' => ['required', 'array', 'list', 'min:1', 'max:100'],
+                        'source_keys.*' => ['required', 'string', 'max:50', 'distinct']]);
+                    $automaticCount = $service->linkSources($sheet, $selected['source_keys']);
+
+                    return;
+                }
+                $selection = $request->validate(['source' => ['required_if:entry_mode,automatic', 'nullable', 'string', 'max:50']]);
+                $sourceKey = $selection['source'] ?? '';
+                if ($sourceKey !== '') {
+                    $source = $service->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term)->firstWhere('key', $sourceKey);
+                    if (! $source || ($entry['entry_mode'] ?? null) === 'manual') {
+                        throw ValidationException::withMessages(['source' => 'Choose a published activity in Automatic score entry mode for this section and term.']);
+                    }
+                    [$type, $id] = explode(':', $sourceKey);
+                    if ($sheet->assessments()->where('source_type', $type)->where('source_id', $id)->exists()) {
+                        throw ValidationException::withMessages(['source' => 'This activity is already linked to the sheet.']);
+                    }
+                    if (($entry['entry_mode'] ?? null) === 'automatic') {
+                        foreach (['title' => 'assessment_title', 'category' => 'category', 'max_score' => 'max', 'due_date' => 'due_date'] as $field => $sourceField) {
+                            if (! $request->filled($field)) {
+                                $request->merge([$field => $source[$sourceField]]);
+                            }
+                        }
+                    }
+                }
+            }
             $data = $request->validate([
                 'title' => ['required', 'string', 'max:180'], 'category' => ['required', Rule::in(array_keys(config('grading.categories')))],
                 'max_score' => ['required', 'numeric', 'between:0.01,100000', 'decimal:0,2'],
@@ -167,16 +200,9 @@ class GradingSheetController extends Controller
                 if ($sheet->assessments()->count() >= 100) {
                     throw ValidationException::withMessages(['title' => 'A sheet supports up to 100 assessments. Use a separate term or school year.']);
                 }
-                $source = $request->validate(['source' => ['nullable', 'string', 'max:50']])['source'] ?? '';
                 $data['source_type'] = 'manual';
-                if ($source !== '') {
-                    if (! $service->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term)->contains('key', $source)) {
-                        throw ValidationException::withMessages(['source' => 'Choose a published quiz or coding task assigned to this section and term.']);
-                    }
-                    [$type, $id] = explode(':', $source);
-                    if ($sheet->assessments()->where('source_type', $type)->where('source_id', $id)->exists()) {
-                        throw ValidationException::withMessages(['source' => 'This activity is already linked to the sheet.']);
-                    }
+                if ($source) {
+                    [$type, $id] = explode(':', $source['key']);
                     $data += ['source_id' => (int) $id];
                     $data['source_type'] = $type;
                 }
@@ -184,7 +210,11 @@ class GradingSheetController extends Controller
             }
         });
 
-        return $this->back($sheet, $assessment ? 'Assessment updated.' : 'Assessment added. Linked results update automatically.');
+        $notice = $automaticCount !== null
+            ? $automaticCount.' activities linked for automatic score entry. Existing assessments and teacher overrides were preserved.'
+            : ($assessment ? 'Assessment updated.' : 'Assessment added. Linked results update automatically.');
+
+        return $this->back($sheet, $notice);
     }
 
     public function destroyAssessment(Request $request, GradingSheet $sheet, GradingAssessment $assessment)

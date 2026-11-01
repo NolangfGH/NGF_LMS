@@ -10,21 +10,51 @@ use App\Models\TeacherAssignment;
 use App\Models\TeacherQuiz;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class GradingSheetService
 {
     public function sources(int $teacherId, int $classroomId, string $term): Collection
     {
         $quizzes = TeacherQuiz::where('teacher_account_id', $teacherId)->where('status', 'published')
-            ->forClassroom($classroomId)->orderBy('title')->get(['id', 'title', 'questions'])
+            ->forClassroom($classroomId)->orderBy('title')->get(['id', 'title', 'questions', 'closes_at'])
             ->filter(fn ($quiz) => count($quiz->questions ?? []) > 0)
-            ->map(fn ($quiz) => ['key' => 'quiz:'.$quiz->id, 'title' => 'Quiz · '.$quiz->title, 'max' => count($quiz->questions)]);
+            ->map(fn ($quiz) => ['key' => 'quiz:'.$quiz->id, 'title' => 'Quiz · '.$quiz->title, 'assessment_title' => $quiz->title,
+                'max' => count($quiz->questions), 'category' => 'WW', 'due_date' => $quiz->closes_at?->timezone(config('learning.timezone'))->format('Y-m-d')]);
         $assignments = TeacherAssignment::where('teacher_account_id', $teacherId)->where('status', 'published')
             ->where(fn ($query) => $query->where('school_term', $term)->orWhereNull('school_term'))
-            ->forClassroom($classroomId)->orderBy('title')->get(['id', 'title', 'kind'])
-            ->map(fn ($assignment) => ['key' => 'assignment:'.$assignment->id, 'title' => ucfirst($assignment->kind).' · '.$assignment->title, 'max' => 16]);
+            ->forClassroom($classroomId)->orderBy('title')->get(['id', 'title', 'kind', 'due_at'])
+            ->map(fn ($assignment) => ['key' => 'assignment:'.$assignment->id, 'title' => ucfirst($assignment->kind).' · '.$assignment->title,
+                'assessment_title' => $assignment->title, 'max' => 16, 'category' => $assignment->kind === 'challenge' ? 'CH' : 'PT',
+                'due_date' => $assignment->due_at?->timezone(config('learning.timezone'))->format('Y-m-d')]);
 
         return $quizzes->concat($assignments)->values();
+    }
+
+    public function linkSources(GradingSheet $sheet, array $keys): int
+    {
+        $available = $this->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term)->keyBy('key');
+        foreach ($keys as $key) {
+            if (! $available->has($key)) {
+                throw ValidationException::withMessages(['source_keys' => 'Choose published activities assigned to this section and term.']);
+            }
+        }
+        $existing = $sheet->assessments()->get();
+        $selected = collect($keys)->map(fn ($key) => $available[$key])->reject(function ($source) use ($existing) {
+            [$type, $id] = explode(':', $source['key']);
+
+            return $existing->contains(fn ($assessment) => $assessment->source_type === $type && (int) $assessment->source_id === (int) $id);
+        });
+        if ($existing->count() + $selected->count() > 100) {
+            throw ValidationException::withMessages(['source_keys' => 'A sheet supports up to 100 assessments. Select fewer activities.']);
+        }
+        foreach ($selected as $source) {
+            [$type, $id] = explode(':', $source['key']);
+            $sheet->assessments()->create(['title' => mb_substr($source['assessment_title'], 0, 180), 'category' => $source['category'],
+                'max_score' => $source['max'], 'due_date' => $source['due_date'], 'source_type' => $type, 'source_id' => (int) $id]);
+        }
+
+        return $selected->count();
     }
 
     public function build(?GradingSheet $sheet, int $teacherId, int $classroomId): array
@@ -60,6 +90,11 @@ class GradingSheetService
 
         return [
             'assessments' => $assessments, 'rows' => $rows, 'weights' => $weights,
+            'automatic' => [
+                'linked' => $assessments->whereIn('source_type', ['quiz', 'assignment'])->count(),
+                'recorded' => $rows->sum(fn ($row) => collect($row['cells'])->filter(fn ($cell) => $cell['automatic'] !== null && ! $cell['override'])->count()),
+                'overrides' => $rows->sum(fn ($row) => collect($row['cells'])->where('override', true)->count()),
+            ],
             'metrics' => [
                 'students' => $rows->count(), 'average' => $graded->isEmpty() ? null : round($graded->avg('average'), 2),
                 'complete' => $rows->where('complete', true)->count(), 'pending' => $rows->sum('pending'),

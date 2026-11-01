@@ -118,6 +118,94 @@ class GradingSheetTest extends TestCase
         $this->assertSame(6, $row['resolved']);
     }
 
+    public function test_automatic_entry_fills_assessment_details_from_the_activity_on_the_server(): void
+    {
+        extract($this->fixture());
+        $quiz = TeacherQuiz::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => 'Input checkpoint', 'questions' => [['prompt' => 'Q1'], ['prompt' => 'Q2']], 'status' => 'published', 'closes_at' => '2026-11-02 18:00:00']);
+        $payload = ['revision' => 1, 'entry_mode' => 'automatic', 'source' => 'quiz:'.$quiz->id];
+        $this->post(route('teacher.grading.assessments.store', $sheet), $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $assessment = GradingAssessment::firstOrFail();
+        $this->assertSame('Input checkpoint', $assessment->title);
+        $this->assertSame('WW', $assessment->category);
+        $this->assertSame(2.0, $assessment->max_score);
+        $this->assertSame('2026-11-03', $assessment->due_date->format('Y-m-d'));
+        $this->assertSame('quiz', $assessment->source_type);
+        $this->get(route('teacher.grading', $this->sheetQuery($sheet)))->assertOk()->assertSee('Automatic score entry')->assertSee('Link multiple activities');
+        $this->postJson(route('teacher.grading.assessments.store', $sheet), [...$payload, 'revision' => 2])->assertUnprocessable()->assertJsonValidationErrors('source');
+        $this->postJson(route('teacher.grading.assessments.store', $sheet), ['revision' => 2, 'entry_mode' => 'automatic'])->assertUnprocessable()->assertJsonValidationErrors('source');
+        $this->postJson(route('teacher.grading.assessments.store', $sheet), [...$payload, 'revision' => 2, 'entry_mode' => 'manual'])->assertUnprocessable()->assertJsonValidationErrors('source');
+        $this->assertDatabaseCount('grading_assessments', 1);
+    }
+
+    public function test_batch_linking_creates_live_score_entries_without_changing_manual_scores_or_xp(): void
+    {
+        extract($this->fixture());
+        $manual = $this->item($sheet, 'CP');
+        $this->score($manual, $student, 80);
+        $quiz = TeacherQuiz::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => 'Two questions', 'questions' => [['prompt' => 'Q1'], ['prompt' => 'Q2']], 'status' => 'published']);
+        $assignment = TeacherAssignment::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => 'Loop challenge', 'kind' => 'challenge', 'school_term' => 'Term1', 'status' => 'published', 'due_at' => '2026-11-04 01:00:00']);
+        $keys = ['quiz:'.$quiz->id, 'assignment:'.$assignment->id];
+        $this->post(route('teacher.grading.assessments.store', $sheet), ['revision' => 1, 'entry_mode' => 'automatic_batch', 'source_keys' => $keys])->assertRedirect()->assertSessionHasNoErrors();
+        $linkedQuiz = GradingAssessment::where('source_type', 'quiz')->firstOrFail();
+        $linkedTask = GradingAssessment::where('source_type', 'assignment')->firstOrFail();
+        $this->assertSame('CH', $linkedTask->category);
+        $this->assertSame(16.0, $linkedTask->max_score);
+        $this->assertSame('2026-11-04', $linkedTask->due_date->format('Y-m-d'));
+        $service = app(GradingSheetService::class);
+        $before = $service->build($sheet->fresh(), $teacher->id, $rooms[0]->id);
+        $this->assertNull($before['rows'][0]['cells'][$linkedQuiz->id]['score']);
+        DB::table('quiz_submissions')->insert(['teacher_quiz_id' => $quiz->id, 'student_id' => $student->id, 'answers' => '[]', 'score' => 0, 'total_questions' => 2, 'graded_questions' => 2, 'attempt_number' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        $this->getJson(route('teacher.grading.status', $this->sheetQuery($sheet)))->assertOk()->assertJsonPath('revision', 2);
+        $book = $service->build($sheet->fresh(), $teacher->id, $rooms[0]->id);
+        $this->assertSame(0.0, $book['rows'][0]['cells'][$linkedQuiz->id]['score']);
+        $this->assertSame(1, $book['automatic']['recorded']);
+        $this->assertSame(2, $book['automatic']['linked']);
+        $this->assertNull($book['rows'][0]['cells'][$linkedTask->id]['score']);
+        $this->score($linkedQuiz, $student, 1);
+        $this->post(route('teacher.grading.assessments.store', $sheet), ['revision' => 2, 'entry_mode' => 'automatic_batch', 'source_keys' => $keys])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('grading_assessments', 3);
+        $book = $service->build($sheet->fresh(), $teacher->id, $rooms[0]->id);
+        $this->assertSame(1.0, $book['rows'][0]['cells'][$linkedQuiz->id]['score']);
+        $this->assertSame(80.0, $book['rows'][0]['cells'][$manual->id]['score']);
+        $this->assertSame(1, $book['automatic']['overrides']);
+        $this->assertSame(0, $book['automatic']['recorded']);
+        $this->assertSame(100, $student->fresh()->xp);
+        $this->postJson(route('teacher.grading.assessments.store', $sheet), ['revision' => 2, 'entry_mode' => 'automatic_batch', 'source_keys' => $keys])->assertConflict();
+    }
+
+    public function test_batch_entry_is_atomic_scoped_and_requires_valid_distinct_activity_choices(): void
+    {
+        extract($this->fixture());
+        $quiz = TeacherQuiz::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => 'Allowed', 'questions' => [['prompt' => 'Q']], 'status' => 'published']);
+        $foreign = TeacherQuiz::create(['teacher_account_id' => $other->id, 'classroom_id' => $foreignRoom->id, 'title' => 'Private', 'questions' => [['prompt' => 'Q']], 'status' => 'published']);
+        $draft = TeacherQuiz::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => 'Draft', 'questions' => [['prompt' => 'Q']], 'status' => 'draft']);
+        $wrongTerm = TeacherAssignment::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => 'Other term', 'school_term' => 'Term2', 'status' => 'published']);
+        $payload = ['revision' => 1, 'entry_mode' => 'automatic_batch'];
+        $url = route('teacher.grading.assessments.store', $sheet);
+        foreach ([[], ['quiz:'.$quiz->id, 'quiz:'.$foreign->id], ['quiz:'.$draft->id], ['assignment:'.$wrongTerm->id], ['quiz:'.$quiz->id, 'quiz:'.$quiz->id]] as $keys) {
+            $this->postJson($url, $payload + ['source_keys' => $keys])->assertUnprocessable();
+            $this->assertDatabaseCount('grading_assessments', 0);
+            $this->assertSame(1, $sheet->fresh()->revision);
+        }
+        $this->withSession(['teacher_id' => $other->id])->postJson($url, $payload + ['source_keys' => ['quiz:'.$quiz->id]])->assertNotFound();
+        $this->withSession(['teacher_id' => null, 'student_id' => $student->id])->postJson($url, $payload + ['source_keys' => ['quiz:'.$quiz->id]])->assertForbidden();
+    }
+
+    public function test_batch_entry_rejects_capacity_overflow_without_partially_linking_activities(): void
+    {
+        extract($this->fixture());
+        for ($index = 0; $index < 99; $index++) {
+            $this->item($sheet);
+        }
+        $quizzes = collect(['First', 'Second'])->map(fn ($title) => TeacherQuiz::create(['teacher_account_id' => $teacher->id, 'classroom_id' => $rooms[0]->id, 'title' => $title, 'questions' => [['prompt' => 'Q']], 'status' => 'published']));
+        $keys = $quizzes->map(fn ($quiz) => 'quiz:'.$quiz->id)->all();
+        $this->postJson(route('teacher.grading.assessments.store', $sheet), ['revision' => 1, 'entry_mode' => 'automatic_batch', 'source_keys' => $keys])->assertUnprocessable()->assertJsonValidationErrors('source_keys');
+        $this->assertDatabaseCount('grading_assessments', 99);
+        $this->assertSame(1, $sheet->fresh()->revision);
+        $this->post(route('teacher.grading.assessments.store', $sheet), ['revision' => 1, 'entry_mode' => 'automatic_batch', 'source_keys' => [$keys[0]]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('grading_assessments', 100);
+    }
+
     public function test_linked_quiz_and_final_code_review_results_refresh_live_and_allow_explicit_overrides(): void
     {
         extract($this->fixture());

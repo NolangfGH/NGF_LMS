@@ -20,10 +20,12 @@
         @endif
     </div>
     @if($sheet)
+    @include('grading.automatic-entry')
     <div class="grading-controls grading-management">
         <section id="assessment-builder" class="grading-card"><h2>Add an assessment</h2><p class="grading-help">Link published learning activities for live results, or create a manual classroom assessment.</p>
             <form method="POST" action="{{ route('teacher.grading.assessments.store', $sheet) }}" data-grading-edit data-assessment-create class="grading-form">@csrf<input type="hidden" name="revision" value="{{ $sheet->revision }}">
-                <label>Score source<select name="source" data-grading-source><option value="">Manual score entry</option>@foreach($sources as $source)<option value="{{ $source['key'] }}" data-max="{{ $source['max'] }}" data-title="{{ $source['title'] }}" @selected(old('source') === $source['key'])>{{ $source['title'] }}</option>@endforeach</select></label>
+                <label>Score entry method<select name="entry_mode" data-grading-entry-mode><option value="automatic" @selected(old('entry_mode', 'automatic') === 'automatic')>Automatic score entry</option><option value="manual" @selected(old('entry_mode') === 'manual')>Manual score entry</option></select></label>
+                <div data-grading-source-fields><label>Published activity<select name="source" data-grading-source><option value="">Choose an activity for this section</option>@foreach($sources as $source)<option value="{{ $source['key'] }}" data-max="{{ $source['max'] }}" data-title="{{ $source['assessment_title'] }}" data-category="{{ $source['category'] }}" data-due="{{ $source['due_date'] }}" @selected(old('source') === $source['key'])>{{ $source['title'] }}</option>@endforeach</select></label><p class="grading-help">Quiz scores use the best fully graded attempt. Coding scores use the latest final teacher review. Unfinished or ungraded work stays pending.</p>@if($sources->isEmpty())<p class="grading-help">No eligible activities yet. Publish a quiz or coding task for this section, or choose Manual score entry for classroom work.</p>@endif</div>
                 @include('grading.assessment-fields', ['editAssessment' => null])
                 <button class="grading-button grading-primary">Add assessment</button><small>Linked scores scale to your maximum. Best fully graded quiz attempt; latest final Code Lab review. XP bonuses never enter the academic grade.</small>
             </form>

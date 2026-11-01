@@ -1,6 +1,6 @@
 @extends('layouts.teacher-learning')
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/grading-sheet.css') }}">
+<link rel="stylesheet" href="{{ asset('css/grading-sheet.css') }}?v=20261101-auto">
 <div class="grading-shell" data-grading-sheet data-has-unsaved="{{ old('revision') ? 'true' : 'false' }}" data-status-url="{{ route('teacher.grading.status', $query) }}" data-print="{{ request()->boolean('print') ? 'true' : 'false' }}" data-masked="{{ request()->boolean('mask') ? 'true' : 'false' }}">
     <div class="grading-heading">
         <div><p class="grading-eyebrow">Curriculum Console / Assessment records</p><h1>Grading Sheet</h1><p>Turn saved C++ learning evidence into clear, actionable assessment records.</p>@if($room)<p class="grading-help">{{ $room->grade }} · {{ $room->section ?: $room->name }} · {{ $schoolYear }} · {{ config('grading.terms.'.$term) }}</p>@endif</div>
@@ -30,5 +30,5 @@
         <div id="grading-live">@include('grading.workspace')</div>
     @endif
 </div>
-<script src="{{ asset('js/grading-sheet.js') }}" defer></script>
+<script src="{{ asset('js/grading-sheet.js') }}?v=20261101-auto" defer></script>
 @endsection

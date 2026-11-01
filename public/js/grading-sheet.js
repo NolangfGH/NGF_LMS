@@ -13,6 +13,18 @@
             if (input) input.disabled = select.value !== 'scored';
         });
     };
+    const syncEntryModes = () => {
+        root.querySelectorAll('[data-assessment-create]').forEach(form => {
+            const mode = form.querySelector('[data-grading-entry-mode]');
+            const source = form.querySelector('[data-grading-source]');
+            const fields = form.querySelector('[data-grading-source-fields]');
+            if (!mode || !source || !fields) return;
+            const automatic = mode.value === 'automatic';
+            source.disabled = !automatic;
+            source.required = automatic;
+            fields.hidden = !automatic;
+        });
+    };
     const maskedLinks = () => {
         root.querySelectorAll('a').forEach(link => {
             const url = new URL(link.href, window.location.href);
@@ -32,13 +44,15 @@
     root.addEventListener('change', event => {
         if (event.target.closest('[data-grading-edit]')) dirty = true;
         if (event.target.matches('[data-score-mode]')) syncScores();
+        if (event.target.matches('[data-grading-entry-mode]')) syncEntryModes();
         if (event.target.matches('[data-grading-source]')) {
             const option = event.target.selectedOptions[0];
             const form = event.target.closest('form');
             if (option?.dataset.max) {
                 form.elements.max_score.value = option.dataset.max;
-                form.elements.title.value = option.dataset.title.replace(/^[^·]+·\s*/, '');
-                form.elements.category.value = event.target.value.startsWith('quiz:') ? 'WW' : 'PT';
+                form.elements.title.value = option.dataset.title;
+                form.elements.category.value = option.dataset.category;
+                form.elements.due_date.value = option.dataset.due || '';
             }
         }
     });
@@ -71,6 +85,7 @@
             if (!editing() && typeof data.html === 'string') {
                 live.innerHTML = data.html;
                 syncScores();
+                syncEntryModes();
                 maskedLinks();
                 announce('Learning records are up to date. Refreshing every 15 seconds.');
             }
@@ -81,6 +96,7 @@
     root.querySelector('[data-grading-refresh]')?.addEventListener('click', refresh);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
     syncScores();
+    syncEntryModes();
     maskedLinks();
     if (root.dataset.print === 'true') Promise.resolve(document.fonts?.ready).then(() => window.print());
     else setInterval(refresh, 15000);
