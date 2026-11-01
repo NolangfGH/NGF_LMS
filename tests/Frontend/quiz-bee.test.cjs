@@ -14,11 +14,12 @@ class Element {
     querySelectorAll(selector){return this.all().filter(item=>item.tag===selector);}
     querySelector(selector){return this.all().find(item=>selector==='input:checked'?item.tag==='input'&&item.checked:selector.startsWith('input[value=')?item.tag==='input'&&item.value===selector.match(/"([^"]+)"/)[1]:item.tag===selector);}
 }
-function arena(){
+function arena(question={}){
     const start=Date.parse('2026-11-01T02:00:00Z');
     const state={now:start,requests:[],intervals:{},snapshot:{id:1,title:'C++ Bee',status:'running',server_now:new Date(start).toISOString(),regular_total:3,
         question:{id:1,sequence:1,level:'easy',kind:'regular',number:1,total:1,prompt:'Print <script> safely',options:['A','B','<img onerror=evil>','D'],opened_at:new Date(start).toISOString(),closes_at:new Date(start+60000).toISOString(),closed:false,answered:0,eligible:2,can_answer:true,own_answer:null,own_correct:null,correct:null},
         standings:[{rank:1,name:'Team <script>',correct:0,xp_per_member:0,ready:true,in_round:true,answered:false,own:true}],members:[{nickname:'Coder',captain:true,xp:0}]}};
+    Object.assign(state.snapshot.question,question);
     const keys=['state','message','phase','question-label','prompt','options','submit','receipt','explanation','standings','members','seconds','bar','answer'];
     const controls=Object.fromEntries(keys.map(key=>[`[data-bee-${key}]`,new Element()]));
     controls['[data-bee-state]'].textContent=JSON.stringify(state.snapshot);
@@ -68,17 +69,22 @@ test('expired sessions stop polling and hidden pages avoid background requests',
     assert.equal(page.state.requests.length,1);assert.equal(page.controls['[data-bee-submit]'].disabled,true);assert.match(page.controls['[data-bee-message]'].textContent,/Session ended/);
 });
 
-function builder(){
+function builder(level='easy'){
     const element=extra=>({listeners:{},addEventListener(type,fn){this.listeners[type]=fn;},focus(){this.focused=true;},...extra});
     const teams=element({rows:[],querySelectorAll:()=>teams.rows,append:row=>teams.rows.push(row)}),category=element({value:'individual'}),add=element(),count={};
     function row(index){const fields=[element({name:`teams[${index}][name]`,value:'Team'}),element({name:`teams[${index}][captain_id]`,value:'1'}),element({name:`teams[${index}][members][]`,value:'2'})],number={},remove=element();const groups=[{querySelectorAll:()=>[fields[0]]},{querySelectorAll:()=>[fields[2]]}];const item={fields,groups,number,removeButton:remove,querySelector:s=>s==='[data-bee-team-number]'?number:s==='select'?fields[1]:remove,querySelectorAll:s=>s==='[name]'?fields:groups,remove:()=>teams.rows.splice(teams.rows.indexOf(item),1)};remove.closest=()=>item;return item;}
     teams.rows=[row(0),row(1)];
     const list=element({rows:[],querySelectorAll:()=>list.rows,append:item=>list.rows.push(item)}),addQuestion=element();
-    function question(index){const number={},input=element({name:`questions[easy][regular][${index}][prompt]`,value:'Prompt'}),remove=element();const item={input,removeButton:remove,querySelector:s=>s==='[data-bee-question-number]'?number:s==='input'?input:remove,querySelectorAll:()=>[input],remove:()=>list.rows.splice(list.rows.indexOf(item),1)};remove.closest=()=>item;return item;}
+    function question(index){
+        const number={},input=element({name:`questions[${level}][regular][${index}][prompt]`,value:'Prompt'}),remove=element();
+        const type=element({name:`questions[${level}][regular][${index}][type]`,value:'multiple_choice'}),choice=element({value:'Choice A'}),blank=element({value:'cout'}),choices={querySelectorAll:()=>[choice]},blanks={querySelectorAll:()=>[blank]};
+        const item={input,type,choice,blank,choices,blanks,removeButton:remove,querySelector:s=>s==='[data-bee-question-number]'?number:s==='input'?input:s==='[data-bee-choice-fields]'?choices:s==='[data-bee-blank-fields]'?blanks:remove,querySelectorAll:()=>[input,type],remove:()=>list.rows.splice(list.rows.indexOf(item),1)};
+        type.closest=()=>item;type.matches=s=>s==='[data-bee-question-type]';remove.closest=()=>item;return item;
+    }
     list.rows=[question(0)];const bank={querySelector:s=>({'[data-bee-regular]':list,'[data-bee-add-question]':addQuestion,'[data-bee-question-template]':{content:{cloneNode:()=>question('__QUESTION__')}}})[s]};
-    const form={querySelector:s=>({'[data-bee-teams]':teams,'[data-bee-add-team]':add,'[data-bee-category]':category,'[data-bee-team-count]':count,'[data-bee-team-template]':{content:{cloneNode:()=>row('__TEAM__')}}})[s],querySelectorAll:()=>[bank]};
+    const form=element({querySelector:s=>({'[data-bee-teams]':teams,'[data-bee-add-team]':add,'[data-bee-category]':category,'[data-bee-team-count]':count,'[data-bee-team-template]':{content:{cloneNode:()=>row('__TEAM__')}}})[s],querySelectorAll:s=>s==='[data-bee-bank]'?[bank]:level==='difficult'?list.rows.map(row=>row.type):[]});
     vm.runInNewContext(source('quiz-bee-builder.js'),{document:{querySelector:()=>form}});
-    return {teams,category,add,count,list,addQuestion};
+    return {teams,category,add,count,list,addQuestion,form};
 }
 
 test('builder caps teams at forty, preserves values on reindex and enables at most four additional members',()=>{
@@ -94,4 +100,32 @@ test('builder caps regular questions at fifteen and keeps at least one',()=>{
     for(let i=0;i<20;i++)page.addQuestion.listeners.click();assert.equal(page.list.rows.length,15);assert.equal(page.addQuestion.disabled,true);
     const last=page.list.rows[14];page.list.listeners.click({target:{closest:()=>page.list.rows[0].removeButton}});
     assert.equal(last.input.name,'questions[easy][regular][13][prompt]');assert.equal(page.addQuestion.disabled,false);
+});
+
+test('difficult builder switches required answer fields and preserves both sets of values',()=>{
+    const page=builder('difficult'),row=page.list.rows[0];
+    assert.equal(row.choices.hidden,false);assert.equal(row.blanks.hidden,true);assert.equal(row.blank.disabled,true);
+    row.type.value='fill_blank';page.form.listeners.change({target:row.type});
+    assert.equal(row.choices.hidden,true);assert.equal(row.choice.disabled,true);assert.equal(row.blank.disabled,false);
+    row.blank.value='std::cout';row.type.value='multiple_choice';page.form.listeners.change({target:row.type});
+    assert.equal(row.choice.disabled,false);assert.equal(row.blank.value,'std::cout');assert.equal(row.choice.value,'Choice A');
+    page.addQuestion.listeners.click();const added=page.list.rows.at(-1);added.type.value='fill_blank';page.form.listeners.change({target:added.type});
+    assert.equal(added.blank.disabled,false);assert.equal(added.type.name,'questions[difficult][regular][1][type]');
+});
+
+test('fill in the blank keeps drafts on polling, sends text and displays the saved final answer',async()=>{
+    const page=arena({type:'fill_blank',options:[],level:'difficult',case_sensitive:true});
+    const input=page.options.querySelector('input');assert.equal(input.type,'text');assert.equal(input.maxLength,500);
+    input.value='  std::cout  ';await page.poll();assert.equal(page.options.querySelector('input'),input);assert.equal(input.value,'  std::cout  ');
+    page.submit();await tick();const request=page.state.requests.find(request=>request.options.method==='POST');
+    assert.equal(JSON.parse(request.options.body).answer,'std::cout');
+    page.state.snapshot.question={...page.state.snapshot.question,own_answer:'std::cout',can_answer:false,closed:true,accepted_answers:['cout','std::cout'],own_correct:true,own_seconds:20,own_xp:15};await page.poll();
+    assert.equal(input.disabled,true);assert.equal(input.value,'std::cout');assert.match(page.controls['[data-bee-explanation]'].textContent,/cout \/ std::cout/);
+});
+
+test('blank input rejects empty text, submits zero as text and locks at the deadline',async()=>{
+    const page=arena({type:'fill_blank',options:[],level:'difficult',case_sensitive:false});
+    const input=page.options.querySelector('input');input.value='   ';page.submit();assert.equal(page.state.requests.length,0);
+    input.value='0';page.submit();await tick();assert.equal(JSON.parse(page.state.requests[0].options.body).answer,'0');
+    page.state.now+=60000;page.clock();assert.equal(input.disabled,true);assert.equal(page.controls['[data-bee-submit]'].disabled,true);
 });

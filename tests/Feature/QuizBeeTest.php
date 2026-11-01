@@ -307,4 +307,133 @@ class QuizBeeTest extends TestCase
         $this->postJson(route('teacher.quiz-bee.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('teams');
         $this->assertDatabaseCount('quiz_bee_matches', 0);
     }
+
+    private function difficultRound(QuizBeeMatch $match): void
+    {
+        $this->start($match);
+        foreach (['easy', 'average'] as $level) {
+            $run = $this->currentRun($match);
+            $this->assertSame($level, $run->level);
+            $this->answerBoth($match, true, false);
+            $this->host($match, 'next', ['run_id' => $run->id])->assertOk();
+        }
+    }
+
+    public function test_difficult_builder_saves_and_edits_both_types_without_exposing_unused_keys(): void
+    {
+        extract($this->fixture());
+        $payload['questions']['difficult']['regular'][0] = ['type' => 'fill_blank', 'prompt' => 'Complete std::_____ << "Hello";',
+            'accepted_answers' => " cout\r\nstd::cout\n", 'case_sensitive' => '1', 'why' => 'cout is the output stream.'];
+        $match = $this->createMatch([...$payload, 'status' => 'draft']);
+        $question = $match->questions['difficult']['regular'][0];
+        $this->assertSame(['cout', 'std::cout'], $question['accepted_answers']);
+        $this->assertTrue($question['case_sensitive']);
+        $this->assertArrayNotHasKey('options', $question);
+        $this->assertArrayNotHasKey('correct', $question);
+        $this->get(route('teacher.quiz-bee.edit', $match))->assertOk()->assertSee('Fill in the blank')->assertSee('Accepted answer(s)')->assertSee('cout');
+        $payload['questions']['difficult']['regular'][0] = config('quiz_bee.questions.difficult.regular.0');
+        $this->put(route('teacher.quiz-bee.update', $match), [...$payload, 'status' => 'draft'])->assertRedirect()->assertSessionHasNoErrors();
+        $question = $match->fresh()->questions['difficult']['regular'][0];
+        $this->assertSame('multiple_choice', $question['type']);
+        $this->assertArrayNotHasKey('accepted_answers', $question);
+    }
+
+    public function test_blank_question_keys_and_level_restrictions_are_validated(): void
+    {
+        extract($this->fixture());
+        $blank = ['type' => 'fill_blank', 'prompt' => 'Complete std::_____', 'accepted_answers' => ['cout'], 'case_sensitive' => true];
+        foreach (['easy', 'average'] as $level) {
+            $bad = $payload;
+            $bad['questions'][$level]['regular'][0] = $blank;
+            $this->postJson(route('teacher.quiz-bee.store'), $bad)->assertUnprocessable()->assertJsonValidationErrors('questions.'.$level.'.regular.0.type');
+        }
+        foreach ([[], [''], array_fill(0, 11, 'cout'), [str_repeat('x', 501)]] as $answers) {
+            $bad = $payload;
+            $bad['questions']['difficult']['regular'][0] = [...$blank, 'accepted_answers' => $answers];
+            $this->postJson(route('teacher.quiz-bee.store'), $bad)->assertUnprocessable();
+        }
+        $bad['questions']['difficult']['regular'][0] = [...$blank, 'case_sensitive' => 'anything'];
+        $this->postJson(route('teacher.quiz-bee.store'), $bad)->assertUnprocessable()->assertJsonValidationErrors('questions.difficult.regular.0.case_sensitive');
+        $bad['questions']['difficult']['regular'][0] = [...$blank, 'type' => 'unsupported'];
+        $this->postJson(route('teacher.quiz-bee.store'), $bad)->assertUnprocessable()->assertJsonValidationErrors('questions.difficult.regular.0.type');
+        $this->assertDatabaseCount('quiz_bee_matches', 0);
+    }
+
+    public function test_blank_answers_are_private_final_and_earn_timed_group_and_perfect_xp(): void
+    {
+        extract($this->fixture());
+        $payload['questions']['difficult']['regular'][0] = ['type' => 'fill_blank', 'prompt' => 'Complete std::_____ << "Hello";',
+            'accepted_answers' => ['cout', 'std::cout'], 'case_sensitive' => true, 'why' => 'Standard output'];
+        $match = $this->createMatch($payload);
+        $this->difficultRound($match);
+        $run = $this->currentRun($match);
+        $this->withSession(['teacher_id' => null, 'student_id' => $students[0]->id])->getJson(route('student.quiz-bee.status', $match))
+            ->assertOk()->assertJsonPath('question.type', 'fill_blank')->assertJsonPath('question.options', [])
+            ->assertJsonPath('question.accepted_answers', null)->assertJsonPath('question.correct', null)->assertDontSee('std::cout');
+        $this->studentAction($match, $students[1], 'answer', ['run_id' => $run->id, 'answer' => 'cout'])->assertForbidden();
+        foreach ([[], true, str_repeat('x', 501), ''] as $invalid) {
+            $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => $invalid])->assertUnprocessable();
+        }
+        $this->travelTo(Carbon::parse($run->opened_at)->addSeconds(30));
+        $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => ' std::cout '])->assertOk();
+        $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => 'std::cout'])->assertOk();
+        $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => 'cout'])->assertConflict();
+        $this->travelTo(Carbon::parse($run->opened_at)->addMilliseconds(30001));
+        $this->studentAction($match, $students[2], 'answer', ['run_id' => $run->id, 'answer' => 'COUT'])->assertOk();
+        $this->assertDatabaseHas('quiz_bee_answers', ['quiz_bee_run_id' => $run->id, 'student_id' => $students[0]->id, 'answer' => null, 'answer_text' => 'std::cout', 'correct' => true, 'elapsed_ms' => 30000, 'xp' => 15]);
+        $this->getJson(route('student.quiz-bee.status', $match))->assertOk()->assertJsonPath('question.accepted_answers', ['cout', 'std::cout'])->assertJsonPath('question.own_answer', 'COUT')->assertJsonPath('question.own_correct', false);
+        $this->host($match, 'next', ['run_id' => $run->id])->assertOk();
+        foreach ([0, 1] as $i) {
+            $this->assertSame(245, $students[$i]->fresh()->xp);
+        }
+        $this->assertSame('completed', $match->fresh()->status);
+        $this->assertSame(2, DB::table('quiz_bee_answers')->where('quiz_bee_run_id', $run->id)->count());
+    }
+
+    public function test_blank_tiebreakers_support_case_insensitive_zero_and_do_not_reset_deadlines(): void
+    {
+        extract($this->fixture());
+        $payload['questions']['difficult']['tiebreak'][0] = ['type' => 'fill_blank', 'prompt' => 'Name a false value.',
+            'accepted_answers' => ['false', '0'], 'case_sensitive' => false];
+        $payload['questions']['difficult']['regular'][] = $payload['questions']['difficult']['regular'][0];
+        $match = $this->createMatch($payload);
+        $this->difficultRound($match);
+        for ($i = 0; $i < 2; $i++) {
+            $run = $this->currentRun($match);
+            $this->answerBoth($match, false, true);
+            $this->host($match, 'next', ['run_id' => $run->id])->assertOk();
+        }
+        $run = $this->currentRun($match);
+        $this->assertSame('tiebreak', $run->kind);
+        $this->travelTo(Carbon::parse($run->opened_at)->addMilliseconds(30001));
+        $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => 'FALSE'])->assertOk();
+        $this->studentAction($match, $students[2], 'answer', ['run_id' => $run->id, 'answer' => '0'])->assertOk();
+        $this->assertSame(2, DB::table('quiz_bee_answers')->where('quiz_bee_run_id', $run->id)->where('correct', true)->where('xp', 10)->count());
+        $this->assertSame($run->closes_at, $this->currentRun($match)->closes_at);
+        $this->host($match, 'next', ['run_id' => $run->id])->assertOk();
+        $run = $this->currentRun($match);
+        $this->travelTo(Carbon::parse($run->closes_at));
+        $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => 0])->assertConflict();
+    }
+
+    public function test_choice_answers_reject_coerced_text_and_blank_answers_cannot_arrive_after_timeout(): void
+    {
+        extract($this->fixture());
+        $payload['questions']['difficult']['regular'][0] = ['type' => 'fill_blank', 'prompt' => 'Enter zero', 'accepted_answers' => ['0']];
+        $match = $this->createMatch($payload);
+        $this->start($match);
+        $run = $this->currentRun($match);
+        foreach (['0abc', 'cout', -1, 4, '1.0'] as $invalid) {
+            $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => $invalid])->assertUnprocessable();
+        }
+        foreach (['easy', 'average'] as $level) {
+            $run = $this->currentRun($match);
+            $this->answerBoth($match, true, false);
+            $this->host($match, 'next', ['run_id' => $run->id])->assertOk();
+        }
+        $run = $this->currentRun($match);
+        $this->travelTo(Carbon::parse($run->closes_at));
+        $this->studentAction($match, $students[0], 'answer', ['run_id' => $run->id, 'answer' => '0'])->assertConflict();
+        $this->assertDatabaseHas('quiz_bee_answers', ['quiz_bee_run_id' => $run->id, 'answer_text' => null, 'submitted_at' => null, 'xp' => 0]);
+    }
 }

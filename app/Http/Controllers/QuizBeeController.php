@@ -68,6 +68,28 @@ class QuizBeeController extends Controller
     public function save(Request $request, ?QuizBeeMatch $bee = null)
     {
         $teacher = $this->teacher();
+        $questions = $request->input('questions');
+        if (is_array($questions)) {
+            foreach ($questions as &$level) {
+                if (! is_array($level)) {
+                    continue;
+                }
+                foreach ($level as &$bank) {
+                    if (! is_array($bank)) {
+                        continue;
+                    }
+                    foreach ($bank as &$question) {
+                        if (is_array($question) && is_string($question['accepted_answers'] ?? null)) {
+                            $question['accepted_answers'] = array_values(array_filter(array_map('trim', preg_split('/\R/u', $question['accepted_answers']) ?: []), fn ($answer) => $answer !== ''));
+                        }
+                    }
+                    unset($question);
+                }
+                unset($bank);
+            }
+            unset($level);
+            $request->merge(['questions' => $questions]);
+        }
         $teams = $request->input('teams');
         if (is_array($teams)) {
             foreach ($teams as &$team) {
@@ -94,9 +116,13 @@ class QuizBeeController extends Controller
                 $prefix = 'questions.'.$level.'.'.$kind;
                 $rules[$prefix] = ['required', 'array', 'list', $kind === 'regular' ? 'min:1' : 'size:5', 'max:15'];
                 $rules[$prefix.'.*.prompt'] = ['required', 'string', 'max:1000'];
-                $rules[$prefix.'.*.options'] = ['required', 'array', 'list', 'size:4'];
-                $rules[$prefix.'.*.options.*'] = ['required', 'string', 'max:500'];
-                $rules[$prefix.'.*.correct'] = ['required', 'integer', 'between:0,3'];
+                $rules[$prefix.'.*.type'] = ['sometimes', Rule::in($level === 'difficult' ? ['multiple_choice', 'fill_blank'] : ['multiple_choice'])];
+                $rules[$prefix.'.*.options'] = ['exclude_if:'.$prefix.'.*.type,fill_blank', 'required', 'array', 'list', 'size:4'];
+                $rules[$prefix.'.*.options.*'] = ['exclude_if:'.$prefix.'.*.type,fill_blank', 'required', 'string', 'max:500'];
+                $rules[$prefix.'.*.correct'] = ['exclude_if:'.$prefix.'.*.type,fill_blank', 'required', 'integer', 'between:0,3'];
+                $rules[$prefix.'.*.accepted_answers'] = ['exclude_unless:'.$prefix.'.*.type,fill_blank', 'required', 'array', 'list', 'min:1', 'max:10'];
+                $rules[$prefix.'.*.accepted_answers.*'] = ['exclude_unless:'.$prefix.'.*.type,fill_blank', 'required', 'string', 'max:500'];
+                $rules[$prefix.'.*.case_sensitive'] = ['exclude_unless:'.$prefix.'.*.type,fill_blank', 'sometimes', 'boolean'];
                 $rules[$prefix.'.*.why'] = ['nullable', 'string', 'max:1000'];
             }
         }
@@ -121,9 +147,14 @@ class QuizBeeController extends Controller
             foreach ($questions as &$level) {
                 foreach ($level as &$bank) {
                     foreach ($bank as &$question) {
-                        $question['correct'] = (int) $question['correct'];
-                        if (count(array_unique(array_map(fn ($option) => mb_strtolower(trim($option)), $question['options']))) !== 4) {
+                        $question['type'] ??= 'multiple_choice';
+                        if ($question['type'] === 'fill_blank') {
+                            $question['accepted_answers'] = array_values(array_unique(array_map('trim', $question['accepted_answers'])));
+                            $question['case_sensitive'] = (bool) ($question['case_sensitive'] ?? true);
+                        } elseif (count(array_unique(array_map(fn ($option) => mb_strtolower(trim($option)), $question['options']))) !== 4) {
                             throw ValidationException::withMessages(['questions' => 'Each question needs four different answer choices.']);
+                        } else {
+                            $question['correct'] = (int) $question['correct'];
                         }
                     }
                     unset($question);
@@ -178,10 +209,14 @@ class QuizBeeController extends Controller
     {
         $student = $this->authorizeMatch($bee, $service);
         $data = $request->validate(['action' => ['required', Rule::in($student ? ['ready', 'answer'] : ['start', 'next', 'cancel'])],
-            'run_id' => ['required_if:action,answer,next', 'nullable', 'integer'], 'answer' => ['required_if:action,answer', 'nullable', 'integer', 'between:0,3']]);
+            'run_id' => ['required_if:action,answer,next', 'nullable', 'integer'], 'answer' => ['required_if:action,answer', 'nullable', function ($attribute, $value, $fail) {
+                if ((! is_string($value) && ! is_int($value)) || mb_strlen((string) $value) > 500) {
+                    $fail('The answer must be text or a choice, up to 500 characters.');
+                }
+            }]]);
         match ($data['action']) {
             'ready' => $service->ready($bee, $student),
-            'answer' => $service->answer($bee, $student, (int) $data['run_id'], (int) $data['answer']),
+            'answer' => $service->answer($bee, $student, (int) $data['run_id'], $data['answer']),
             'start' => $service->start($bee),
             'next' => $service->next($bee, (int) $data['run_id']),
             'cancel' => DB::transaction(function () use ($bee) {

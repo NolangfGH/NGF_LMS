@@ -1,6 +1,6 @@
 @extends($teacherRole ? 'layouts.teacher-learning' : 'layouts.student',['pageTitle'=>'Live Quiz Bee','active'=>'challenges'])
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/quiz-bee.css') }}?v=1">
+<link rel="stylesheet" href="{{ asset('css/quiz-bee.css') }}?v=2">
 <div class="bee-shell" data-bee-arena data-csrf="{{ csrf_token() }}" data-status-url="{{ route(($teacherRole ? 'teacher' : 'student').'.quiz-bee.status',$bee) }}" data-action-url="{{ route(($teacherRole ? 'teacher' : 'student').'.quiz-bee.action',$bee) }}" data-role="{{ $teacherRole ? 'teacher' : 'student' }}">
 <a class="bee-link" href="{{ route(($teacherRole ? 'teacher' : 'student').'.quiz-bee.index') }}">← Quiz Bee Arena</a><div class="bee-heading"><div><p class="bee-eyebrow">{{ ucfirst($bee->category) }} · Easy / Average / Difficult</p><h1>{{ $bee->title }}</h1><p data-bee-phase>{{ ucfirst($bee->status) }}</p></div><span class="bee-pill">One minute per question</span></div>
 @if(session('bee_notice'))<p class="bee-notice" role="status">{{ session('bee_notice') }}</p>@endif
@@ -12,5 +12,5 @@
 <section class="bee-card"><h2>Live standings</h2><p class="bee-help">Only closed questions affect this table. XP is shown per team member.</p><div class="bee-table-scroll"><table class="bee-table"><thead><tr><th>Rank</th><th>Entry</th><th>Correct</th><th>XP</th><th>Current question</th></tr></thead><tbody data-bee-standings></tbody></table></div></section></div>
 <noscript><p class="bee-error">Enable JavaScript to join the live question timer and submit answers.</p></noscript>
 <script type="application/json" data-bee-state>@json($snapshot)</script></div>
-<script src="{{ asset('js/quiz-bee-arena.js') }}?v=1" defer></script>
+<script src="{{ asset('js/quiz-bee-arena.js') }}?v=2" defer></script>
 @endsection

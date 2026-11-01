@@ -1,6 +1,6 @@
 @extends('layouts.teacher-learning',['pageTitle'=>'Quiz Bee Builder'])
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/quiz-bee.css') }}?v=1">
+<link rel="stylesheet" href="{{ asset('css/quiz-bee.css') }}?v=2">
 @php
     $savedTeams = old('teams', $teams);
     $formTeams = is_array($savedTeams) ? array_slice(array_values($savedTeams), 0, 40) : $teams;
@@ -21,5 +21,5 @@
 </section></details>
 @endforeach
 <div class="bee-actions"><button class="bee-button bee-primary" name="status" value="lobby">Publish & send invitations →</button><button class="bee-button" name="status" value="draft">Save draft</button></div><p class="bee-help">Published teams and questions stay fixed for fair play. Captains mark ready in the lobby, then you start and advance questions. Drafts can be edited; cancel and create a new match if a published roster needs to change.</p>
-</form></div><script src="{{ asset('js/quiz-bee-builder.js') }}?v=1" defer></script>
+</form></div><script src="{{ asset('js/quiz-bee-builder.js') }}?v=2" defer></script>
 @endsection

@@ -22,17 +22,21 @@ class QuizBeePresenter
         $answers = $run ? DB::table('quiz_bee_answers')->where('quiz_bee_run_id', $run->id)->get()->keyBy('quiz_bee_team_id') : collect();
         if ($run && $match->status !== 'cancelled') {
             $source = json_decode($run->question, true);
+            $fillBlank = ($source['type'] ?? 'multiple_choice') === 'fill_blank';
             $eligible = json_decode($run->eligible_team_ids, true);
             $receipt = $ownTeam ? $answers->get($ownTeam->id) : null;
             $question = ['id' => $run->id, 'sequence' => $run->sequence, 'level' => $run->level, 'kind' => $run->kind,
-                'number' => $run->question_index + 1, 'total' => count($match->questions[$run->level][$run->kind]), 'prompt' => $source['prompt'], 'options' => $source['options'],
+                'number' => $run->question_index + 1, 'total' => count($match->questions[$run->level][$run->kind]), 'prompt' => $source['prompt'],
+                'type' => $fillBlank ? 'fill_blank' : 'multiple_choice', 'options' => $fillBlank ? [] : $source['options'],
+                'case_sensitive' => $fillBlank ? ($source['case_sensitive'] ?? true) : null,
                 'opened_at' => Carbon::parse($run->opened_at)->toISOString(), 'closes_at' => Carbon::parse($run->closes_at)->toISOString(), 'closed' => $run->closed_at !== null,
                 'answered' => $answers->whereNotNull('submitted_at')->count(), 'eligible' => count($eligible),
                 'can_answer' => $match->status === 'running' && ! $run->closed_at && $ownTeam && (int) $ownTeam->captain_id === $student?->id && in_array($ownTeam->id, $eligible, true) && ! $receipt,
-                'own_answer' => $receipt?->answer, 'own_seconds' => $receipt ? (int) ceil($receipt->elapsed_ms / 1000) : null,
+                'own_answer' => $fillBlank ? $receipt?->answer_text : $receipt?->answer, 'own_seconds' => $receipt ? (int) ceil($receipt->elapsed_ms / 1000) : null,
                 'own_correct' => $run->closed_at ? ($receipt ? (bool) $receipt->correct : null) : null,
                 'own_xp' => $run->closed_at ? ($receipt?->xp ?? 0) : null,
-                'correct' => $run->closed_at ? $source['correct'] : null, 'why' => $run->closed_at ? ($source['why'] ?? '') : null];
+                'correct' => $run->closed_at && ! $fillBlank ? $source['correct'] : null,
+                'accepted_answers' => $run->closed_at && $fillBlank ? $source['accepted_answers'] : null, 'why' => $run->closed_at ? ($source['why'] ?? '') : null];
         }
         $rank = 0;
         $previous = null;

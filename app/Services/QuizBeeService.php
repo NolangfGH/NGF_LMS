@@ -111,7 +111,7 @@ class QuizBeeService
         DB::table('quiz_bee_runs')->where('id', $run->id)->update(['closed_at' => $this->timestamp()]);
     }
 
-    public function answer(QuizBeeMatch $match, Student $student, int $runId, int $answer): void
+    public function answer(QuizBeeMatch $match, Student $student, int $runId, int|string $answer): void
     {
         $this->settle($match);
         DB::transaction(function () use ($match, $student, $runId, $answer) {
@@ -121,19 +121,27 @@ class QuizBeeService
             abort_unless($team && (int) $team->captain_id === $student->id, 403, 'Only the team captain can submit an answer.');
             $run = DB::table('quiz_bee_runs')->find($runId);
             abort_unless(in_array($team->id, json_decode($run->eligible_team_ids, true), true), 403, 'Your team is not in this tie-breaker.');
+            $question = json_decode($run->question, true);
+            $fillBlank = ($question['type'] ?? 'multiple_choice') === 'fill_blank';
+            if ($fillBlank) {
+                $answer = trim((string) $answer);
+                abort_unless($answer !== '' && mb_strlen($answer) <= 500, 422, 'Enter your answer, up to 500 characters.');
+            } else {
+                abort_unless(preg_match('/^[0-3]$/D', (string) $answer) && array_key_exists((int) $answer, $question['options']), 422, 'Choose one of the available answers.');
+                $answer = (int) $answer;
+            }
             $existing = DB::table('quiz_bee_answers')->where('quiz_bee_run_id', $runId)->where('quiz_bee_team_id', $team->id)->first();
             if ($existing && $existing->submitted_at) {
-                abort_unless((int) $existing->answer === $answer, 409, 'The first submitted answer is final.');
+                abort_unless(($fillBlank ? $existing->answer_text : (int) $existing->answer) === $answer, 409, 'The first submitted answer is final.');
 
                 return;
             }
             abort_if($run->closed_at || now()->gte(Carbon::parse($run->closes_at)), 409, 'Time is up. Answers must reach the server within one minute.');
-            $question = json_decode($run->question, true);
-            abort_unless(array_key_exists($answer, $question['options']), 422, 'Choose one of the available answers.');
             $elapsed = max(0, (int) ceil(Carbon::parse($run->opened_at)->diffInMilliseconds(now(), false)));
-            $correct = $answer === $question['correct'];
+            $normalize = fn ($value) => ($question['case_sensitive'] ?? true) ? trim((string) $value) : mb_strtolower(trim((string) $value));
+            $correct = $fillBlank ? in_array($normalize($answer), array_map($normalize, $question['accepted_answers']), true) : $answer === $question['correct'];
             DB::table('quiz_bee_answers')->insert(['quiz_bee_run_id' => $runId, 'quiz_bee_team_id' => $team->id, 'student_id' => $student->id,
-                'answer' => $answer, 'correct' => $correct, 'elapsed_ms' => $elapsed, 'xp' => $correct ? 10 + ($elapsed <= 30000 ? 5 : 0) : 0, 'submitted_at' => $this->timestamp()]);
+                'answer' => $fillBlank ? null : $answer, 'answer_text' => $fillBlank ? $answer : null, 'correct' => $correct, 'elapsed_ms' => $elapsed, 'xp' => $correct ? 10 + ($elapsed <= 30000 ? 5 : 0) : 0, 'submitted_at' => $this->timestamp()]);
         }, 5);
         $this->settle($match);
     }
