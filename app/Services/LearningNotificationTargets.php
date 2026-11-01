@@ -9,6 +9,7 @@ use App\Models\CodingMatch;
 use App\Models\LabSubmission;
 use App\Models\LearningNotification;
 use App\Models\LessonProgress;
+use App\Models\QuizBeeMatch;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Models\TeacherAssignment;
@@ -42,6 +43,16 @@ class LearningNotificationTargets
             return route($role.'.matches.show', $match);
         }
         $id = (int) $notice->target_id;
+        if ($notice->target_type === 'quiz_bee') {
+            $match = $this->find(QuizBeeMatch::class, $id);
+            if (! $match || ($teacher ? $match->teacher_account_id !== $actor->id : $match->status === 'draft'
+                || $actor->classroom?->teacher_account_id !== $match->teacher_account_id
+                || ! DB::table('quiz_bee_members')->where('quiz_bee_match_id', $id)->where('student_id', $actor->id)->exists())) {
+                return null;
+            }
+
+            return route($role.'.quiz-bee.show', $match);
+        }
         if ($notice->target_type === 'student_registration') {
             $student = Student::withUnapproved()->with('classroom')->find($id);
             if (! $student) {

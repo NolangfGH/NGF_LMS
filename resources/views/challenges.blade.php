@@ -1,5 +1,6 @@
 @extends('layouts.student',['pageTitle'=>'Challenges','active'=>'challenges'])
 @section('content')
+<section class="mb-6 rounded-3xl border border-green-200 bg-white p-6 shadow-card"><p class="text-xs font-bold uppercase tracking-widest text-secondary">Quiz Bee invitations</p><h2 class="mt-2 text-2xl font-extrabold text-primary">Your Quiz Bee arena</h2><p class="mt-3 text-sm leading-6">Join your teacher's individual or group matches. Correct answers earn 10 XP, answers within 30 seconds earn 5 extra XP, and a perfect regular-question match earns 100 bonus XP.</p><a href="{{ route('student.quiz-bee.index') }}" class="mt-4 inline-block rounded-xl bg-primary px-5 py-3 font-bold text-white">View my Quiz Bee matches →</a></section>
 <section class="mb-7 rounded-3xl border border-green-200 bg-white p-5 sm:p-7" aria-label="Two-student coding challenges">
 <p class="font-mono text-xs font-bold uppercase tracking-widest text-secondary">Teacher invitations · Shared timer</p><h2 class="mt-2 text-2xl font-extrabold text-primary">Your coding matches</h2>
 <p class="mt-2 mb-5 text-sm leading-6 text-muted">Accept an invitation to compete with another coder. Your teacher verifies submitted solutions and awards the first correct one. Your draft stays private from your opponent.</p>

@@ -9,6 +9,7 @@ use App\Models\Classroom;
 use App\Models\LabSubmission;
 use App\Models\LearningNotification;
 use App\Models\LessonProgress;
+use App\Models\QuizBeeMatch;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Models\TeacherAssignment;
@@ -19,6 +20,11 @@ use Illuminate\Support\Str;
 
 class LearningNotifications
 {
+    public function quizBee(QuizBeeMatch $match, string $role, int $recipient, string $event, string $title, string $message): void
+    {
+        $this->send($role, $recipient, 'challenges', 'quiz-bee:'.$match->id.':'.$event, $title, $message, 'quiz_bee', $match->id);
+    }
+
     public function registrationSubmitted(Student $student): void
     {
         $this->send('teacher', $student->classroom?->teacher_account_id, 'registrations', 'registration-submitted:'.$student->id.':'.$student->registration_revision,

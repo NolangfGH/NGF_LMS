@@ -15,6 +15,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LearningNotificationController;
 use App\Http\Controllers\LessonContentController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\QuizBeeController;
 use App\Http\Controllers\QuizSubmissionController;
 use App\Http\Controllers\SchoolAdminController;
 use App\Http\Controllers\SecondChanceController;
@@ -128,6 +129,20 @@ Route::prefix('teacher-challenges')->name('teacher.matches.')->group(function ()
     Route::post('/{match}/award', [CodingMatchController::class, 'award'])->middleware('throttle:match-write')->name('award');
     Route::post('/{match}/cancel', [CodingMatchController::class, 'cancel'])->middleware('throttle:match-write')->name('cancel');
 });
+foreach (['teacher', 'student'] as $beeRole) {
+    Route::prefix($beeRole.'-quiz-bee')->name($beeRole.'.quiz-bee.')->controller(QuizBeeController::class)->group(function () use ($beeRole) {
+        Route::get('/', 'index')->name('index');
+        if ($beeRole === 'teacher') {
+            Route::get('/create', 'edit')->name('create');
+            Route::post('/', 'save')->middleware('throttle:match-write')->name('store');
+            Route::get('/{bee}/edit', 'edit')->whereNumber('bee')->name('edit');
+            Route::put('/{bee}', 'save')->whereNumber('bee')->middleware('throttle:match-write')->name('update');
+        }
+        Route::get('/{bee}', 'show')->whereNumber('bee')->name('show');
+        Route::get('/{bee}/status', 'status')->whereNumber('bee')->middleware('throttle:match-read')->name('status');
+        Route::post('/{bee}/action', 'action')->whereNumber('bee')->middleware('throttle:match-write')->name('action');
+    });
+}
 Route::get('/teacher-section-challenges', [HomeController::class, 'teacherSectionChallenges'])->name('teacher.section-challenges');
 Route::prefix('coding-challenges')->name('student.matches.')->group(function () {
     Route::get('/records', [CodingMatchController::class, 'records'])->middleware('throttle:match-read')->name('records');
