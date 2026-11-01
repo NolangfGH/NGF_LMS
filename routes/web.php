@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AiLabReviewController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BlogActivityController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ChallengeNoticeController;
@@ -31,6 +32,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
 Route::get('/staff-registration-status/check', [StaffRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('staff.registration.check');
 Route::get('/school-overview', [SchoolAdminController::class, 'overview'])->name('school.overview');
+Route::get('/class-attendance', [AttendanceController::class, 'index'])->name('teacher.attendance');
+Route::get('/class-attendance/status', [AttendanceController::class, 'status'])->middleware('throttle:match-read')->name('teacher.attendance.status');
+Route::get('/class-attendance/export', [AttendanceController::class, 'export'])->middleware('throttle:20,1')->name('teacher.attendance.export');
+Route::post('/class-attendance', [AttendanceController::class, 'store'])->middleware('throttle:match-write')->name('teacher.attendance.store');
+Route::post('/class-attendance/{session}', [AttendanceController::class, 'action'])->whereNumber('session')->middleware('throttle:match-write')->name('teacher.attendance.action');
+Route::get('/my-attendance', [AttendanceController::class, 'studentIndex'])->name('student.attendance');
+Route::post('/my-attendance/{session}', [AttendanceController::class, 'studentAction'])->whereNumber('session')->middleware('throttle:10,1')->name('student.attendance.action');
 
 Route::get('/student-registration-status', [StudentRegistrationStatusController::class, 'show'])->name('student.registration.status');
 Route::get('/student-registration-status/check', [StudentRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('student.registration.check');

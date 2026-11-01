@@ -9,6 +9,13 @@ if(teacherNav) {
         teacherNav.append(studentsLink);
     }
     studentsLink.href='{{ route('teacher.students') }}';
+    if(!teacherNav.querySelector('a[href="{{ route('teacher.attendance') }}"]')) {
+        const attendanceLink=document.createElement('a');
+        attendanceLink.href='{{ route('teacher.attendance') }}';
+        attendanceLink.className='flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted hover:bg-secondary-soft';
+        attendanceLink.innerHTML='<span class="material-symbols-outlined">event_available</span>Class Attendance';
+        studentsLink.after(attendanceLink);
+    }
     let lessonsLink=[...teacherNav.querySelectorAll('a')].find(link=>link.textContent.trim().endsWith('Lessons'));
     if(!lessonsLink) {
         lessonsLink=document.createElement('a');
