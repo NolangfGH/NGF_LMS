@@ -36,8 +36,11 @@ class LessonContentController extends Controller
         $content = LessonContent::where('teacher_account_id', $teacher->id)->where('lesson_key', $key)->first();
         $definition = $content?->definition ?? config('lessons.'.$key);
         abort_unless($key === 'new' || $definition, 404);
+        $submittedChecks = old('checks', $definition['checks'] ?? []);
+        $checkpointChecks = is_array($submittedChecks) ? array_values($submittedChecks) : [];
+        $checkpointChecks = array_pad($checkpointChecks, LessonContent::MIN_CHECKPOINT_QUESTIONS, ['prompt' => '', 'options' => ['', '', ''], 'correct' => 0, 'why' => '']);
 
-        return response()->view('content.form', compact('teacher', 'content', 'definition', 'key'))->header('Cache-Control', 'private, no-store');
+        return response()->view('content.form', compact('teacher', 'content', 'definition', 'key', 'checkpointChecks'))->header('Cache-Control', 'private, no-store');
     }
 
     public function save(Request $request, string $key)
@@ -49,11 +52,11 @@ class LessonContentController extends Controller
             'minutes' => ['required', 'integer', 'between:1,60'], 'status' => ['required', 'in:draft,published'],
             'sections' => ['required', 'array', 'min:1', 'max:6'], 'sections.*.title' => ['required', 'string', 'max:100'], 'sections.*.text' => ['required', 'string', 'max:5000'],
             'code' => ['required', 'string', 'max:20000'], 'output' => ['nullable', 'string', 'max:5000'], 'mistake' => ['required', 'string', 'max:1000'],
-            'checks' => ['required', 'array', 'size:3'], 'checks.*.prompt' => ['required', 'string', 'max:1000'],
-            'checks.*.options' => ['required', 'array', 'size:3'], 'checks.*.options.*' => ['required', 'string', 'max:500'],
+            'checks' => ['required', 'array', 'list', 'min:'.LessonContent::MIN_CHECKPOINT_QUESTIONS, 'max:'.LessonContent::MAX_CHECKPOINT_QUESTIONS], 'checks.*.prompt' => ['required', 'string', 'max:1000'],
+            'checks.*.options' => ['required', 'array', 'list', 'size:3'], 'checks.*.options.*' => ['required', 'string', 'max:500'],
             'checks.*.correct' => ['required', 'integer', 'between:0,2'], 'checks.*.why' => ['required', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4000,max_height=4000'],
-        ]);
+        ], ['checks.min' => 'Each lesson needs at least five checkpoint questions.', 'checks.max' => 'A lesson can contain up to twenty checkpoint questions.']);
         $newPath = $request->file('image')?->store('lesson-resources', 'local');
         try {
             DB::transaction(function () use ($teacher, $key, $data, $newPath, $request) {

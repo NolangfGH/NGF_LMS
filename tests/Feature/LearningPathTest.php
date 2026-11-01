@@ -74,23 +74,26 @@ class LearningPathTest extends TestCase
         $this->get(route('student.lesson.show', 'output'))->assertOk();
         $this->postJson(route('student.lesson.checkpoint', 'output'), ['answers' => [0, 1], 'reflection' => 'short'])->assertUnprocessable()->assertJsonValidationErrors(['answers', 'reflection']);
         $this->postJson(route('student.lesson.checkpoint', 'output'), [...$this->answers(), 'answers' => [0, 1, 99]])->assertUnprocessable()->assertJsonValidationErrors('answers.2');
-        $this->post(route('student.lesson.checkpoint', 'output'), [...$this->answers(), 'answers' => [0, 0, 0], 'score' => 3, 'completed_at' => now(), 'student_id' => $peer->id])->assertRedirect();
+        $wrongAnswers = array_map(fn ($correct) => ($correct + 1) % 3, $this->answers()['answers']);
+        $oneCorrect = $wrongAnswers;
+        $oneCorrect[0] = $this->answers()['answers'][0];
+        $this->post(route('student.lesson.checkpoint', 'output'), [...$this->answers(), 'answers' => $oneCorrect, 'score' => 5, 'completed_at' => now(), 'student_id' => $peer->id])->assertRedirect();
         $record = LessonProgress::firstOrFail();
         $this->assertSame(1, $record->latest_score);
         $this->assertNull($record->completed_at);
         $this->get(route('student.lesson.show', 'output'))->assertOk()->assertSee('Review this idea and try again.');
         $this->post(route('student.lesson.checkpoint', 'output'), $this->answers())->assertRedirect();
         $record->refresh();
-        $this->assertSame(3, $record->best_score);
+        $this->assertSame(5, $record->best_score);
         $this->assertNotNull($record->completed_at);
         $this->assertSame(2, $record->attempts);
         $evidence = $record->completion_evidence;
         $completed = $record->completed_at->toIso8601String();
         $this->travel(1)->days();
-        $this->post(route('student.lesson.checkpoint', 'output'), [...$this->answers(), 'answers' => [2, 0, 0]])->assertRedirect();
+        $this->post(route('student.lesson.checkpoint', 'output'), [...$this->answers(), 'answers' => $wrongAnswers])->assertRedirect();
         $record->refresh();
         $this->assertSame(0, $record->latest_score);
-        $this->assertSame(3, $record->best_score);
+        $this->assertSame(5, $record->best_score);
         $this->assertSame($evidence, $record->completion_evidence);
         $this->assertSame($completed, $record->completed_at->toIso8601String());
         $this->assertSame(125, $student->fresh()->xp);
@@ -122,7 +125,7 @@ class LearningPathTest extends TestCase
         $this->get(route('student.lesson.show', 'output'))->assertOk()->assertSee('Updated visible target');
         $this->post(route('student.lesson.checkpoint', 'output'), $this->answers())->assertRedirect();
         $this->delete(route('teacher.lessons.destroy', $plan))->assertRedirect();
-        $this->assertDatabaseHas('lesson_progress', ['student_id' => $student->id, 'best_score' => 3]);
+        $this->assertDatabaseHas('lesson_progress', ['student_id' => $student->id, 'best_score' => 5]);
         $this->get(route('student.learn'))->assertViewHas('lessonPath', fn ($path) => $path['completed'] === 1 && $path['assigned'] === 0);
     }
 
@@ -192,11 +195,11 @@ class LearningPathTest extends TestCase
         $this->post(route('student.lesson.support', 'input'), ['help_request' => 'Why does <script>alert(1)</script> not read a value?'])->assertRedirect();
         $record = LessonProgress::firstOrFail();
         $this->assertSame('need_help', $record->confidence);
-        $this->assertSame(0,$record->attempts);
+        $this->assertSame(0, $record->attempts);
         $this->assertNull($record->completed_at);
         $this->assertNull($record->answers);
-        $this->get(route('student.lesson.show','input'))->assertOk()->assertDontSee('<script>alert(1)</script>',false)->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;',false);
-        $this->get(route('teacher.lessons.progress'))->assertOk()->assertSee('Support requested')->assertDontSee('<script>alert(1)</script>',false);
-        $this->assertSame(100,$student->fresh()->xp);
+        $this->get(route('student.lesson.show', 'input'))->assertOk()->assertDontSee('<script>alert(1)</script>', false)->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
+        $this->get(route('teacher.lessons.progress'))->assertOk()->assertSee('Support requested')->assertDontSee('<script>alert(1)</script>', false);
+        $this->assertSame(100, $student->fresh()->xp);
     }
 }

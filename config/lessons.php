@@ -16,6 +16,8 @@ $base = [
             ['prompt' => 'Where does this C++ program begin executing?', 'options' => ['main', 'iostream', 'cout'], 'correct' => 0, 'why' => 'main is the program entry function in this example.'],
             ['prompt' => 'Which statement prints the word Hello?', 'options' => ['std::cout >> "Hello";', 'std::cout << "Hello";', 'std::cin << "Hello";'], 'correct' => 1, 'why' => 'The insertion operator << sends text to cout.'],
             ['prompt' => 'What normally ends a simple C++ statement?', 'options' => ['A comma', 'A semicolon', 'A quotation mark'], 'correct' => 1, 'why' => 'Simple statements such as the output statements end with a semicolon.'],
+            ['prompt' => 'Why does this example include <iostream>?', 'options' => ['To repeat a loop', 'To store a password', 'To use standard console streams such as std::cout'], 'correct' => 2, 'why' => 'The iostream header declares the standard console input and output streams.'],
+            ['prompt' => 'What does the newline escape sequence \\n do inside the first message?', 'options' => ['Moves the following output to a new line', 'Stops the compiler', 'Prints the letter n only'], 'correct' => 0, 'why' => 'The newline escape sequence starts a new output line, so the second message appears below the first.'],
         ],
     ],
     'variables' => [
@@ -32,6 +34,8 @@ $base = [
             ['prompt' => 'Which type is suitable for a count of whole devices?', 'options' => ['int', 'void', 'return'], 'correct' => 0, 'why' => 'int represents a whole-number count in this example.'],
             ['prompt' => 'What does 3 * 4 evaluate to?', 'options' => ['7', '12', '34'], 'correct' => 1, 'why' => 'The multiplication operator multiplies the two values.'],
             ['prompt' => 'What is the result of the integer expression 7 / 2?', 'options' => ['3.5', '4', '3'], 'correct' => 2, 'why' => 'Integer division discards the fractional part.'],
+            ['prompt' => 'Which declaration initializes a whole-number count to zero?', 'options' => ['int count;', 'int count = 0;', 'count == 0;'], 'correct' => 1, 'why' => 'int count = 0 declares the variable and gives it a known starting value.'],
+            ['prompt' => 'Which type is suitable when a result needs fractional values?', 'options' => ['double', 'void', 'return'], 'correct' => 0, 'why' => 'double can represent fractional values, while int is used for whole-number values.'],
         ],
     ],
     'input' => [
@@ -49,6 +53,8 @@ $base = [
             ['prompt' => 'Which statement reads an integer into amount?', 'options' => ['std::cin >> amount;', 'std::cout >> amount;', 'std::cin << amount;'], 'correct' => 0, 'why' => 'cin uses >> to extract input into the variable.'],
             ['prompt' => 'What prints when amount is read as 5 in this example?', 'options' => ['2', '5', '7'], 'correct' => 2, 'why' => 'The expression amount + 2 evaluates to 7.'],
             ['prompt' => 'What should happen before you calculate with a user-supplied value?', 'options' => ['Print an uninitialized variable', 'Read the value into a declared variable', 'Remove main'], 'correct' => 1, 'why' => 'The program needs a declared variable containing the input value first.'],
+            ['prompt' => 'What does the example print when the user enters 0?', 'options' => ['0', 'An error in every case', '2'], 'correct' => 2, 'why' => 'After reading zero, amount + 2 evaluates to 2. Zero is a useful boundary test.'],
+            ['prompt' => 'Why does this worked example omit an input prompt?', 'options' => ['So its output contains only the calculated answer', 'Because cin prints the prompt automatically', 'Because programs cannot print prompts'], 'correct' => 0, 'why' => 'The output contract asks for just the result; an extra prompt would change the expected output.'],
         ],
     ],
     'conditions' => [
@@ -65,6 +71,8 @@ $base = [
             ['prompt' => 'Which expression compares x with 5 for equality?', 'options' => ['x = 5', 'x == 5', 'x + 5'], 'correct' => 1, 'why' => '== compares values; = performs assignment.'],
             ['prompt' => 'What prints when temperature is exactly 30?', 'options' => ['Cool', 'Both messages', 'Hot'], 'correct' => 2, 'why' => '>= includes the boundary value 30.'],
             ['prompt' => 'Which set best checks the boundary of the rule?', 'options' => ['29, 30, 31', '100, 200, 300', '32 only'], 'correct' => 0, 'why' => 'These values test just below, at and above the boundary.'],
+            ['prompt' => 'What prints when temperature is 29 in the example?', 'options' => ['Hot', 'Cool', 'Both messages'], 'correct' => 1, 'why' => '29 >= 30 is false, so only the else block prints Cool.'],
+            ['prompt' => 'Which comparison means x is not equal to 5?', 'options' => ['x = 5', 'x == 5', 'x != 5'], 'correct' => 2, 'why' => 'The != operator tests whether two values differ.'],
         ],
     ],
     'for-loops' => [
@@ -81,6 +89,8 @@ $base = [
             ['prompt' => 'What does i-- do?', 'options' => ['Adds one', 'Subtracts one', 'Sets i to zero'], 'correct' => 1, 'why' => 'The decrement operation reduces the counter by one.'],
             ['prompt' => 'How many numbers does the loop print?', 'options' => ['4', '6', '5'], 'correct' => 2, 'why' => 'The counter values are 5, 4, 3, 2 and 1.'],
             ['prompt' => 'Which counter value first makes i >= 1 false?', 'options' => ['0', '1', '5'], 'correct' => 0, 'why' => 'After printing 1, the update produces 0 and the loop stops.'],
+            ['prompt' => 'Which number is printed first in the countdown example?', 'options' => ['1', '0', '5'], 'correct' => 2, 'why' => 'Initialization sets i to 5 before the first condition check and loop body.'],
+            ['prompt' => 'What happens if the update is removed and i stays 5?', 'options' => ['The loop stops after one pass', 'The condition remains true and the loop keeps repeating', 'The counter decreases automatically'], 'correct' => 1, 'why' => 'Without a change to i, the condition i >= 1 remains true. A loop needs a way to reach its stopping condition.'],
         ],
     ],
     'while-loops' => [
@@ -98,6 +108,8 @@ $base = [
             ['prompt' => 'What is the role of -1 in this example?', 'options' => ['A value to add', 'A stopping signal', 'The starting total'], 'correct' => 1, 'why' => 'The sentinel ends input processing and is not added.'],
             ['prompt' => 'What prints if the first input is -1?', 'options' => ['-1', '1', '0'], 'correct' => 2, 'why' => 'The loop body does not run, so total stays zero.'],
             ['prompt' => 'Why read the next number inside the loop?', 'options' => ['To update the value used by the next condition check', 'To add the sentinel', 'To remove the need for a condition'], 'correct' => 0, 'why' => 'The next input lets the loop move on or stop.'],
+            ['prompt' => 'What total is printed for inputs 2 3 -1?', 'options' => ['4', '5', '-1'], 'correct' => 1, 'why' => 'Only 2 and 3 are added. The sentinel -1 ends the loop without being added.'],
+            ['prompt' => 'When does a while loop check its condition?', 'options' => ['Only after the whole program finishes', 'Only after the first pass', 'Before each pass through the loop body'], 'correct' => 2, 'why' => 'A while loop checks its condition before executing the body, so the body may run zero times.'],
         ],
     ],
     'functions' => [
@@ -114,11 +126,17 @@ $base = [
             ['prompt' => 'What value does square(5) return?', 'options' => ['10', '25', '5'], 'correct' => 1, 'why' => '5 multiplied by itself is 25.'],
             ['prompt' => 'What is number in the square definition?', 'options' => ['A parameter', 'An output stream', 'A loop condition'], 'correct' => 0, 'why' => 'A parameter receives the input supplied by the caller.'],
             ['prompt' => 'Does returning a value automatically print it?', 'options' => ['Yes, always', 'Only if the value is zero', 'No; output needs an output statement'], 'correct' => 2, 'why' => 'Returning passes a value to the caller; cout displays it.'],
+            ['prompt' => 'What does the first int in int square(int number) describe?', 'options' => ['The return type', 'The number of calls allowed', 'An output statement'], 'correct' => 0, 'why' => 'The return type says that square returns an integer value to its caller.'],
+            ['prompt' => 'What does square(-3) return?', 'options' => ['-9', '9', '0'], 'correct' => 1, 'why' => 'The function multiplies -3 by -3, producing 9. Testing a negative input checks another case.'],
         ],
     ],
 ];
 
 $extra = require __DIR__.'/lessons_extension.php';
 $ordered = [];
-foreach (['introduction','output','variables','input','operators','conditions','for-loops','while-loops','functions','arrays','strings','debugging','mini-project'] as $key) $ordered[$key] = $base[$key] ?? $extra[$key];
+foreach (['introduction', 'output', 'variables', 'input', 'operators', 'conditions', 'for-loops', 'while-loops', 'functions', 'arrays', 'strings', 'debugging', 'mini-project'] as $key) {
+    $ordered[$key] = $base[$key] ?? $extra[$key];
+    $ordered[$key]['version'] = 2;
+}
+
 return $ordered;
