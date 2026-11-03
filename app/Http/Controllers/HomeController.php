@@ -205,10 +205,7 @@ class HomeController extends Controller
     public function registerTeacher(Request $request)
     {
         $email = $request->input('email', '');
-        $code = $request->input('class_code', '');
-        $request->merge(['email' => is_string($email) ? strtolower(trim($email)) : $email, 'requested_role' => $request->input('requested_role', 'teacher'),
-            'class_code' => is_string($code) ? strtoupper(trim($code)) : $code]);
-        $teaching = $request->input('requested_role') === 'teacher';
+        $request->merge(['email' => is_string($email) ? strtolower(trim($email)) : $email, 'requested_role' => $request->input('requested_role', 'teacher')]);
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:80'],
             'middle_initial' => ['nullable', 'string', 'max:2', 'regex:/^\p{L}\.?$/u'],
@@ -217,11 +214,6 @@ class HomeController extends Controller
             'school' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:10', 'confirmed'],
             'requested_role' => ['required', Rule::in(array_keys(TeacherAccount::ROLES))],
-            'class_name' => [Rule::requiredIf($teaching), 'nullable', 'string', 'max:255'],
-            'grade' => [Rule::requiredIf($teaching), 'nullable', Rule::in(config('teacher_settings.grades'))],
-            'section' => [Rule::requiredIf($teaching), 'nullable', 'string', 'max:80'],
-            'period' => ['nullable', 'string', 'max:80'],
-            'class_code' => ['bail', 'nullable', 'string', 'regex:/^[A-Z0-9-]{4,20}$/', 'unique:classrooms,join_code'],
         ]);
 
         $teacher = app(StaffAccessService::class)->register($data);
@@ -234,7 +226,7 @@ class HomeController extends Controller
         }
         session(['teacher_id' => $teacher->id, 'teacher_session_version' => $teacher->session_version, 'teacher_authenticated_at' => now()->toIso8601String()]);
 
-        return response()->json(['message' => 'Teacher account and classroom created.', 'join_code' => $teacher->classrooms()->first()->join_code, 'status' => 'active', 'redirect' => route($teacher->dashboardRoute())]);
+        return response()->json(['message' => 'Teacher account created. Add your teaching sections in My Classes.', 'status' => 'active', 'redirect' => route('teacher.classes')]);
     }
 
     public function loginTeacher(Request $request)

@@ -21,18 +21,16 @@ function registrationPage() {
     return {node, network, choose(role) { node('staff-role').value = role; node('staff-role').listeners.change(); }, submit: () => node('registration').listeners.submit({preventDefault() {}})};
 }
 
-test('Principal and System Admin requests disable classroom requirements; Teacher restores them', () => {
+test('role requests explain approval and teachers set up classes after registration', () => {
     const app = registrationPage();
     for (const role of ['principal', 'school_admin']) {
         app.choose(role);
-        assert.equal(app.node('teaching-setup').hidden, true);
-        assert.equal(app.node('teaching-setup').disabled, true);
         assert.match(app.node('role-approval').textContent, /must approve/);
         assert.match(app.node('register-button').textContent, /access request/);
     }
     app.choose('teacher');
-    assert.equal(app.node('teaching-setup').disabled, false);
-    assert.equal(app.node('teaching-setup').hidden, false);
+    assert.equal(app.node('register-button').textContent, 'Create Teacher account →');
+    assert.match(app.node('role-approval').textContent, /My Classes/);
     assert.equal(app.node('role-rules').children[0].textContent, 'Own classes only');
 });
 

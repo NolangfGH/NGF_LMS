@@ -2,12 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Classroom;
 use App\Models\TeacherAccount;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class StaffAccessService
@@ -18,16 +16,6 @@ class StaffAccessService
             $role = $data['requested_role'];
             $account = new TeacherAccount(Arr::only($data, ['first_name', 'middle_initial', 'last_name', 'email', 'school', 'password']));
             $account->forceFill(['role' => 'teacher', 'requested_role' => $role, 'staff_access_status' => $role === 'teacher' ? 'active' : 'pending'])->save();
-            if ($role === 'teacher') {
-                $code = strtoupper(trim($data['class_code'] ?? ''));
-                if ($code === '') {
-                    do {
-                        $code = Str::upper(Str::random(8));
-                    } while (Classroom::where('join_code', $code)->exists());
-                }
-                Classroom::create(['teacher_account_id' => $account->id, 'name' => $data['class_name'], 'grade' => $data['grade'],
-                    'section' => $data['section'], 'period' => $data['period'] ?? '', 'join_code' => $code]);
-            }
 
             return $account;
         }, 3);

@@ -157,6 +157,43 @@ class TeacherSettingsController extends Controller
         return $data;
     }
 
+    public function classes()
+    {
+        if (! TeacherAccount::find(session('teacher_id'))) {
+            return redirect()->route('teacher.login');
+        }
+        $teacher = $this->teacher();
+        $classrooms = Classroom::where('teacher_account_id', $teacher->id)->withCount('students')->orderBy('grade')->orderBy('section')->get();
+
+        return response()->view('teacher-classes', compact('teacher', 'classrooms') + ['availableGrade' => config('student_registration.grade'), 'availableSections' => config('student_registration.sections')])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function storeClasses(Request $request)
+    {
+        $teacher = $this->teacher();
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'grade' => ['required', Rule::in([config('student_registration.grade')])],
+            'sections' => ['required', 'array', 'list', 'min:1', 'max:'.count(config('student_registration.sections'))],
+            'sections.*' => ['required', 'string', 'distinct', Rule::in(config('student_registration.sections'))],
+            'period' => ['nullable', 'string', 'max:80'], 'enrollment_open' => ['required', 'boolean']]);
+        DB::transaction(function () use ($teacher, $data) {
+            TeacherAccount::whereKey($teacher->id)->lockForUpdate()->firstOrFail();
+            $existing = Classroom::where('teacher_account_id', $teacher->id)->where('grade', $data['grade'])->whereIn('section', $data['sections'])->pluck('section');
+            if ($existing->isNotEmpty()) {
+                throw ValidationException::withMessages(['sections' => 'You already have '.implode(', ', $existing->all()).' for this grade. Edit the existing class, or restore it in Settings if archived.']);
+            }
+            if ($teacher->classrooms()->count() + count($data['sections']) > 100) {
+                throw ValidationException::withMessages(['sections' => 'This account supports up to 100 active sections.']);
+            }
+            foreach ($data['sections'] as $section) {
+                Classroom::create(['teacher_account_id' => $teacher->id, 'name' => $data['name'], 'grade' => $data['grade'], 'section' => $section,
+                    'period' => $data['period'] ?? '', 'enrollment_open' => (bool) $data['enrollment_open'], 'join_code' => $this->joinCode()]);
+            }
+        }, 3);
+
+        return redirect()->route('teacher.classes')->with('class_notice', count($data['sections']).' class section(s) created. Share each section’s own join code with its students.');
+    }
+
     private function joinCode(): string
     {
         do {
@@ -193,6 +230,10 @@ class TeacherSettingsController extends Controller
             // Keep enrollment labels consistent without treating a teacher edit as student activity.
             DB::table('students')->where('classroom_id', $current->id)->update(['grade_level' => $current->grade, 'section' => $current->section]);
         });
+
+        if ($request->routeIs('teacher.classes.update')) {
+            return redirect()->route('teacher.classes')->with('class_notice', 'Class details updated. Existing accounts, work and XP are preserved.');
+        }
 
         return $this->notice('classes', 'Classroom settings saved. Existing students keep their accounts, work and XP.');
     }

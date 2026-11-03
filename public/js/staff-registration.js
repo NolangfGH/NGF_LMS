@@ -8,15 +8,12 @@
     let busy = false;
     const updateRole = () => {
         const teaching = select.value === 'teacher';
-        const setup = document.getElementById('teaching-setup');
-        setup.hidden = !teaching;
-        setup.disabled = !teaching;
         document.getElementById('role-title').textContent = roles.roles[select.value] + ' permissions';
         const rules = document.getElementById('role-rules');
         rules.replaceChildren();
         roles.rules[select.value].forEach(rule => { const item = document.createElement('li'); item.textContent = rule; rules.append(item); });
-        document.getElementById('role-approval').textContent = teaching ? 'You can use your own teaching workspace after registration.' : 'A System Admin must approve this request before you can sign in.';
-        button.textContent = teaching ? 'Create Teacher account & classroom →' : 'Submit ' + roles.roles[select.value] + ' access request →';
+        document.getElementById('role-approval').textContent = teaching ? 'After registration, add your grade and sections inside My Classes. Use one teacher account for all your classes.' : 'A System Admin must approve this request before you can sign in.';
+        button.textContent = teaching ? 'Create Teacher account →' : 'Submit ' + roles.roles[select.value] + ' access request →';
     };
     select.addEventListener('change', updateRole);
     updateRole();

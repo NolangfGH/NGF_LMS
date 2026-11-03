@@ -32,18 +32,17 @@ class StaffRolesTest extends TestCase
         return $this->withSession(['teacher_id' => $account->id, 'teacher_session_version' => $account->session_version]);
     }
 
-    public function test_teacher_registration_saves_only_teacher_permissions_and_a_real_section(): void
+    public function test_teacher_registration_saves_only_the_account_and_opens_class_setup(): void
     {
         $this->get(route('teacher.register'))->assertOk()->assertSee('Admin / staff role')->assertSee('Principal')->assertSee('System Admin')->assertSee('© 2026–2027 NGF_C++CodeQuest')
             ->assertDontSee('FERPA compliant')->assertDontSee('COPPA certified')->assertDontSee('District enclave')->assertDontSee('2024–2025');
-        $this->postJson(route('teacher.register.store'), [...$this->registration(), 'role' => 'school_admin', 'staff_access_status' => 'active', 'staff_reviewed_by' => 99])->assertOk()->assertJsonPath('status', 'active');
+        $this->postJson(route('teacher.register.store'), [...$this->registration(), 'role' => 'school_admin', 'staff_access_status' => 'active', 'staff_reviewed_by' => 99])->assertOk()->assertJsonPath('status', 'active')->assertJsonPath('redirect', route('teacher.classes'));
         $teacher = TeacherAccount::sole();
         $this->assertSame('teacher', $teacher->role);
         $this->assertNull($teacher->staff_reviewed_by);
         $this->assertTrue(Hash::check('Password123', $teacher->password));
-        $room = $teacher->classrooms()->sole();
-        $this->assertSame('AM', $room->section);
-        $this->assertSame('', $room->period);
+        $this->assertDatabaseCount('classrooms', 0);
+        $this->get(route('teacher.classes'))->assertOk()->assertSee('Create your first class');
         $this->get(route('teacher.dashboard'))->assertOk()->assertSee('Teacher Portal');
         $this->get(route('school.admin'))->assertForbidden();
     }
@@ -161,16 +160,15 @@ class StaffRolesTest extends TestCase
         $this->assertDatabaseCount('teacher_accounts', 2);
     }
 
-    public function test_invalid_registration_or_duplicate_class_code_does_not_leave_an_orphan_staff_account(): void
+    public function test_invalid_registration_does_not_leave_an_orphan_staff_account(): void
     {
         $teacher = $this->account('existing@example.test');
         Classroom::create(['teacher_account_id' => $teacher->id, 'name' => 'C++', 'grade' => 'Grade 8', 'section' => 'AM', 'join_code' => 'EXISTING']);
         $this->postJson(route('teacher.register.store'), [...$this->registration(), 'requested_role' => 'superuser'])->assertUnprocessable()->assertJsonValidationErrors('requested_role');
-        $this->postJson(route('teacher.register.store'), [...$this->registration(), 'class_code' => 'EXISTING'])->assertUnprocessable()->assertJsonValidationErrors('class_code');
-        $this->postJson(route('teacher.register.store'), [...$this->registration(), 'email' => ['invalid'], 'class_code' => ['invalid']])->assertUnprocessable()->assertJsonValidationErrors(['email', 'class_code']);
+        $this->postJson(route('teacher.register.store'), [...$this->registration(), 'email' => ['invalid'], 'class_code' => ['invalid']])->assertUnprocessable()->assertJsonValidationErrors('email');
         $payload = $this->registration();
-        unset($payload['section']);
-        $this->postJson(route('teacher.register.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('section');
+        unset($payload['school']);
+        $this->postJson(route('teacher.register.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('school');
         $this->assertDatabaseCount('teacher_accounts', 1);
         $this->assertDatabaseCount('classrooms', 1);
     }

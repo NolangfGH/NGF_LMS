@@ -220,6 +220,9 @@ Route::get('/leaderboard', [HomeController::class, 'studentLeaderboard'])->name(
 Route::get('/progress', [HomeController::class, 'studentProgress'])->name('student.progress');
 Route::get('/teacher-dashboard', [HomeController::class, 'teacherDashboard'])->name('teacher.dashboard');
 Route::get('/teacher-settings', [TeacherSettingsController::class, 'index'])->name('teacher.settings');
+Route::get('/teacher-classes', [TeacherSettingsController::class, 'classes'])->name('teacher.classes');
+Route::post('/teacher-classes', [TeacherSettingsController::class, 'storeClasses'])->middleware('throttle:match-write')->name('teacher.classes.store');
+Route::put('/teacher-classes/{classroom}', [TeacherSettingsController::class, 'updateClass'])->whereNumber('classroom')->name('teacher.classes.update');
 Route::put('/teacher-settings/account', [TeacherSettingsController::class, 'account'])->name('teacher.settings.account');
 Route::put('/teacher-settings/profile', [TeacherSettingsController::class, 'profile'])->name('teacher.settings.profile');
 Route::put('/teacher-settings/preferences', [TeacherSettingsController::class, 'preferences'])->name('teacher.settings.preferences');
