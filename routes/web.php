@@ -27,6 +27,7 @@ use App\Http\Controllers\StudentSettingsController;
 use App\Http\Controllers\TeacherLessonController;
 use App\Http\Controllers\TeacherSettingsController;
 use App\Http\Controllers\TeacherStudentController;
+use App\Http\Controllers\TeachingLibraryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
@@ -56,6 +57,9 @@ Route::post('/school-admin/compiler', [SchoolAdminController::class, 'compiler']
 Route::post('/teacher-classes/{classroom}/archive', [SchoolAdminController::class, 'archive'])->name('teacher.classes.archive');
 
 Route::get('/teacher-content', [LessonContentController::class, 'index'])->name('teacher.content');
+Route::get('/teaching-library', [TeachingLibraryController::class, 'index'])->name('teacher.library');
+Route::get('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'show'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge')->name('teacher.library.show');
+Route::post('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'store'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge')->middleware('throttle:20,1')->name('teacher.library.store');
 Route::get('/teacher-content/{key}/edit', [LessonContentController::class, 'edit'])->where('key', '[a-z0-9-]+')->name('teacher.content.edit');
 Route::post('/teacher-content/{key}', [LessonContentController::class, 'save'])->where('key', '[a-z0-9-]+')->name('teacher.content.save');
 Route::get('/teacher-content/{content}/image', [LessonContentController::class, 'image'])->whereNumber('content')->name('teacher.content.image');

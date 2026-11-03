@@ -1,5 +1,13 @@
 <script>
 const teacherNav=document.querySelector('aside nav');
+if (teacherNav && !teacherNav.querySelector('a[href="{{ route('teacher.library') }}"]')) {
+    const libraryLink = document.createElement('a');
+    libraryLink.href = '{{ route('teacher.library') }}';
+    libraryLink.className = 'flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted hover:bg-secondary-soft';
+    libraryLink.innerHTML = '<span class="material-symbols-outlined">library_books</span>Teaching Library';
+    const reportLink = teacherNav.querySelector('a[href="{{ route('teacher.reports') }}"]');
+    if (reportLink) { reportLink.before(libraryLink); } else { teacherNav.append(libraryLink); }
+}
 if(teacherNav) {
     let studentsLink=[...teacherNav.querySelectorAll('a')].find(link=>link.textContent.trim().endsWith('Students'));
     if(!studentsLink) {

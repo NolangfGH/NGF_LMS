@@ -190,4 +190,6 @@ window.saveQuiz = async function(status) {
         buttons.forEach(x => x.disabled = false);
     }
 };
+const requestedQuizId = Number(new URLSearchParams(window.location.search).get('edit'));
+if (Number.isSafeInteger(requestedQuizId) && requestedQuizId > 0) { editQuiz(requestedQuizId); }
 </script>

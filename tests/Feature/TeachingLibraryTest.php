@@ -1,0 +1,179 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Classroom;
+use App\Models\Student;
+use App\Models\TeacherAccount;
+use App\Models\TeacherAssignment;
+use App\Models\TeacherQuiz;
+use App\Services\QuizGrader;
+use App\Services\ReadyMadeActivities;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Tests\TestCase;
+
+class TeachingLibraryTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** @return array{teacher: TeacherAccount, other: TeacherAccount, rooms: Collection, foreign: Classroom, student: Student} */
+    private function fixture(): array
+    {
+        $teacher = TeacherAccount::create(['first_name' => 'Library', 'last_name' => 'Teacher', 'email' => 'library@example.test', 'school' => 'School', 'password' => 'Password123']);
+        $other = TeacherAccount::create(['first_name' => 'Other', 'last_name' => 'Teacher', 'email' => 'other-library@example.test', 'school' => 'School', 'password' => 'Password123']);
+        $rooms = collect(['AM', 'BP', 'DB'])->map(fn (string $section): Classroom => Classroom::create(['teacher_account_id' => $teacher->id, 'name' => 'Grade 8 C++', 'grade' => 'Grade 8', 'section' => $section, 'join_code' => 'LIB'.$section]));
+        $foreign = Classroom::create(['teacher_account_id' => $other->id, 'name' => 'PRIVATE FOREIGN CLASS', 'grade' => 'Grade 8', 'section' => 'DB', 'join_code' => 'FOREIGNLIB']);
+        $student = Student::create(['classroom_id' => $rooms[0]->id, 'first_name' => 'Learner', 'nickname' => 'LibraryCoder', 'student_id' => 'LIBSTUDENT', 'password' => 'Password123', 'xp' => 100]);
+        $this->withSession(['teacher_id' => $teacher->id]);
+
+        return compact('teacher', 'other', 'rooms', 'foreign', 'student');
+    }
+
+    public function test_every_lesson_has_ten_valid_auto_graded_questions_and_two_coding_tasks(): void
+    {
+        $catalog = app(ReadyMadeActivities::class)->catalog();
+        $this->assertSame(array_keys(config('lessons')), array_keys($catalog));
+        $this->assertCount(13, $catalog);
+        foreach ($catalog as $lesson) {
+            $questions = $lesson['quiz']['questions'];
+            $this->assertCount(10, $questions);
+            $this->assertCount(10, array_unique(array_column($questions, 'prompt')));
+            foreach ($questions as $question) {
+                $this->assertSame('multiple_choice', $question['type']);
+                $this->assertGreaterThanOrEqual(3, count($question['options']));
+                $this->assertSame($question['options'], array_values(array_unique($question['options'])));
+                $this->assertCount(1, $question['correct']);
+                $this->assertContains($question['correct'][0], $question['options']);
+                $this->assertNotEmpty($question['explanation']);
+            }
+            $grade = app(QuizGrader::class)->grade($questions, array_map(fn (array $question): string => $question['correct'][0], $questions));
+            $this->assertSame(10, $grade['score']);
+            foreach (['assignment', 'challenge'] as $kind) {
+                $task = $lesson[$kind];
+                $this->assertSame($kind, $task['kind']);
+                $this->assertNotEmpty($task['objective']);
+                $this->assertSame($task['sample_input'], $task['test_cases'][0]['input']);
+                $this->assertSame($task['sample_output'], $task['test_cases'][0]['output']);
+                $this->assertFalse($task['test_cases'][0]['hidden']);
+                $this->assertNotEmpty($task['hints']);
+                $this->assertGreaterThan(0, $task['time_limit_minutes']);
+            }
+        }
+    }
+
+    public function test_library_is_staff_only_and_principals_cannot_copy_or_read_answer_keys(): void
+    {
+        $this->get(route('teacher.library'))->assertRedirect(route('teacher.login'));
+        $this->get(route('teacher.library.show', ['input', 'quiz']))->assertRedirect(route('teacher.login'));
+        $this->postJson(route('teacher.library.store', ['input', 'quiz']), [])->assertForbidden();
+        extract($this->fixture());
+        $teacher->forceFill(['role' => 'principal'])->save();
+        $this->get(route('teacher.library'))->assertForbidden();
+        $this->get(route('teacher.library.show', ['input', 'quiz']))->assertForbidden();
+        $this->postJson(route('teacher.library.store', ['input', 'quiz']), ['classroom_ids' => [$rooms[0]->id]])->assertForbidden();
+        $this->assertDatabaseCount('teacher_quizzes', 0);
+    }
+
+    public function test_all_previews_render_and_search_and_empty_class_guidance_work(): void
+    {
+        extract($this->fixture());
+        $page = $this->get(route('teacher.library'))->assertOk()->assertSee('130')->assertSee('Ready-made teaching library');
+        $this->get(route('teacher.library', ['q' => 'arrays']))->assertOk()->assertSee('Store a collection')->assertDontSee('Reusable square');
+        $this->get(route('teacher.library', ['q' => 'no-such-topic']))->assertOk()->assertSee('No topics match');
+        $this->getJson(route('teacher.library', ['q' => ['invalid']]))->assertUnprocessable();
+        foreach (array_keys(config('lessons')) as $key) {
+            foreach (['quiz', 'assignment', 'challenge'] as $kind) {
+                $this->get(route('teacher.library.show', [$key, $kind]))->assertOk()->assertSee('Create editable draft')->assertDontSee('PRIVATE FOREIGN CLASS')->assertDontSee('FOREIGNLIB');
+            }
+        }
+        if (getenv('LIBRARY_PREVIEW')) {
+            file_put_contents(base_path('.codex/library-preview.html'), $page->getContent());
+            file_put_contents(base_path('.codex/library-task-preview.html'), $this->get(route('teacher.library.show', ['arrays', 'challenge']))->getContent());
+            file_put_contents(base_path('.codex/library-quiz-preview.html'), $this->get(route('teacher.library.show', ['input', 'quiz']))->getContent());
+        }
+        $rooms->each->update(['archived_at' => now()]);
+        $this->get(route('teacher.library.show', ['arrays', 'assignment']))->assertOk()->assertSee('Add an active class first')->assertSee('disabled', false);
+    }
+
+    public function test_quiz_copies_are_private_editable_drafts_and_ignore_published_payloads(): void
+    {
+        extract($this->fixture());
+        $this->post(route('teacher.library.store', ['input', 'quiz']), ['classroom_ids' => $rooms->pluck('id')->all(), 'teacher_account_id' => $other->id, 'status' => 'published', 'questions' => [], 'xp' => 9999])->assertRedirect();
+        $quiz = TeacherQuiz::firstOrFail();
+        $this->assertSame('draft', $quiz->status);
+        $this->assertSame($teacher->id, $quiz->teacher_account_id);
+        $this->assertSame(0, $quiz->xp);
+        $this->assertSame(60, $quiz->question_seconds);
+        $this->assertNull($quiz->opens_at);
+        $this->assertCount(10, $quiz->questions);
+        $this->assertSame(3, $quiz->classrooms()->count());
+        $this->assertDatabaseCount('challenge_notices', 0);
+        $this->assertSame(100, $student->fresh()->xp);
+        $this->get(route('teacher.quizzes', ['edit' => $quiz->id]))->assertOk()->assertSee('requestedQuizId')->assertSee('Your private draft is ready');
+        $this->withSession(['student_id' => $student->id])->get(route('student.quiz'))->assertDontSee($quiz->title);
+        $this->get(route('teacher.library.show', ['does-not-exist', 'quiz']))->assertNotFound();
+    }
+
+    public function test_coding_copies_retain_sample_output_tests_hints_and_independent_school_term(): void
+    {
+        extract($this->fixture());
+        foreach (['assignment', 'challenge'] as $kind) {
+            $this->post(route('teacher.library.store', ['arrays', $kind]), ['classroom_ids' => $rooms->take(2)->pluck('id')->all(), 'school_term' => 'Term2'])->assertRedirect();
+            $task = TeacherAssignment::where('kind', $kind)->firstOrFail();
+            $expected = app(ReadyMadeActivities::class)->lesson('arrays')[$kind];
+            $this->assertSame('draft', $task->status);
+            $this->assertSame('Term2', $task->school_term);
+            $this->assertSame($expected['sample_output'], $task->sample_output);
+            $this->assertSame($expected['test_cases'], $task->test_cases);
+            $this->assertSame($expected['hints'], $task->hints);
+            $this->assertSame(2, $task->classrooms()->count());
+            $route = $kind === 'assignment' ? 'teacher.assignments' : 'teacher.section-challenges';
+            $this->get(route($route, ['edit' => $task->id]))->assertOk()->assertViewHas('assignmentEditor', fn (array $editor): bool => $editor['id'] === $task->id && $editor['sample_output'] === $task->sample_output);
+            $this->withSession(['student_id' => $student->id])->get(route('student.code-lab', ['assignment' => $task->id]))->assertNotFound();
+        }
+        $this->assertDatabaseCount('challenge_notices', 0);
+    }
+
+    public function test_invalid_foreign_archived_and_duplicate_sections_never_create_drafts(): void
+    {
+        extract($this->fixture());
+        $rooms[2]->update(['archived_at' => now()]);
+        foreach ([[], [$foreign->id], [$rooms[2]->id], [$rooms[0]->id, $rooms[0]->id], [$rooms[0]->id, $foreign->id]] as $ids) {
+            $this->postJson(route('teacher.library.store', ['input', 'quiz']), ['classroom_ids' => $ids])->assertUnprocessable();
+        }
+        $this->postJson(route('teacher.library.store', ['input', 'assignment']), ['classroom_ids' => [$rooms[0]->id], 'school_term' => 'Term9'])->assertUnprocessable();
+        $this->postJson(route('teacher.library.store', ['missing', 'quiz']), ['classroom_ids' => [$rooms[0]->id]])->assertNotFound();
+        $this->get('/teaching-library/input/unknown-kind')->assertNotFound();
+        $this->assertDatabaseCount('teacher_quizzes', 0);
+        $this->assertDatabaseCount('teacher_assignments', 0);
+    }
+
+    public function test_draft_quiz_can_be_edited_and_published_through_existing_builder(): void
+    {
+        extract($this->fixture());
+        $this->post(route('teacher.library.store', ['functions', 'quiz']), ['classroom_ids' => [$rooms[0]->id]])->assertRedirect();
+        $quiz = TeacherQuiz::firstOrFail();
+        $questions = $quiz->questions;
+        $questions[0]['prompt'] = 'Teacher revised question';
+        $payload = ['title' => 'Revised functions quiz', 'instructions' => 'Teacher reviewed', 'classroom_ids' => [$rooms[0]->id, $rooms[1]->id], 'questions' => $questions, 'status' => 'published', 'xp' => 0, 'time_limit' => 10, 'question_seconds' => 60];
+        $this->putJson(route('teacher.quizzes.update', $quiz), $payload)->assertOk();
+        $this->assertSame('Teacher revised question', $quiz->fresh()->questions[0]['prompt']);
+        $this->assertSame('published', $quiz->fresh()->status);
+        $this->withSession(['student_id' => $student->id])->get(route('student.quiz'))->assertOk()->assertSee('Revised functions quiz');
+        $this->assertNotSame('Teacher revised question', app(ReadyMadeActivities::class)->lesson('functions')['quiz']['questions'][0]['prompt']);
+    }
+
+    public function test_coding_draft_can_be_edited_and_published_without_changing_the_original_template(): void
+    {
+        extract($this->fixture());
+        $this->post(route('teacher.library.store', ['operators', 'challenge']), ['classroom_ids' => [$rooms[0]->id], 'school_term' => 'Term1'])->assertRedirect();
+        $task = TeacherAssignment::firstOrFail();
+        $data = $task->only(['kind', 'school_term', 'objective', 'difficulty', 'xp', 'starter_code', 'sample_output', 'time_limit_minutes', 'test_cases', 'hints']);
+        $this->putJson(route('teacher.assignments.update', $task), [...$data, 'title' => 'Teacher revised challenge', 'classroom_ids' => [$rooms[0]->id], 'status' => 'published'])->assertOk();
+        $this->assertSame('Teacher revised challenge', $task->fresh()->title);
+        $this->assertSame('published', $task->fresh()->status);
+        $this->assertNotSame($task->fresh()->title, app(ReadyMadeActivities::class)->lesson('operators')['challenge']['title']);
+        $this->withSession(['student_id' => $student->id])->get(route('student.challenges'))->assertOk()->assertSee('Teacher revised challenge');
+    }
+}
