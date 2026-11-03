@@ -102,6 +102,64 @@
 }
 .app-admin-page-header :is(.app-brand, .app-admin-profile-chip) { margin-bottom: 0; }
 .app-admin-page-header .app-brand img { max-height: 56px; }
+@media screen {
+    .portal-header {
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 40;
+        box-sizing: border-box;
+        height: 4rem;
+        min-height: 4rem;
+    }
+
+    aside.portal-sidebar.fixed.inset-y-0 {
+        box-sizing: border-box;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    .portal-sidebar > div:first-child {
+        display: flex;
+        flex: 1 1 0%;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .portal-sidebar > div:first-child > :not(nav) {
+        flex-shrink: 0;
+    }
+
+    .portal-sidebar nav {
+        flex: 1 1 0%;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        scrollbar-width: thin;
+        scrollbar-color: #c5eab3 transparent;
+        scrollbar-gutter: stable;
+    }
+
+    .portal-sidebar nav > * { flex-shrink: 0; }
+    .portal-sidebar nav::-webkit-scrollbar { width: 7px; }
+    .portal-sidebar nav::-webkit-scrollbar-thumb { background: #c5eab3; border-radius: 999px; }
+
+    .portal-sidebar > :not(:first-child) {
+        flex-shrink: 0;
+        max-height: 35vh;
+        max-height: 35dvh;
+        overflow-y: auto;
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    .portal-header[data-portal-sidebar="compact"] { left: 16rem; }
+    .portal-header[data-portal-sidebar="wide"] { left: 18rem; }
+}
 .app-admin-learning main [id],
 .app-admin-standalone main [id] { scroll-margin-top: 80px; }
 @media (max-width: 1023px) {
