@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlogPost;
 use App\Models\TeacherAccount;
 use App\Models\TeacherAssignment;
 use App\Models\TeacherQuiz;
@@ -37,7 +38,7 @@ class TeachingLibraryController extends Controller
             return redirect()->route('teacher.login');
         }
         abort_if($teacher->isPrincipal(), 403);
-        abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge'], true), 404);
+        abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge', 'article'], true), 404);
         $lesson = $library->lesson($key);
 
         return view('teaching-library.show', [
@@ -51,8 +52,15 @@ class TeachingLibraryController extends Controller
     {
         $teacher = TeacherAccount::find(session('teacher_id'));
         abort_unless($teacher && ! $teacher->isPrincipal(), 403);
-        abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge'], true), 404);
+        abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge', 'article'], true), 404);
         $lesson = $library->lesson($key);
+        if ($kind === 'article') {
+            $post = new BlogPost(Arr::only($lesson['article'], ['title', 'category', 'body', 'is_graded', 'response_time_limit_minutes']));
+            $post->forceFill(['teacher_account_id' => $teacher->id, 'status' => 'draft', 'published_at' => null])->save();
+
+            return redirect()->route('teacher.blog.edit', $post)
+                ->with('library_notice', 'Your private article draft is ready. Review or edit the text, grading and response timer before publishing to students in all your sections. Students have not been notified.');
+        }
         $data = $request->validate([
             'classroom_ids' => ['required', 'array', 'min:1', 'max:100'],
             'classroom_ids.*' => ['required', 'integer', 'distinct', Rule::exists('classrooms', 'id')->where('teacher_account_id', $teacher->id)->whereNull('archived_at')],

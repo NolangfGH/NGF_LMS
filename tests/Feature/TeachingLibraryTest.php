@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\BlogComment;
+use App\Models\BlogPost;
 use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\TeacherAccount;
@@ -83,7 +85,7 @@ class TeachingLibraryTest extends TestCase
         $this->get(route('teacher.library', ['q' => 'no-such-topic']))->assertOk()->assertSee('No topics match');
         $this->getJson(route('teacher.library', ['q' => ['invalid']]))->assertUnprocessable();
         foreach (array_keys(config('lessons')) as $key) {
-            foreach (['quiz', 'assignment', 'challenge'] as $kind) {
+            foreach (['quiz', 'assignment', 'challenge', 'article'] as $kind) {
                 $this->get(route('teacher.library.show', [$key, $kind]))->assertOk()->assertSee('Create editable draft')->assertDontSee('PRIVATE FOREIGN CLASS')->assertDontSee('FOREIGNLIB');
             }
         }
@@ -91,6 +93,7 @@ class TeachingLibraryTest extends TestCase
             file_put_contents(base_path('.codex/library-preview.html'), $page->getContent());
             file_put_contents(base_path('.codex/library-task-preview.html'), $this->get(route('teacher.library.show', ['arrays', 'challenge']))->getContent());
             file_put_contents(base_path('.codex/library-quiz-preview.html'), $this->get(route('teacher.library.show', ['input', 'quiz']))->getContent());
+            file_put_contents(base_path('.codex/library-article-preview.html'), $this->get(route('teacher.library.show', ['for-loops', 'article']))->getContent());
         }
         $rooms->each->update(['archived_at' => now()]);
         $this->get(route('teacher.library.show', ['arrays', 'assignment']))->assertOk()->assertSee('Add an active class first')->assertSee('disabled', false);
@@ -175,5 +178,93 @@ class TeachingLibraryTest extends TestCase
         $this->assertSame('published', $task->fresh()->status);
         $this->assertNotSame($task->fresh()->title, app(ReadyMadeActivities::class)->lesson('operators')['challenge']['title']);
         $this->withSession(['student_id' => $student->id])->get(route('student.challenges'))->assertOk()->assertSee('Teacher revised challenge');
+    }
+
+    public function test_every_lesson_has_a_ready_made_article_with_a_private_teacher_guide(): void
+    {
+        foreach (app(ReadyMadeActivities::class)->catalog() as $key => $lesson) {
+            $article = $lesson['article'];
+            $this->assertNotEmpty($article['title']);
+            $this->assertLessThanOrEqual(180, mb_strlen($article['title']));
+            $this->assertContains($article['category'], config('blog.categories'));
+            $this->assertStringContainsString(config('lessons.'.$key.'.code'), $article['body']);
+            $this->assertStringContainsString('Your private response', $article['body']);
+            $this->assertStringNotContainsString($article['teacher_notes'], $article['body']);
+            $this->assertLessThanOrEqual(30000, mb_strlen($article['body']));
+            $this->assertFalse($article['is_graded']);
+            $this->assertSame(5, $article['response_time_limit_minutes']);
+        }
+    }
+
+    public function test_article_templates_copy_as_private_owned_drafts_and_open_in_the_blog_editor(): void
+    {
+        extract($this->fixture());
+        foreach (app(ReadyMadeActivities::class)->catalog() as $key => $lesson) {
+            $this->post(route('teacher.library.store', [$key, 'article']), [
+                'teacher_account_id' => $other->id, 'status' => 'published', 'body' => 'Forged content', 'is_graded' => true,
+            ])->assertRedirect();
+            $post = BlogPost::latest('id')->firstOrFail();
+            $this->assertSame($teacher->id, $post->teacher_account_id);
+            $this->assertSame($lesson['article']['body'], $post->body);
+            $this->assertSame('draft', $post->status);
+            $this->assertNull($post->published_at);
+            $this->assertFalse($post->is_graded);
+        }
+        $this->assertDatabaseCount('blog_posts', 13);
+        $this->assertDatabaseCount('challenge_notices', 0);
+        $this->assertSame(100, $student->fresh()->xp);
+        $editor = $this->get(route('teacher.blog.edit', $post))->assertOk()->assertSee('Your private article draft is ready')->assertSee('Save article changes')->assertSee($post->title);
+        if (getenv('LIBRARY_PREVIEW')) {
+            file_put_contents(base_path('.codex/library-blog-editor-preview.html'), $editor->getContent());
+        }
+        $this->withSession(['teacher_id' => null, 'student_id' => $student->id])->get(route('student.blog'))->assertOk()->assertDontSee($post->title);
+        $this->get(route('student.blog.show', $post))->assertForbidden();
+        $this->get(route('teacher.library.show', ['for-loops', 'article']))->assertRedirect(route('teacher.login'));
+        $this->postJson(route('teacher.library.store', ['for-loops', 'article']), [])->assertForbidden();
+        $this->withSession(['teacher_id' => $other->id, 'student_id' => null])->get(route('teacher.blog.edit', $post))->assertForbidden();
+        $teacher->forceFill(['role' => 'principal'])->save();
+        $this->withSession(['teacher_id' => $teacher->id])->get(route('teacher.library.show', ['for-loops', 'article']))->assertForbidden();
+        $this->postJson(route('teacher.library.store', ['for-loops', 'article']), [])->assertForbidden();
+    }
+
+    public function test_article_drafts_do_not_require_a_class_but_can_be_reviewed_before_enrollment(): void
+    {
+        extract($this->fixture());
+        $this->withSession(['teacher_id' => $other->id]);
+        $foreign->update(['archived_at' => now()]);
+        $this->get(route('teacher.library.show', ['strings', 'article']))->assertOk()->assertSee('Create editable draft')->assertDontSee('name="classroom_ids[]"', false);
+        $this->post(route('teacher.library.store', ['strings', 'article']), [])->assertRedirect();
+        $this->assertDatabaseHas('blog_posts', ['teacher_account_id' => $other->id, 'status' => 'draft']);
+        $this->assertDatabaseCount('challenge_notices', 0);
+    }
+
+    public function test_article_copy_can_be_edited_and_published_with_private_conversations_for_each_student(): void
+    {
+        extract($this->fixture());
+        $peer = Student::create(['classroom_id' => $rooms[1]->id, 'first_name' => 'Peer', 'nickname' => 'PeerCoder', 'student_id' => 'LIBPEER', 'password' => 'Password123']);
+        $outsider = Student::create(['classroom_id' => $foreign->id, 'first_name' => 'Outsider', 'nickname' => 'OutsideCoder', 'student_id' => 'LIBOUTSIDE', 'password' => 'Password123']);
+        $this->post(route('teacher.library.store', ['arrays', 'article']), [])->assertRedirect();
+        $post = BlogPost::firstOrFail();
+        $this->put(route('teacher.blog.update', $post), [
+            'title' => 'Our class array discussion', 'category' => 'C++ Basics', 'body' => $post->body."\n\nTeacher-added reflection prompt.",
+            'status' => 'published', 'is_graded' => 1, 'response_time_limit_minutes' => null,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertTrue($post->fresh()->is_graded);
+        $this->assertNull($post->fresh()->response_time_limit_minutes);
+        $this->assertNotNull($post->fresh()->published_at);
+        $this->assertNotSame('Our class array discussion', app(ReadyMadeActivities::class)->lesson('arrays')['article']['title']);
+        $this->assertDatabaseHas('challenge_notices', ['student_id' => $student->id, 'event_key' => 'article:published:'.$post->id]);
+        $this->assertDatabaseHas('challenge_notices', ['student_id' => $peer->id, 'event_key' => 'article:published:'.$post->id]);
+        $this->assertDatabaseMissing('challenge_notices', ['student_id' => $outsider->id, 'event_key' => 'article:published:'.$post->id]);
+        foreach ([$student, $peer] as $learner) {
+            $this->withSession(['teacher_id' => null, 'student_id' => $learner->id])->get(route('student.blog.show', $post))->assertOk()->assertSee('Teacher-added reflection prompt.')->assertDontSee(app(ReadyMadeActivities::class)->lesson('arrays')['article']['teacher_notes']);
+        }
+        $this->withSession(['student_id' => $student->id])->post(route('student.blog.comment', $post), ['body' => 'My private array explanation'])->assertRedirect();
+        $comment = BlogComment::firstOrFail();
+        $this->withSession(['student_id' => $peer->id])->get(route('student.blog.show', $post))->assertDontSee('My private array explanation');
+        $this->withSession(['teacher_id' => $teacher->id, 'student_id' => null])->post(route('teacher.blog.reply', [$post, $comment]), ['body' => 'Private teacher feedback'])->assertRedirect();
+        $this->withSession(['teacher_id' => null, 'student_id' => $student->id])->get(route('student.blog.show', $post))->assertSee('My private array explanation')->assertSee('Private teacher feedback');
+        $this->withSession(['student_id' => $peer->id])->get(route('student.blog.show', $post))->assertDontSee('Private teacher feedback');
+        $this->withSession(['student_id' => $outsider->id])->get(route('student.blog.show', $post))->assertForbidden();
     }
 }

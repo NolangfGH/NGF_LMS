@@ -4,16 +4,16 @@
     <div class="max-w-2xl">
         <p class="text-xs font-bold uppercase tracking-widest text-secondary">Plan · personalize · teach</p>
         <h1 class="mt-3 text-3xl font-extrabold text-primary">Ready-made teaching library</h1>
-        <p class="mt-3 text-sm leading-7">Start with a lesson-aligned activity, review the answer key or sample output, then create your own editable draft for selected sections.</p>
+        <p class="mt-3 text-sm leading-7">Start with a lesson-aligned quiz, coding task or blog article. Review it, make your own editable draft, and publish when ready.</p>
     </div>
     <a href="{{ route('teacher.lessons') }}" class="rounded-xl border border-green-200 bg-white px-5 py-3 text-sm font-bold text-primary">Open Lesson Studio →</a>
 </div>
-<div class="my-7 grid gap-4 sm:grid-cols-3">
-    @foreach([[$topicCount, 'C++ lesson topics'], [$topicCount * 10, 'Multiple-choice questions'], [$topicCount * 2, 'Coding assignments & challenges']] as [$number, $label])
+<div class="my-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    @foreach([[$topicCount, 'C++ lesson topics'], [$topicCount * 10, 'Multiple-choice questions'], [$topicCount * 2, 'Coding assignments & challenges'], [$topicCount, 'Editable blog articles']] as [$number, $label])
         <div class="rounded-2xl border border-green-100 bg-white p-5 shadow-card"><b class="text-3xl text-primary">{{ $number }}</b><p class="mt-2 text-sm">{{ $label }}</p></div>
     @endforeach
 </div>
-<div class="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-7"><b class="text-primary">You stay in control.</b> Copying creates a private draft. Edit questions, answer keys, tasks, tests, rewards, timing and sections in the existing builder. Publish only after your review.</div>
+<div class="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-7"><b class="text-primary">You stay in control.</b> Copying creates a private draft. Edit the content and settings in the existing builder. Quizzes and coding tasks target selected sections; blog articles use your blog audience across all your sections. Publish only after your review.</div>
 <form method="GET" action="{{ route('teacher.library') }}" class="mb-6 flex flex-wrap gap-3" role="search">
     <label class="sr-only" for="librarySearch">Find a topic</label>
     <input id="librarySearch" type="search" name="q" value="{{ request('q') }}" maxlength="100" placeholder="Find a topic, e.g. loops or arrays" class="min-w-0 flex-1 rounded-xl border border-green-200 bg-white px-4 py-3">
@@ -28,7 +28,7 @@
         <p class="mt-1 text-xs font-bold text-secondary">{{ $lesson['title'] }}</p>
         <p class="my-4 text-sm leading-6">{{ $lesson['objective'] }}</p>
         <div class="mt-auto flex flex-wrap gap-2">
-            @foreach(['quiz' => 'Review 10-question quiz', 'assignment' => 'Review assignment', 'challenge' => 'Review challenge'] as $kind => $label)
+            @foreach(['quiz' => 'Review 10-question quiz', 'assignment' => 'Review assignment', 'challenge' => 'Review challenge', 'article' => 'Review blog/article'] as $kind => $label)
                 <a href="{{ route('teacher.library.show', [$key, $kind]) }}" class="rounded-xl border border-green-200 px-3 py-3 text-xs font-bold text-primary hover:bg-paper">{{ $label }} →</a>
             @endforeach
         </div>

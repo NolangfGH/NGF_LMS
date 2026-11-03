@@ -1,6 +1,7 @@
 @extends($isTeacher ? 'layouts.teacher-learning' : 'layouts.student')
 @section('content')
 @include('blog.notice')
+@if($isTeacher)@include('teaching-library-link')@endif
 <section class="mb-7 flex flex-wrap items-end justify-between gap-5">
     <div class="max-w-2xl"><span class="rounded-full bg-secondary-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">Grade 8 · C++ learning hub</span><h1 class="mt-4 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">NGF CodeQuest Blog</h1><p class="mt-3 text-sm leading-7 text-muted">{{ $isTeacher ? 'Share a programming idea, a worked example or a visual coding task. Guide each learner through private feedback.' : 'Explore C++ tips and ideas from your teacher. Share your thinking in a private conversation.' }}</p></div>
     @if($isTeacher)<a href="{{ route('teacher.blog.create') }}" class="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white shadow-tactile">＋ Write an article</a>@endif

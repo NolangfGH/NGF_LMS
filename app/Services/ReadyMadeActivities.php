@@ -40,6 +40,23 @@ class ReadyMadeActivities
                     'csta_standard' => null,
                 ];
             }
+            $article = config('ready_made_articles.'.$key);
+            if ($article !== null) {
+                $parts = ['Learning goal', $lesson['objective'], $article['introduction']];
+                foreach ($lesson['sections'] as $section) {
+                    $parts[] = $section['title']."\n".$section['text'];
+                }
+                $parts[] = "C++ example\n".$lesson['code'];
+                $parts[] = "Expected output\n".$lesson['output'];
+                $parts[] = "Your private response\n".implode("\n\n", array_map(static fn (string $prompt, int $index): string => ($index + 1).'. '.$prompt, $article['prompts'], array_keys($article['prompts'])));
+                $parts[] = 'Explain your reasoning in your own words. You may attach a code screenshot or record a voice response. Your comments and teacher replies stay private between you and your teacher.';
+                $catalog[$key]['article'] = [
+                    'title' => $article['title'], 'category' => $article['category'],
+                    'body' => implode("\n\n", $parts),
+                    'is_graded' => false, 'response_time_limit_minutes' => 5,
+                    'teacher_notes' => $article['teacher_notes'],
+                ];
+            }
         }
 
         return $catalog;

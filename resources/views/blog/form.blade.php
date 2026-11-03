@@ -1,5 +1,6 @@
 @extends('layouts.teacher-learning')
 @section('content')
+@include('teaching-library-link')
 <a href="{{ route('teacher.blog') }}" class="text-sm font-bold text-primary">← Back to blog</a>
 <div class="my-6"><p class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Teacher publishing studio</p><h1 class="mt-3 text-3xl font-extrabold text-primary">{{ $post->exists ? 'Edit article' : 'Share a C++ idea' }}</h1><p class="mt-3 text-sm leading-7">Write a learning topic, upload a diagram or sample output, and invite private student insights.</p></div>
 <div class="grid items-start gap-6 xl:grid-cols-[1.7fr_1fr]">

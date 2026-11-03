@@ -20,6 +20,17 @@
             <p class="mt-4 text-xs leading-6 text-secondary"><b>Why:</b> {{ $question['explanation'] }}</p>
         </article>
     @endforeach
+@elseif($kind === 'article')
+    <article class="rounded-2xl border border-green-100 bg-white p-6 shadow-card">
+        <div class="flex flex-wrap gap-2 text-xs font-bold text-secondary"><span class="rounded-full bg-paper px-3 py-1">{{ $activity['category'] }}</span><span class="rounded-full bg-green-50 px-3 py-1">Ready to personalize</span></div>
+        <h2 class="mt-5 text-lg font-bold text-primary">Article and student reflection prompts</h2>
+        <div class="mt-4 whitespace-pre-wrap break-words text-sm leading-8 [overflow-wrap:anywhere]">{{ $activity['body'] }}</div>
+    </article>
+    <section class="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+        <h2 class="font-bold text-amber-950">Teacher discussion guide · private preview only</h2>
+        <p class="mt-3 text-sm leading-7 text-amber-950">{{ $activity['teacher_notes'] }}</p>
+        <p class="mt-3 text-xs leading-6 text-amber-900">This guide is not copied into the student article. Use it to guide feedback; review each learner’s own explanation before grading.</p>
+    </section>
 @else
     <article class="rounded-2xl border border-green-100 bg-white p-6 shadow-card">
         <h2 class="text-lg font-bold text-primary">Student task</h2><p class="mt-4 whitespace-pre-line text-sm leading-7">{{ $activity['objective'] }}</p>
@@ -33,15 +44,20 @@
 @endif
 </div>
 <aside class="rounded-2xl border border-green-200 bg-white p-6 shadow-card xl:sticky xl:top-20">
-    <h2 class="text-lg font-bold text-primary">Make it your own</h2><p class="mt-3 text-sm leading-6">Create an editable draft. Choose your sections now; you can change them, the content and schedule before publishing.</p>
+    <h2 class="text-lg font-bold text-primary">Make it your own</h2><p class="mt-3 text-sm leading-6">{{ $kind === 'article' ? 'Create a private article draft. Edit the text, add an image, and adjust grading and response timing in your blog editor before publishing.' : 'Create an editable draft. Choose your sections now; you can change them, the content and schedule before publishing.' }}</p>
     <form action="{{ route('teacher.library.store', [$lesson['key'], $kind]) }}" method="POST" class="mt-5 space-y-5">
         @csrf
+        @if($kind === 'article')
+        <div class="rounded-xl bg-paper p-4 text-sm leading-7"><b class="text-primary">Your classroom blog</b><p class="mt-2">When published, this article is available to students in all your sections. Each student sees only their own comments and your replies to them.</p></div>
+        <p class="text-xs leading-6 text-secondary">Starts as an ungraded discussion with a 5-minute response timer. Both settings can be changed in the blog editor. If grading is enabled, the existing limit of 10 XP per student per article applies.</p>
+        @else
         @if($kind !== 'quiz')<label class="block text-sm font-bold text-primary" for="templateTerm">School Term<select id="templateTerm" name="school_term" required class="mt-2 w-full rounded-xl border p-3 font-normal">@foreach(['Term1','Term2','Term3'] as $term)<option @selected(old('school_term', $activity['school_term']) === $term)>{{ $term }}</option>@endforeach</select></label>@endif
         <fieldset><legend class="text-sm font-bold text-primary">Grade & sections</legend><div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
             @forelse($rooms as $room)<label class="flex items-start gap-3 rounded-xl border border-green-100 p-3 text-sm"><input type="checkbox" name="classroom_ids[]" value="{{ $room->id }}" @checked(in_array($room->id, old('classroom_ids', []))) class="mt-1"><span><b class="text-primary">{{ $room->grade }} · {{ $room->section ?: $room->name }}</b><span class="mt-1 block text-xs text-secondary">{{ $room->name }} · {{ $room->students_count }} enrolled</span></span></label>@empty<p class="text-sm">Add an active class first to use a template.</p><a href="{{ route('teacher.classes') }}" class="mt-3 inline-block text-sm font-bold text-primary underline">Create class / section →</a>@endforelse
         </div></fieldset>
         @if($kind !== 'quiz')<p class="rounded-xl bg-paper p-3 text-xs leading-6">Suggested: {{ $activity['difficulty'] }} · {{ $activity['time_limit_minutes'] }} minutes · {{ $activity['xp'] }} XP. All can be edited in the builder.</p>@endif
-        <button type="submit" @disabled($rooms->isEmpty()) class="w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white shadow-tactile disabled:opacity-40">Create editable draft →</button>
+        @endif
+        <button type="submit" @disabled($kind !== 'article' && $rooms->isEmpty()) class="w-full rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white shadow-tactile disabled:opacity-40">Create editable draft →</button>
         <p class="text-xs leading-6 text-secondary">Your copy is saved privately. No student notifications are sent until you publish. Existing work and the original template stay unchanged.</p>
     </form>
 </aside>
