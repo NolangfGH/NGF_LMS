@@ -13,20 +13,28 @@ class Classroom extends Model
 
     protected function casts(): array
     {
-        return ['enrollment_open' => 'boolean', 'archived_at'=>'datetime', 'sequential_learning'=>'boolean', 'weekly_xp_goal'=>'integer'];
+        return ['enrollment_open' => 'boolean', 'archived_at' => 'datetime', 'sequential_learning' => 'boolean', 'weekly_xp_goal' => 'integer'];
     }
 
     public function scopeOpenForStudentRegistration(Builder $query): Builder
     {
         return $query->whereNull('archived_at')->where('enrollment_open', true)
-            ->where('grade', config('student_registration.grade'))
-            ->whereIn('section', config('student_registration.sections'));
+            ->whereIn('grade', config('teacher_settings.grades'))
+            ->whereNotNull('section')->whereRaw("TRIM(section) <> ''")
+            ->where(fn (Builder $grades) => $grades->where('grade', '<>', config('student_registration.grade'))
+                ->orWhereIn('section', config('student_registration.sections')));
     }
 
     public function acceptsStudentRegistration(): bool
     {
-        return !$this->archived_at && $this->enrollment_open && $this->grade === config('student_registration.grade')
-            && in_array($this->section, config('student_registration.sections'), true);
+        return ! $this->archived_at && $this->enrollment_open && filled($this->section)
+            && in_array($this->grade, config('teacher_settings.grades'), true)
+            && ($this->grade !== config('student_registration.grade') || in_array($this->section, config('student_registration.sections'), true));
+    }
+
+    public function registrationFingerprint(): string
+    {
+        return hash('sha256', json_encode([$this->join_code, $this->grade, $this->section], JSON_THROW_ON_ERROR));
     }
 
     public function teacher()

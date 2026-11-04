@@ -181,7 +181,7 @@ class TeacherSettingsTest extends TestCase
         $registration = ['first_name' => 'New', 'surname' => 'Student', 'grade_level' => 'Grade 8', 'classroom_id' => $room->id, 'nickname' => 'NewCoder', 'student_id' => 'NEW123', 'password' => 'password123', 'password_confirmation' => 'password123'];
         $this->postJson(route('student.register.store'), $registration)->assertUnprocessable()->assertJsonValidationErrors('class_code');
         $this->postJson(route('student.register.verify'), ['classroom_id' => $room->id, 'grade_level' => 'Grade 8', 'class_code' => $room->join_code])->assertUnprocessable();
-        $this->get(route('student.register'))->assertOk()->assertViewHas('enrollmentOptions', fn ($options) => ! $options->contains('id', $room->id));
+        $this->get(route('student.register'))->assertOk()->assertViewHas('enrollmentOptions', fn ($options) => ! $options->contains(fn ($option) => $option['grade'] === $room->grade && $option['section'] === $room->section));
         $this->postJson(route('student.login.store'), ['student_id' => $student->student_id, 'password' => 'password123'])->assertOk();
         $this->get(route('student.learn'))->assertOk();
         $this->assertSame(100, $student->fresh()->xp);

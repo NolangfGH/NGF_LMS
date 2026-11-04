@@ -29,8 +29,10 @@ use App\Services\QuizRewards;
 use App\Services\StaffAccessService;
 use App\Services\StudentSettingsService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -161,10 +163,27 @@ class HomeController extends Controller
 
     public function studentRegistration()
     {
-        $options = Classroom::openForStudentRegistration()->orderBy('section')->get(['id', 'grade', 'section']);
-        $grades = collect([config('student_registration.grade')]);
+        $options = $this->studentEnrollmentOptions();
+        $grades = $options->pluck('grade')->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values();
 
-        return view('student-register', ['enrollmentOptions' => $options, 'gradeLevels' => $grades]);
+        return response()->view('student-register', ['enrollmentOptions' => $options, 'gradeLevels' => $grades])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    /** @return Collection<int, array{grade: string, section: string}> */
+    private function studentEnrollmentOptions(): Collection
+    {
+        return Classroom::openForStudentRegistration()->distinct()->get(['grade', 'section'])
+            ->map(fn (Classroom $room): array => ['grade' => $room->grade, 'section' => trim($room->section)])
+            ->unique(fn (array $room): string => $room['grade'].'|'.mb_strtoupper($room['section']))
+            ->sort(fn (array $first, array $second): int => strnatcasecmp($first['grade'], $second['grade']) ?: strnatcasecmp($first['section'], $second['section']))
+            ->values();
+    }
+
+    public function studentRegistrationOptions(): JsonResponse
+    {
+        return response()->json(['enrollment_options' => $this->studentEnrollmentOptions()])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function verifyStudentClassCode(Request $request)
@@ -172,7 +191,8 @@ class HomeController extends Controller
         $request->session()->forget(['student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code']);
         $data = $request->validate([
             'class_code' => ['required', 'string', 'max:20'],
-            'classroom_id' => ['required', 'integer'],
+            'classroom_id' => ['required_without:section', 'nullable', 'integer'],
+            'section' => ['required_without:classroom_id', 'nullable', 'string', 'max:80'],
             'grade_level' => ['required', 'string', 'max:50'],
         ]);
 
@@ -183,7 +203,9 @@ class HomeController extends Controller
             return response()->json(['message' => 'Classroom service is not available. Please try again after the database is configured.'], 503);
         }
 
-        if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->id !== (int) $data['classroom_id'] || $classroom->grade !== $data['grade_level']) {
+        if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->grade !== $data['grade_level']
+            || (isset($data['classroom_id']) && $classroom->id !== (int) $data['classroom_id'])
+            || (isset($data['section']) && strcasecmp(trim($classroom->section), trim($data['section'])) !== 0)) {
             return response()->json([
                 'message' => 'The class code must match your selected grade level and section. Check the details with your teacher.',
             ], 422);
@@ -191,7 +213,7 @@ class HomeController extends Controller
 
         session([
             'student_class_verified' => true,
-            'verified_join_code' => hash('sha256', $classroom->join_code),
+            'verified_join_code' => $classroom->registrationFingerprint(),
             'classroom_id' => $classroom->id,
             'classroom_name' => $classroom->grade.' · '.$classroom->section,
         ]);
@@ -276,7 +298,7 @@ class HomeController extends Controller
 
         $student = DB::transaction(function () use ($data) {
             $classroom = Classroom::whereKey(session('classroom_id'))->lockForUpdate()->first();
-            if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->id !== (int) $data['classroom_id'] || $classroom->grade !== $data['grade_level'] || ! hash_equals(hash('sha256', $classroom->join_code), (string) session('verified_join_code'))) {
+            if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->id !== (int) $data['classroom_id'] || $classroom->grade !== $data['grade_level'] || ! hash_equals($classroom->registrationFingerprint(), (string) session('verified_join_code'))) {
                 throw ValidationException::withMessages(['class_code' => 'Registration is closed or the join code has changed. Verify the current code for your selected grade and section.']);
             }
 

@@ -178,6 +178,7 @@ Route::post('/second-chance-requests/{excuse}', [SecondChanceController::class, 
 Route::view('/student-login', 'student-login')->name('student.login');
 Route::post('/student-login', [HomeController::class, 'loginStudent'])->name('student.login.store');
 Route::get('/student-register', [HomeController::class, 'studentRegistration'])->name('student.register');
+Route::get('/student-register/options', [HomeController::class, 'studentRegistrationOptions'])->middleware('throttle:30,1')->name('student.register.options');
 Route::post('/student-register/verify-class', [HomeController::class, 'verifyStudentClassCode'])->name('student.register.verify');
 Route::post('/student-register', [HomeController::class, 'registerStudent'])->name('student.register.store');
 Route::get('/student-dashboard', [HomeController::class, 'studentDashboard'])->name('student.dashboard');
