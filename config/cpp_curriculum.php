@@ -40,7 +40,9 @@ return (static function (): array {
         $section('Single-line comments', '// starts a comment ending at the source line end. Explain an assumption, decision or test. A comment is not an output instruction: use cout to display information.'),
         $section('Block comments', '/* and */ delimit a block comment spanning one or more lines. Ordinary block comments do not nest. Keep the closing marker visible so working code is not accidentally commented out.'),
         $section('Explain why', 'Explain why a boundary or formula was chosen rather than repeating each statement. Update comments when the algorithm changes. Never put passwords or private student information into source comments.'),
-    ], $program('    // Each group receives four markers.\n    int groups = 3;\n    std::cout << groups * 4;'), '12', [
+    ], $program('    // Each group receives four markers.
+    int groups = 3;
+    std::cout << groups * 4;'), '12', [
         $question('Which characters start a single-line C++ comment?', ['//', '**', '##'], 0, 'Two slashes start a comment lasting to the end of the line.'),
         $question('Which markers delimit a block comment?', ['<!-- and -->', '/* and */', '( and )'], 1, 'C++ block comments start with /* and end with */.'),
         $question('What does // Print 7 display by itself?', ['7', 'Print 7', 'Nothing'], 2, 'A source comment is not an output statement.'),
@@ -53,7 +55,12 @@ return (static function (): array {
         $section('Booleans and characters', 'bool stores true or false. char represents one character, written with single quotes, for example char initial = \'N\';. A string literal uses double quotes. Without boolalpha, cout normally displays bool as 1 or 0.'),
         $section('Strings and auto', 'Include <string> for std::string. auto count = 3 deduces int; auto price = 3.5 deduces double. The deduced type is static: auto does not let a variable change its type later.'),
         $section('Real-life type choices', 'A class-size count needs whole numbers, an average may need a fraction, and a ready flag needs true or false. Initialize every value and use a range suitable for the problem. These exercises use small inputs.'),
-    ], $program('    int count = 4;\n    double average = 7.0 / 2;\n    char group = \'B\';\n    bool ready = true;\n    auto extra = 2;\n    std::cout << count + extra << "\\n" << average << "\\n" << group << "\\n" << ready;'), "6\n3.5\nB\n1", [
+    ], $program('    int count = 4;
+    double average = 7.0 / 2;
+    char group = \'B\';
+    bool ready = true;
+    auto extra = 2;
+    std::cout << count + extra << "\\n" << average << "\\n" << group << "\\n" << ready;'), "6\n3.5\nB\n1", [
         $question('Which type suits a small whole-number count?', ['int', 'void', 'return'], 0, 'int suits small integral counts.'),
         $question('Which expression produces 3.5 rather than integer 3?', ['7 / 2', '7.0 / 2', '7 % 2'], 1, 'A double operand makes this floating-point division.'),
         $question('Which literal is a character?', ['"A"', 'true', "'A'"], 2, 'A character literal uses single quotes.'),
@@ -65,7 +72,9 @@ return (static function (): array {
         $section('Headers and functions', 'Include <cmath> for std::sqrt, std::pow, std::ceil and std::floor. Include <algorithm> for std::min and std::max. sqrt computes a square root; max chooses the larger of two comparable values.'),
         $section('Predict and check domains', 'sqrt(49.0) gives 7 and pow(2.0, 3.0) gives 8. Use nonnegative inputs for real square-root exercises. Do not use ^ for a power: for integers it is bitwise XOR.'),
         $section('Round with intent', 'ceil rounds toward positive infinity; floor rounds toward negative infinity. ceil(2.2) is 3, floor(2.8) is 2, and floor(-2.2) is -3. Choose the function matching the problem.'),
-    ], $program('    std::cout << std::sqrt(49.0) << "\\n";\n    std::cout << std::pow(2.0, 3.0) << "\\n";\n    std::cout << std::ceil(2.2);', "#include <cmath>\n"), "7\n8\n3", [
+    ], $program('    std::cout << std::sqrt(49.0) << "\\n";
+    std::cout << std::pow(2.0, 3.0) << "\\n";
+    std::cout << std::ceil(2.2);', "#include <cmath>\n"), "7\n8\n3", [
         $question('Which header declares std::sqrt?', ['<cmath>', '<string>', '<fstream>'], 0, 'sqrt is provided by cmath.'),
         $question('What is std::sqrt(49.0)?', ['14', '7', '98'], 1, 'Seven squared equals 49.'),
         $question('What is std::pow(2.0, 3.0)?', ['5', '6', '8'], 2, 'Two cubed is 2 times 2 times 2.'),
@@ -77,7 +86,9 @@ return (static function (): array {
         $section('Boolean values', 'A bool represents true or false. Without boolalpha, cout normally prints 1 or 0. A flag such as hasPermission can describe a condition, but actual account permissions must still be enforced by the server.'),
         $section('Boolean expressions', 'score >= 60 produces a Boolean result. == compares, != tests inequality, and = assigns. Put parentheses around a comparison in output, as in cout << (score >= 60);.'),
         $section('Real-life requirements', '&& requires both conditions; || requires at least one; ! reverses a truth value. Explain an age or score rule before writing it, and test just below, at and above its boundary.'),
-    ], $program('    int score = 72;\n    bool passed = score >= 60;\n    std::cout << passed << "\\n" << !passed;'), "1\n0", [
+    ], $program('    int score = 72;
+    bool passed = score >= 60;
+    std::cout << passed << "\\n" << !passed;'), "1\n0", [
         $question('Which pair contains Boolean literals?', ['true and false', 'yes and no', 'on and off'], 0, 'true and false are the C++ Boolean literals.'),
         $question('What does cout normally print for true without boolalpha?', ['true', '1', '-1'], 1, 'Ordinary numeric output displays true as 1.'),
         $question('Which expression is true when score is 60?', ['score > 60', 'score < 60', 'score >= 60'], 2, '>= includes the boundary.'),
@@ -89,7 +100,12 @@ return (static function (): array {
         $section('Match a menu choice', 'A switch selects a case from an integral or enumeration value. Case labels are constants. A console menu can read 1, 2 or 3 and choose an action. A standard switch cannot directly use std::string selectors.'),
         $section('Break and default', 'break exits the switch. Without it, execution can continue into following case bodies, called fall-through. default handles a value matching no case.'),
         $section('Test every branch', 'Try each case and an invalid choice for default. Inspect breaks if several actions print. Use if/else for arbitrary ranges such as score >= 60, and switch for a discrete set of choices.'),
-    ], $program('    int choice = 2;\n    switch (choice) {\n        case 1: std::cout << "Read"; break;\n        case 2: std::cout << "Code"; break;\n        default: std::cout << "Choose 1 or 2";\n    }'), 'Code', [
+    ], $program('    int choice = 2;
+    switch (choice) {
+        case 1: std::cout << "Read"; break;
+        case 2: std::cout << "Code"; break;
+        default: std::cout << "Choose 1 or 2";
+    }'), 'Code', [
         $question('Which value selects the case in the example?', ['choice', 'cout', 'main'], 0, 'The switch expression is matched to case labels.'),
         $question('What exits a switch?', ['continue', 'break', 'case'], 1, 'break transfers control beyond the switch.'),
         $question('Which branch handles a value matching no case?', ['The first case always', 'main', 'default'], 2, 'default is the optional fallback.'),
@@ -101,7 +117,11 @@ return (static function (): array {
         $section('Stop with break', 'break exits the nearest enclosing loop or switch. A search can stop after finding its target. A break in a nested loop exits the inner loop only, not every surrounding loop.'),
         $section('Skip with continue', 'continue skips the rest of the current iteration. A for loop then performs its update and next condition check. A while loop goes to its condition, so a skipped update can stop progress.'),
         $section('Trace control flow', 'List the counter values, skipped values and stopping value. Use break for a justified early exit and continue for a clearly explained skipped case. A simpler loop condition is often preferable to many jumps.'),
-    ], $program('    for (int i = 1; i <= 6; i++) {\n        if (i == 2) { continue; }\n        if (i == 5) { break; }\n        std::cout << i << "\\n";\n    }'), "1\n3\n4\n", [
+    ], $program('    for (int i = 1; i <= 6; i++) {
+        if (i == 2) { continue; }
+        if (i == 5) { break; }
+        std::cout << i << "\\n";
+    }'), "1\n3\n4\n", [
         $question('What does break do inside a loop?', ['Exits the nearest loop', 'Restarts the source editor', 'Restarts main'], 0, 'break exits the nearest enclosing loop or switch.'),
         $question('What does continue do?', ['Exits the whole program', 'Skips the rest of the current iteration', 'Deletes the counter'], 1, 'The loop continues with its next control step.'),
         $question('Why is 2 absent from the example output?', ['It is outside the range', 'The compiler hides even numbers', 'continue skips its output'], 2, 'continue is reached when i is 2.'),
@@ -137,7 +157,10 @@ return (static function (): array {
         $section('Create an alias', 'int& alias = count; gives another name to the existing count object. Initialize an ordinary reference when declaring it. Updating alias changes count; no separate integer copy is created.'),
         $section('Memory address', '&count obtains the address of count. &alias obtains the address of the same object. Actual address text can change across runs and computers. Test address equality instead of hard-coding an expected numeric address.'),
         $section('Lifetime and const access', 'A reference must refer to a live object. It cannot be reseated by assignment: assigning through it changes the original object. A const reference gives read-only access through that reference.'),
-    ], $program('    int count = 4;\n    int& alias = count;\n    alias += 3;\n    std::cout << count << "\\n" << (&alias == &count);'), "7\n1", [
+    ], $program('    int count = 4;
+    int& alias = count;
+    alias += 3;
+    std::cout << count << "\\n" << (&alias == &count);'), "7\n1", [
         $question('What is alias in int& alias = count;?', ['Another name for count', 'An independent integer copy', 'A new string'], 0, 'A reference aliases the existing object.'),
         $question('After alias = 8;, what happens to count?', ['It stays unchanged', 'It becomes 8', 'It is deleted'], 1, 'Assigning through a reference updates the object.'),
         $question('Which expression obtains count\'s address?', ['*count', 'count()', '&count'], 2, 'Unary & obtains the address.'),
@@ -149,7 +172,10 @@ return (static function (): array {
         $section('Create pointers', 'int* pointer = &count; stores count\'s address. A pointer is an object that can later store another compatible address. Initialize it to a valid address or nullptr, rather than leaving it indeterminate.'),
         $section('Dereferencing', '*pointer accesses the pointed-to int. The star has different roles in a declaration and an expression. Dereference only when the pointer refers to a live valid object; never dereference nullptr.'),
         $section('Modify pointers or values', '*pointer = 9 changes the pointed-to value. pointer = &other changes the destination. Actual address text is not a portable output expectation, so activities compare values and identity instead.'),
-    ], $program('    int count = 4;\n    int* pointer = &count;\n    *pointer = 9;\n    std::cout << count << "\\n" << *pointer;'), "9\n9", [
+    ], $program('    int count = 4;
+    int* pointer = &count;
+    *pointer = 9;
+    std::cout << count << "\\n" << *pointer;'), "9\n9", [
         $question('What does int* pointer = &count; store in pointer?', ['The address of count', 'The text count', 'The number of source lines'], 0, 'The pointer holds an object address.'),
         $question('What does *pointer access for a valid pointer?', ['The pointer\'s name', 'The pointed-to object', 'The filename'], 1, 'Unary * dereferences a pointer.'),
         $question('After *pointer = 9; in the example, what is count?', ['4', '0', '9'], 2, 'pointer refers to count, so assignment updates count.'),
@@ -162,7 +188,10 @@ return (static function (): array {
         $section('New and delete', 'Use delete for one object created with new and delete[] for an array created with new[]. Release an allocation exactly once and never access it afterwards. Setting one pointer to nullptr does not repair other aliases of the old address.'),
         $section('Prefer simple ownership', 'Learn new and delete to read older code and recognize lifetime errors. Usually prefer automatic objects and standard containers; use unique_ptr for suitable dynamic single ownership. Never try arbitrary addresses or huge allocations.'),
         $section('Review ownership, not just output', 'Use small initialized allocations in these activities. Read before release. Correct output alone does not prove there are no leaks, double deletions or lifetime errors; the teacher must inspect ownership too.'),
-    ], $program('    int* value = new int(5);\n    std::cout << *value;\n    delete value;\n    value = nullptr;'), '5', [
+    ], $program('    int* value = new int(5);
+    std::cout << *value;
+    delete value;
+    value = nullptr;'), '5', [
         $question('What does new int(5) do when successful?', ['Creates a dynamic int initialized to 5', 'Creates five source files', 'Deletes an int'], 0, 'new creates the object and returns its pointer.'),
         $question('What matches a single-object new allocation?', ['delete[] in every case', 'delete', 'No release is needed'], 1, 'Use delete for a single new object.'),
         $question('What matches new int[3]?', ['delete', 'free in every case', 'delete[]'], 2, 'Match new[] with delete[].'),
