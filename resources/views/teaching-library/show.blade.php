@@ -5,6 +5,7 @@
     <div><p class="text-xs font-bold uppercase tracking-widest text-secondary">{{ $lesson['topic'] }} · Review {{ $kind }}</p><h1 class="mt-3 text-3xl font-extrabold text-primary">{{ $activity['title'] }}</h1></div>
     <span class="rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-primary">Teacher preview · Not assigned</span>
 </div>
+<details class="mt-5 rounded-xl border border-green-100 bg-white p-4 text-sm"><summary class="cursor-pointer font-bold text-primary">Lesson coverage · {{ $lesson['term'] }}</summary><p class="mt-3 text-xs leading-7">{{ implode(' · ', $lesson['subtopics']) }}</p><a href="{{ route('teacher.content.edit', $lesson['key']) }}" class="mt-3 inline-block text-xs font-bold text-primary underline">Review or edit the lesson →</a></details>
 <div class="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
 <div class="min-w-0 space-y-5">
 @if($kind === 'quiz')

@@ -13,6 +13,7 @@ class ReadyMadeActivities
             if ($template === null) {
                 continue;
             }
+            $template['term'] = $lesson['term'] ?? $template['term'];
             $questions = array_map(static fn (array $question): array => [
                 'type' => 'multiple_choice',
                 'prompt' => $question['prompt'],
@@ -23,6 +24,7 @@ class ReadyMadeActivities
             $catalog[$key] = [
                 'key' => $key, 'title' => $lesson['title'], 'topic' => $lesson['topic'],
                 'objective' => $lesson['objective'], 'term' => $template['term'],
+                'subtopics' => $lesson['subtopics'] ?? [], 'reference_url' => $lesson['reference_url'] ?? null,
                 'quiz' => [
                     'title' => $lesson['topic'].' — 10-question quiz',
                     'instructions' => 'Choose one answer for each question. Review your lesson examples before starting. Each question has a 60-second limit; your teacher can change the timing before publishing.',

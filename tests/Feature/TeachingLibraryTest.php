@@ -36,7 +36,7 @@ class TeachingLibraryTest extends TestCase
     {
         $catalog = app(ReadyMadeActivities::class)->catalog();
         $this->assertSame(array_keys(config('lessons')), array_keys($catalog));
-        $this->assertCount(13, $catalog);
+        $this->assertCount(25, $catalog);
         foreach ($catalog as $lesson) {
             $questions = $lesson['quiz']['questions'];
             $this->assertCount(10, $questions);
@@ -80,8 +80,10 @@ class TeachingLibraryTest extends TestCase
     public function test_all_previews_render_and_search_and_empty_class_guidance_work(): void
     {
         extract($this->fixture());
-        $page = $this->get(route('teacher.library'))->assertOk()->assertSee('130')->assertSee('Ready-made teaching library');
-        $this->get(route('teacher.library', ['q' => 'arrays']))->assertOk()->assertSee('Store a collection')->assertDontSee('Reusable square');
+        $page = $this->get(route('teacher.library'))->assertOk()->assertSee('250')->assertSee('Ready-made teaching library');
+        $this->get(route('teacher.library', ['q' => 'multidimensional']))->assertOk()->assertSee('C++ Arrays')->assertDontSee('C++ Comments');
+        $this->get(route('teacher.library', ['term' => 'Term3', 'q' => 'pointer']))->assertOk()->assertSee('C++ Pointers')->assertDontSee('C++ Output');
+        $this->getJson(route('teacher.library', ['term' => 'Term9']))->assertUnprocessable();
         $this->get(route('teacher.library', ['q' => 'no-such-topic']))->assertOk()->assertSee('No topics match');
         $this->getJson(route('teacher.library', ['q' => ['invalid']]))->assertUnprocessable();
         foreach (array_keys(config('lessons')) as $key) {
@@ -94,6 +96,8 @@ class TeachingLibraryTest extends TestCase
             file_put_contents(base_path('.codex/library-task-preview.html'), $this->get(route('teacher.library.show', ['arrays', 'challenge']))->getContent());
             file_put_contents(base_path('.codex/library-quiz-preview.html'), $this->get(route('teacher.library.show', ['input', 'quiz']))->getContent());
             file_put_contents(base_path('.codex/library-article-preview.html'), $this->get(route('teacher.library.show', ['for-loops', 'article']))->getContent());
+            file_put_contents(base_path('.codex/library-term-three-preview.html'), $this->get(route('teacher.library', ['term' => 'Term3']))->getContent());
+            file_put_contents(base_path('.codex/library-parameters-preview.html'), $this->get(route('teacher.library.show', ['function-parameters', 'quiz']))->getContent());
         }
         $rooms->each->update(['archived_at' => now()]);
         $this->get(route('teacher.library.show', ['arrays', 'assignment']))->assertOk()->assertSee('Add an active class first')->assertSee('disabled', false);
@@ -200,6 +204,7 @@ class TeachingLibraryTest extends TestCase
     {
         extract($this->fixture());
         foreach (app(ReadyMadeActivities::class)->catalog() as $key => $lesson) {
+            $this->travel(4)->seconds();
             $this->post(route('teacher.library.store', [$key, 'article']), [
                 'teacher_account_id' => $other->id, 'status' => 'published', 'body' => 'Forged content', 'is_graded' => true,
             ])->assertRedirect();
@@ -210,7 +215,7 @@ class TeachingLibraryTest extends TestCase
             $this->assertNull($post->published_at);
             $this->assertFalse($post->is_graded);
         }
-        $this->assertDatabaseCount('blog_posts', 13);
+        $this->assertDatabaseCount('blog_posts', 25);
         $this->assertDatabaseCount('challenge_notices', 0);
         $this->assertSame(100, $student->fresh()->xp);
         $editor = $this->get(route('teacher.blog.edit', $post))->assertOk()->assertSee('Your private article draft is ready')->assertSee('Save article changes')->assertSee($post->title);

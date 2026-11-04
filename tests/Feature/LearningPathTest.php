@@ -53,7 +53,7 @@ class LearningPathTest extends TestCase
     public function test_library_reader_and_bookmark_use_real_student_progress(): void
     {
         extract($this->fixture());
-        $this->get(route('student.learn'))->assertOk()->assertSee('Your C++ learning path')->assertSee('Read and use user input')->assertViewHas('lessonPath', fn ($path) => $path['total'] === count(config('lessons')) && $path['completed'] === 0);
+        $this->get(route('student.learn'))->assertOk()->assertSee('Your C++ learning path')->assertSee('C++ User Input')->assertSee('C++ Function Parameters')->assertViewHas('lessonPath', fn ($path) => $path['total'] === count(config('lessons')) && $path['completed'] === 0);
         $this->assertDatabaseCount('lesson_progress', 0);
         $this->get(route('student.lesson.show', 'missing'))->assertNotFound();
         $this->get(route('student.lesson.show', 'output'))->assertOk()->assertSee('Worked example')->assertDontSee('main is the program entry function in this example.')->assertDontSee('Compiling');

@@ -34,7 +34,7 @@ class LessonContentController extends Controller
     {
         $teacher = $this->teacher();
         $content = LessonContent::where('teacher_account_id', $teacher->id)->where('lesson_key', $key)->first();
-        $definition = $content?->definition ?? config('lessons.'.$key);
+        $definition = $content?->definition ?? app(LessonService::class)->catalogForTeacher($teacher->id)[$key] ?? null;
         abort_unless($key === 'new' || $definition, 404);
         $submittedChecks = old('checks', $definition['checks'] ?? []);
         $checkpointChecks = is_array($submittedChecks) ? array_values($submittedChecks) : [];
@@ -63,7 +63,8 @@ class LessonContentController extends Controller
                 TeacherAccount::whereKey($teacher->id)->lockForUpdate()->firstOrFail();
                 $key = $key === 'new' ? 'custom-'.Str::lower(Str::random(12)) : $key;
                 $content = LessonContent::where('teacher_account_id', $teacher->id)->where('lesson_key', $key)->lockForUpdate()->first();
-                abort_unless($content || config('lessons.'.$key) || str_starts_with($key, 'custom-') && (int) $data['revision'] === 0, 404);
+                $availableLessons = app(LessonService::class)->catalogForTeacher($teacher->id);
+                abort_unless($content || isset($availableLessons[$key]) || str_starts_with($key, 'custom-') && (int) $data['revision'] === 0, 404);
                 abort_if(($content?->revision ?? 0) !== (int) $data['revision'], 409, 'This lesson changed in another tab. Refresh before saving.');
                 $version = ($content?->revision ?? 0) + 1;
                 $definition = collect($data)->except(['revision', 'status', 'image'])->all();

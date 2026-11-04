@@ -3,6 +3,7 @@
     if (!search) return;
     const status = document.getElementById('lesson-status');
     const source = document.getElementById('lesson-source');
+    const schoolTerm = document.getElementById('lesson-term');
     const cards = [...document.querySelectorAll('[data-lesson-card]')];
     const headerSearch = document.querySelector('header input');
     const filter = () => {
@@ -11,7 +12,8 @@
         cards.forEach(card => {
             const visible = card.dataset.title.toLocaleLowerCase().includes(term)
                 && (status.value === 'all' || card.dataset.status === status.value)
-                && (source.value === 'all' || card.dataset.source === source.value);
+                && (source.value === 'all' || card.dataset.source === source.value)
+                && (!schoolTerm || schoolTerm.value === 'all' || card.dataset.term === schoolTerm.value);
             card.hidden = !visible;
             if (visible) count++;
         });
@@ -21,6 +23,7 @@
     search.addEventListener('input', () => { if (headerSearch) headerSearch.value = search.value; filter(); });
     status.addEventListener('change', filter);
     source.addEventListener('change', filter);
+    if (schoolTerm) schoolTerm.addEventListener('change', filter);
     if (headerSearch) {
         headerSearch.setAttribute('aria-label', 'Search lessons');
         headerSearch.placeholder = 'Search C++ lessons...';
@@ -28,6 +31,7 @@
     }
     document.getElementById('lesson-clear').addEventListener('click', () => {
         search.value = ''; status.value = 'all'; source.value = 'all';
+        if (schoolTerm) schoolTerm.value = 'all';
         if (headerSearch) headerSearch.value = '';
         filter();
     });

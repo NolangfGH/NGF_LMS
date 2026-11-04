@@ -428,8 +428,13 @@ class HomeController extends Controller
             return $current;
         });
 
+        $practiceKeys = collect(app(LessonService::class)->catalog())->pluck('practice')
+            ->merge(collect(config('challenges'))->reject(fn (array $challenge): bool => ! empty($challenge['legacy']))->keys())
+            ->merge(CodeWorkspace::where('student_id', $data['student']->id)->where('activity_key', 'like', 'practice:%')->pluck('activity_key')->map(fn (string $key): string => substr($key, 9)));
+        $practiceActivities = array_intersect_key(config('code_lab.activities'), array_flip($practiceKeys->all()));
+
         return view('code-lab', [...$data, 'labActivity' => $activity, 'workspace' => $workspace,
-            'labSubmissions' => $workspace->submissions()->latest()->get(), 'practiceActivities' => config('code_lab.activities'),
+            'labSubmissions' => $workspace->submissions()->latest()->get(), 'practiceActivities' => $practiceActivities,
             'compilerConfigured' => app(Judge0Client::class)->configured(),
             'codeRuns' => CodeRun::where('code_workspace_id', $workspace->id)->latest()->limit(10)->get(),
             'visibleTests' => collect(app(CodeExecutionService::class)->cases($workspace))->filter(fn ($case) => empty($case['hidden']))->values(),

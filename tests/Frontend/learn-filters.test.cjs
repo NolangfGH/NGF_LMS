@@ -14,13 +14,14 @@ function library() {
     const ids = {
         'lesson-search': control(''), 'lesson-status': control('all'),
         'lesson-source': control('all'), 'lesson-clear': control(''),
+        'lesson-term': control('all'),
         'lesson-result-count': control(''), 'lesson-empty': control(''),
     };
     const header = control('');
     const cards = [
-        { dataset: { title: 'Read user input', status: 'not_started', source: 'assigned' } },
-        { dataset: { title: 'Repeat with loops', status: 'completed', source: 'self' } },
-        { dataset: { title: 'Loop sentinel', status: 'in_progress', source: 'assigned' } },
+        { dataset: { title: 'Read user input', status: 'not_started', source: 'assigned', term: 'Term1' } },
+        { dataset: { title: 'Repeat with loops', status: 'completed', source: 'self', term: 'Term2' } },
+        { dataset: { title: 'Loop sentinel', status: 'in_progress', source: 'assigned', term: 'Term2' } },
     ];
     const document = { getElementById: id => ids[id], querySelectorAll: () => cards, querySelector: () => header };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../public/js/learn.js'),'utf8'),{document});
@@ -57,4 +58,17 @@ test('header search filters the library and clear restores all lessons and contr
     assert.equal(ids['lesson-status'].value,'all');
     assert.deepEqual(cards.map(card => card.hidden),[false,false,false]);
     assert.equal(ids['lesson-empty'].hidden,true);
+});
+
+test('term filtering combines with search and clear restores the whole path', () => {
+    const { ids, cards } = library();
+    ids['lesson-term'].value = 'Term2';
+    ids['lesson-term'].fire('change');
+    assert.deepEqual(cards.map(card => card.hidden), [true, false, false]);
+    ids['lesson-search'].value = 'input';
+    ids['lesson-search'].fire('input');
+    assert.equal(ids['lesson-empty'].hidden, false);
+    ids['lesson-clear'].fire('click');
+    assert.equal(ids['lesson-term'].value, 'all');
+    assert.deepEqual(cards.map(card => card.hidden), [false, false, false]);
 });

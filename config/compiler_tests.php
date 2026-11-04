@@ -1,8 +1,19 @@
 <?php
 
 $test = fn ($input, $output, $hidden = false, $weight = 1) => compact('input', 'output', 'hidden', 'weight');
+$topics = (require __DIR__.'/cpp_curriculum.php')['lessons'];
+$templates = require __DIR__.'/ready_made_activities.php';
+$challengeTests = [];
+foreach ($topics as $key => $lesson) {
+    $challengeTests['topic-'.$key] = $templates[$key]['challenge']['test_cases'];
+}
 
 return [
+    ...$challengeTests,
+    ...array_combine(
+        array_map(static fn (string $key): string => 'cpp-'.$key, array_keys(require __DIR__.'/cpp_activity_templates.php')),
+        array_map(static fn (array $template): array => $template['assignment']['test_cases'], require __DIR__.'/cpp_activity_templates.php'),
+    ),
     'variables' => [$test('', '12')],
     'input_total' => [$test('5', '7'), $test('0', '2', true), $test('-2', '0', true)],
     'loops' => [$test('', "5\n4\n3\n2\n1\nLaunch!")],

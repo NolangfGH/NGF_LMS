@@ -33,7 +33,7 @@ class LessonCheckpointQuestionsTest extends TestCase
 
     public function test_every_builtin_lesson_contains_five_complete_distinct_checkpoint_questions(): void
     {
-        $this->assertCount(13, config('lessons'));
+        $this->assertCount(25, config('lessons'));
         foreach (config('lessons') as $key => $lesson) {
             $this->assertCount(5, $lesson['checks'], $key);
             $this->assertSame(2, $lesson['version']);

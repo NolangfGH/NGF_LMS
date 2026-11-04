@@ -1,5 +1,5 @@
 @php
-    $staffAvatarAccount = $teacher ?? \App\Models\TeacherAccount::find(session('teacher_id'));
+    $staffAvatarAccount = $teacher ?? (session('teacher_id') ? \App\Models\TeacherAccount::find(session('teacher_id')) : null);
     $staffAvatarUrl = $staffAvatarAccount?->avatar_path
         ? route('teacher.settings.avatar', ['teacher' => $staffAvatarAccount->id, 'v' => substr(hash('sha256', $staffAvatarAccount->avatar_path), 0, 12)])
         : asset($staffAvatarAccount?->isSchoolAdmin() ? 'images/branding/system-admin-profile.png' : 'images/branding/nf-codequest-tab-icon.png');

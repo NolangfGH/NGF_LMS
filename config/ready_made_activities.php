@@ -65,8 +65,8 @@ return [
     'operators' => [
         'term' => 'Term1', 'difficulty' => 'Easy',
         'questions' => [
-            $question('What is 17 % 5?', ['2', '3', '5', '12'], 0, '17 = 3 * 5 + 2, so the remainder is 2.'),
-            $question('What is 20 / 4 + 2 with integers?', ['3', '7', '10', '22'], 1, 'Division happens first: 5 + 2 = 7.'),
+            $question('What is 2 + 3 * 4?', ['14', '20', '24', '9'], 0, 'Multiplication is evaluated before addition.'),
+            $question('What is true && false || true?', ['false', 'true', '3', 'A string'], 1, 'AND is evaluated before OR, giving false || true.'),
             $question('After int x = 3; x += 4;, what is x?', ['3', '4', '7', '12'], 2, 'x += 4 is equivalent here to x = x + 4.'),
             $question('Which expression checks whether n is even?', ['n / 2 == 0', 'n % 2 == 1', 'n = 2', 'n % 2 == 0'], 3, 'An even integer leaves remainder zero when divided by 2.'),
             $question('What does 3 == 4 evaluate to?', ['false', 'true', '7', '1'], 0, 'Equality comparison is false because the operands differ.'),
@@ -79,9 +79,9 @@ return [
         'questions' => [
             $question('What does !(3 < 5) evaluate to?', ['true', 'false', '3', '5'], 1, '3 < 5 is true, and logical NOT reverses it.'),
             $question('Which condition checks whether age is from 12 through 14 inclusive?', ['age >= 12 || age <= 14', '12 <= age <= 14', 'age >= 12 && age <= 14', 'age > 12 && age < 14'], 2, 'Both inclusive boundary comparisons must be true.'),
-            $question('What does if (score >= 75) print for score = 75 if its body prints Pass?', ['Nothing', 'Fail', '75', 'Pass'], 3, 'The inclusive >= comparison includes the boundary value 75.'),
-            $question('Which operator compares equality?', ['==', '=', '+=', '!='], 0, '== compares values; = assigns a value.'),
-            $question('In an if/else, how many of the two branches execute for one evaluation?', ['Both always', 'Exactly one', 'Neither always', 'Up to three'], 1, 'A true condition selects the if branch; otherwise the else branch is selected.'),
+            $question('What is the result of score >= 60 ? 10 : 3 when score is 60?', ['3', '60', '0', '10'], 3, 'The true branch of the conditional expression is selected.'),
+            $question('How does an if / else if / else chain select a branch?', ['It uses the first true condition, or else if none is true', 'It runs every true branch', 'It starts at the last condition', 'It always runs else'], 0, 'Later alternatives are skipped after the first matching branch.'),
+            $question('What is a nested if?', ['A comment after a condition', 'An if statement inside another selected block', 'An output stream', 'A replacement for all braces'], 1, 'Nesting allows a decision within a selected branch.'),
         ],
         'assignment' => $task('Pass checkpoint', 'Read an integer score from 0 to 100. Print Pass if score is at least 75; otherwise print Keep practicing. Include a test at the exact boundary.', [['75', 'Pass'], ['74', 'Keep practicing'], ['100', 'Pass']], ['Use >= to include 75.', 'Only one branch should print.']),
         'challenge' => $task('Number classifier', 'Read an integer from -1000 to 1000. Print Positive, Negative or Zero according to its sign. Use an if / else if / else structure.', [['-4', 'Negative'], ['0', 'Zero'], ['7', 'Positive']], ['Check greater than zero first.', 'Check less than zero next; the remaining case is zero.']),
@@ -90,10 +90,10 @@ return [
         'term' => 'Term2', 'difficulty' => 'Mid',
         'questions' => [
             $question('How many times does for (int i = 0; i < 4; ++i) run its body?', ['0', '3', '4', '5'], 2, 'The body runs for i = 0, 1, 2, 3.'),
-            $question('What is printed by for (int i = 1; i <= 3; ++i) cout << i;?', ['012', '6', '1234', '123'], 3, 'The values 1, 2 and 3 are printed without separators.'),
-            $question('Which change makes a for-loop counter decrease by one?', ['--i', '++i', 'i += 2', 'i == 1'], 0, '--i decreases the counter by one.'),
-            $question('What is total after starting at 0 and adding integers 1 through 4?', ['4', '10', '6', '24'], 1, '1 + 2 + 3 + 4 = 10.'),
-            $question('When is the condition in a for loop checked?', ['Only after all repetitions', 'Only when compiling', 'Before each possible iteration', 'Only after the first iteration'], 2, 'The condition is checked before the first and every subsequent iteration.'),
+            $question('Two outer iterations each run three inner iterations. How many inner-body executions occur?', ['2', '3', '5', '6'], 3, 'The inner body runs 2 times 3 times.'),
+            $question('Which is C++ range-based for syntax?', ['for (int value : values)', 'foreach value in values', 'for values -> value', 'range values each'], 0, 'A range-based for uses a declaration and a colon before the range.'),
+            $question('What does for (int value : values) normally give value?', ['An alias that always changes the element', 'A copy of the current element', 'The entire array', 'Only the array length'], 1, 'Use a reference parameter in the loop declaration when element mutation is intended.'),
+            $question('Which loop declaration can update the original int elements?', ['for (int value : values)', 'for (const int value : values)', 'for (int& value : values)', 'for (bool value : values)'], 2, 'A mutable reference aliases each element.'),
         ],
         'assignment' => $task('Count the launch steps', 'Read an integer n from 1 to 20. Use a for loop to print the numbers 1 through n, one number per line.', [['3', "1\n2\n3"], ['1', '1'], ['5', "1\n2\n3\n4\n5"]], ['Start the counter at 1.', 'Use <= n to include the last number.']),
         'challenge' => $task('Number staircase total', 'Read an integer n from 0 to 100. Use a for loop to add all integers from 1 through n and print their total. For n = 0, print 0.', [['5', '15'], ['0', '0'], ['1', '1']], ['Initialize total to zero.', 'Add the current counter during each iteration.']),
@@ -102,8 +102,8 @@ return [
         'term' => 'Term2', 'difficulty' => 'Mid',
         'questions' => [
             $question('What happens if a while condition is false before its first check?', ['The body runs once', 'The body runs forever', 'Compilation fails', 'The body runs zero times'], 3, 'A while loop checks before running its body.'),
-            $question('A loop has int x = 3; while (x > 0) { --x; }. What is x afterward?', ['0', '1', '3', '-1'], 0, 'The loop decreases x until the condition x > 0 becomes false at zero.'),
-            $question('For input 2 5 -1, what is the sum before sentinel -1?', ['6', '7', '-1', '8'], 1, 'Only 2 and 5 belong in the sum; the sentinel is excluded.'),
+            $question('How many times does do { cout << 1; } while (false); execute its body?', ['1', '0', '2', 'Forever'], 0, 'do/while executes the body before its first condition check.'),
+            $question('What punctuation follows the final condition of a do/while loop?', ['A colon', 'A semicolon', 'A comma only', 'No punctuation'], 1, 'The final while(condition) in this form ends with a semicolon.'),
             $question('Which is a common cause of an infinite while loop?', ['Initializing a total', 'Using braces', 'Never changing a value needed to make the condition false', 'Reading a sentinel correctly'], 2, 'If the condition stays true and no exit occurs, repetition does not end.'),
             $question('Why can while be suitable for sentinel input?', ['It always runs exactly five times', 'It sorts all inputs automatically', 'It removes input errors', 'The number of values may be unknown beforehand'], 3, 'The sentinel determines when input ends, rather than a fixed count.'),
         ],
@@ -127,8 +127,8 @@ return [
         'questions' => [
             $question('For int a[3] = {4, 8, 2};, what is a[1]?', ['4', '8', '2', '3'], 1, 'Index 1 refers to the second element.'),
             $question('Which loop condition fits indexes of int scores[4] when i starts at zero?', ['i <= 4', 'i < 3', 'i < 4', 'i > 4'], 2, 'The valid indexes are 0 through 3.'),
-            $question('What does a[0] = 9; change?', ['Every element', 'The array length', 'The last element only', 'The first element'], 3, 'Index zero identifies the first element.'),
-            $question('How many elements are declared by int values[6];?', ['6', '5', '7', '0'], 0, 'The size specifies six elements.'),
+            $question('For an actual raw array in its declaring scope, which expression gives its element count?', ['sizeof(values) only', 'sizeof(values[0]) only', 'values.length()', 'sizeof(values) / sizeof(values[0])'], 3, 'Divide the array byte size by the byte size of one element; this does not work for a pointer parameter.'),
+            $question('How many int elements are in int grid[2][3];?', ['6', '5', '2', '3'], 0, 'Two rows of three elements contain six elements.'),
             $question('To find a maximum in a non-empty array that may contain negatives, what is a safe starting maximum?', ['Always 0', 'The first element', 'The array length', 'Always 1'], 1, 'The first element is an actual candidate even if all numbers are negative.'),
         ],
         'assignment' => $task('Five-day reading total', 'Read exactly five integers from 0 to 100 into an array. Use a loop over valid indexes to print their sum.', [['1 2 3 4 5', '15'], ['0 0 0 0 0', '0'], ['10 0 5 0 2', '17']], ['Use an array of length five.', 'Start at index zero and continue while the index is less than five.']),
@@ -137,9 +137,9 @@ return [
     'strings' => [
         'term' => 'Term3', 'difficulty' => 'Mid',
         'questions' => [
-            $question('Which header declares std::string?', ['<cmath>', '<iomanip>', '<string>', '<array>'], 2, 'Include <string> for the standard string type.'),
-            $question('For std::string word = "CODE";, what is word.size()?', ['3', '5', '0', '4'], 3, 'There are four characters in CODE.'),
-            $question('For std::string word = "cat";, what is word[0]?', ["'c'", "'a'", "'t'", "'0'"], 0, 'String indexing also starts at zero.'),
+            $question('Which reads a complete line that may contain spaces?', ['std::cin >> word;', 'std::cout << word;', 'std::getline(std::cin, word);', 'word.size();'], 2, 'getline reads through the line delimiter rather than stopping at the first space.'),
+            $question('How many elements are in char name[] = "Ada";?', ['3', '2', '5', '4'], 3, 'The C-style string also contains a null terminator.'),
+            $question('Which converts an integer 7 to a std::string?', ['std::to_string(7)', '7 + "" in every context', 'std::cin(7)', 'std::length(7)'], 0, 'to_string creates a textual representation of the number.'),
             $question('What does std::string("Code") + "Quest" produce?', ['Code Quest', 'CodeQuest', 'QuestCode', '9'], 1, 'String addition concatenates the two sequences without inserting a space.'),
             $question('How do the strings "Code" and "code" compare with ==?', ['Always equal', 'They cannot be compared', 'Not equal because case differs', 'Equal after automatic conversion'], 2, 'String comparison is case sensitive.'),
         ],
@@ -170,4 +170,5 @@ return [
         'assignment' => $task('Classroom supply budget', 'Read three non-negative integer supply counts, each at most 100. Each supply item costs 5 credits. Calculate the total item count and total cost. Print the count on the first line and cost on the second. Plan your variables and test zero counts.', [['3 5 7', "15\n75"], ['0 0 0', "0\n0"], ['0 4 0', "4\n20"]], ['Add the three counts before calculating cost.', 'Use a named constant for the price of 5 credits.']),
         'challenge' => $task('Classroom inventory keeper', 'Read startingStock, received and used in that order, each an integer from 0 to 1000. The input guarantees used <= startingStock + received. Calculate the stock left after receiving and using items, then print it. Explain your algorithm and test the case where all stock is used.', [['10 5 8', '7'], ['0 0 0', '0'], ['3 2 5', '0']], ['Compute available stock before subtracting used items.', 'The result should never be negative under the stated input constraints.']),
     ],
+    ...(require __DIR__.'/cpp_activity_templates.php'),
 ];

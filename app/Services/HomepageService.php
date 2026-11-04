@@ -26,7 +26,7 @@ class HomepageService
         $snapshot = [
             'available' => true, 'metrics' => null, 'student' => null, 'teacher' => null, 'catalog' => $catalog,
             'catalog_totals' => ['lessons' => count($catalog), 'practice_activities' => count(config('code_lab.activities')),
-                'challenges' => count(config('challenges')), 'milestones' => count(config('achievements'))],
+                'challenges' => collect(config('challenges'))->reject(fn (array $challenge): bool => ! empty($challenge['legacy']))->count(), 'milestones' => count(config('achievements'))],
             'rewards' => ['welcome' => Student::REGISTRATION_XP, 'correct_answer' => QuizRewards::XP_PER_ANSWER, 'perfect_quiz' => QuizRewards::PERFECT_BONUS],
             'example' => ['title' => config('lessons.output.title'), 'code' => config('lessons.output.code'), 'output' => config('lessons.output.output')],
             'year' => $now->year, 'updated_at' => $now->toIso8601String(), 'updated_label' => $now->format('M j, Y · g:i:s A').' (UTC+08:00)',

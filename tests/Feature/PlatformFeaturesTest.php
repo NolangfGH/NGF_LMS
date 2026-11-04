@@ -163,7 +163,8 @@ class PlatformFeaturesTest extends TestCase
         $this->assertSame(125, $student->fresh()->xp);
         $this->post(route('student.lesson.checkpoint', 'introduction'), ['answers' => $answers, 'reflection' => 'I checked the sequence again.'])->assertRedirect();
         $this->assertSame(125, $student->fresh()->xp);
-        $this->get(route('student.lesson.show', 'output'))->assertOk();
+        $this->get(route('student.lesson.show', 'get-started'))->assertOk();
+        $this->get(route('student.lesson.show', 'output'))->assertForbidden();
     }
 
     public function test_new_quiz_formats_are_checked_and_untimed_attempts_keep_their_snapshot(): void

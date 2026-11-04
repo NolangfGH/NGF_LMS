@@ -22,14 +22,17 @@
     <label class="min-w-48 flex-1 text-xs font-bold text-primary">Search lessons<input id="lesson-search" type="search" maxlength="100" placeholder="Try loops, input or variables" class="mt-2 w-full rounded-xl border border-black/10 bg-white p-3 text-sm"></label>
     <label class="text-xs font-bold text-primary">Progress<select id="lesson-status" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All progress</option><option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="completed">Checkpoint complete</option></select></label>
     <label class="text-xs font-bold text-primary">Source<select id="lesson-source" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All lessons</option><option value="assigned">Teacher assigned</option><option value="self">Self study</option></select></label>
+    <label class="text-xs font-bold text-primary">School Term<select id="lesson-term" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All terms</option><option value="Term1">Term 1 · Foundations</option><option value="Term2">Term 2 · Decisions & collections</option><option value="Term3">Term 3 · Data & functions</option></select></label>
     <button type="button" id="lesson-clear" class="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold text-primary">Clear</button>
 </section>
 <p id="lesson-result-count" class="mb-4 text-xs font-bold text-secondary" aria-live="polite">{{ $lessonPath['total'] }} lessons available</p>
 <section class="grid gap-5 xl:grid-cols-2" aria-label="C++ lessons">
 @foreach($lessonPath['cards'] as $lesson)
-    <article data-lesson-card data-title="{{ $lesson['title'].' '.$lesson['topic'].' '.$lesson['objective'] }}" data-status="{{ $lesson['status'] }}" data-source="{{ $lesson['plan'] ? 'assigned' : 'self' }}" class="flex flex-col rounded-2xl border border-black/5 bg-white p-6 shadow-card">
+    <article data-lesson-card data-title="{{ $lesson['title'].' '.$lesson['topic'].' '.$lesson['objective'].' '.implode(' ', $lesson['subtopics'] ?? []) }}" data-term="{{ $lesson['term'] ?? '' }}" data-status="{{ $lesson['status'] }}" data-source="{{ $lesson['plan'] ? 'assigned' : 'self' }}" class="flex flex-col rounded-2xl border border-black/5 bg-white p-6 shadow-card">
         <div class="flex items-start justify-between gap-3"><div class="flex items-center gap-3"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl {{ $lesson['status']==='completed' ? 'bg-primary text-white' : 'bg-paper text-secondary' }}"><span class="material-symbols-outlined">{{ $lesson['status']==='completed' ? 'check' : $lesson['icon'] }}</span></span><span class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Lesson {{ $loop->iteration }} · {{ $lesson['minutes'] }} min read</span></div><span class="rounded-full bg-paper px-2.5 py-1 text-[10px] font-bold text-secondary">{{ $lesson['plan'] ? 'Teacher assigned' : 'Self study' }}</span></div>
         <h2 class="mt-5 text-xl font-extrabold text-primary">{{ $lesson['title'] }}</h2><p class="mt-2 text-xs font-bold text-secondary">{{ $lesson['topic'] }}</p><p class="mt-3 flex-1 text-sm leading-6 text-muted">{{ $lesson['objective'] }}</p>
+        @if(!empty($lesson['legacy']))<p class="mt-3 text-xs font-semibold text-secondary">Earlier curriculum · kept for your saved learning work</p>@endif
+        @if(!empty($lesson['subtopics']))<details class="mt-4 rounded-xl bg-paper p-3 text-xs leading-6"><summary class="cursor-pointer font-bold text-primary">{{ $lesson['term'] }} · What you will learn</summary><p class="mt-2">{{ implode(' · ', $lesson['subtopics']) }}</p></details>@endif
         @if($lesson['plan'])
             <div class="mt-4 rounded-xl border border-secondary-soft bg-paper p-3 text-xs leading-5"><b class="text-primary">Teacher's learning target</b><p class="mt-1 text-muted">{{ $lesson['plan']->due_at ? $lesson['plan']->due_at->copy()->timezone(config('learning.timezone'))->format('M j, Y · g:i A').' (UTC+08:00)' : 'Work at your own pace' }}</p>@if($lesson['plan']->instructions)<p class="mt-2 whitespace-pre-wrap text-muted">{{ $lesson['plan']->instructions }}</p>@endif</div>
         @endif
@@ -39,5 +42,5 @@
 @endforeach
 </section>
 <p id="lesson-empty" hidden class="rounded-2xl border border-dashed border-secondary-soft bg-white p-8 text-center text-sm text-muted">No lessons match. Try another topic or clear the filters.</p>
-<script src="{{ asset('js/learn.js') }}" defer></script>
+<script src="{{ asset('js/learn.js') }}?v=20261104-curriculum" defer></script>
 @endsection

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CodeWorkspace;
+use App\Models\LessonContent;
 use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherLessonPlan;
@@ -14,18 +15,36 @@ class LessonService
         $route = request()->route()?->getName() ?? '';
         $teacherId = str_starts_with($route, 'teacher.') || str_starts_with($route, 'school.')
             ? session('teacher_id') : Student::find(session('student_id'))?->classroom?->teacher_account_id;
-        if (!$teacherId) $teacherId = session('teacher_id');
+        if (! $teacherId) {
+            $teacherId = session('teacher_id');
+        }
+
         return $this->catalogForTeacher($teacherId);
     }
 
     public function catalogForTeacher(?int $teacherId): array
     {
         $catalog = config('lessons');
-        if (!$teacherId) return $catalog;
-        foreach (\App\Models\LessonContent::where('teacher_account_id', $teacherId)->get() as $content) {
-            if ($content->status === 'published') $catalog[$content->lesson_key] = $content->definition + ['content_id' => $content->id];
-            else unset($catalog[$content->lesson_key]);
+        if (! $teacherId) {
+            return $catalog;
         }
+        $retired = array_diff_key(config('legacy_lessons'), $catalog);
+        $savedKeys = TeacherLessonPlan::where('teacher_account_id', $teacherId)->whereIn('lesson_key', array_keys($retired))
+            ->whereHas('classroom', fn ($query) => $query->where('teacher_account_id', $teacherId))->pluck('lesson_key')
+            ->merge(LessonProgress::whereIn('lesson_key', array_keys($retired))
+                ->whereHas('student.classroom', fn ($query) => $query->where('teacher_account_id', $teacherId))->pluck('lesson_key'));
+        foreach ($savedKeys->unique() as $key) {
+            $catalog[$key] = $retired[$key] + ['legacy' => true];
+        }
+        foreach (LessonContent::where('teacher_account_id', $teacherId)->get() as $content) {
+            if ($content->status === 'published') {
+                $catalog[$content->lesson_key] = $content->definition + ['content_id' => $content->id]
+                    + array_intersect_key($catalog[$content->lesson_key] ?? [], array_flip(['term', 'subtopics', 'reference_url', 'legacy']));
+            } else {
+                unset($catalog[$content->lesson_key]);
+            }
+        }
+
         return $catalog;
     }
 
@@ -49,7 +68,7 @@ class LessonService
         $previousComplete = true;
         foreach ($catalog as $key => $lesson) {
             $record = $progress->get($key);
-            $locked = (bool) $student->classroom?->sequential_learning && !$previousComplete && !$record?->completed_at;
+            $locked = (bool) $student->classroom?->sequential_learning && ! $previousComplete && ! $record?->completed_at;
             $cards[] = ['key' => $key, ...$lesson, 'locked' => $locked, 'progress' => $record, 'plan' => $plans->get($key), 'status' => $record?->completed_at ? 'completed' : ($record ? 'in_progress' : 'not_started'), 'practice_progress' => app(ChallengeService::class)->describe($workspaces->get('practice:'.$lesson['practice']))];
             $previousComplete = $previousComplete && (bool) $record?->completed_at;
         }
@@ -59,6 +78,6 @@ class LessonService
             ?? $available->filter(fn ($item) => $item['status'] !== 'completed' && $item['plan'])->first()
             ?? $available->firstWhere('status', 'not_started');
 
-        return ['cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key',array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key',array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count()];
+        return ['cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count()];
     }
 }

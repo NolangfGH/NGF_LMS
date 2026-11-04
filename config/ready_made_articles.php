@@ -131,4 +131,5 @@ return [
         ],
         'teacher_notes' => 'Expected totals are 15, 0 and 4. Both three variables and an array/loop can meet the contract; assess the explanation rather than requiring one without instruction. Look for zero cases, exact output and a clear plan that includes all three counts.',
     ],
+    ...array_map(static fn (array $template): array => $template['article'], require __DIR__.'/cpp_activity_templates.php'),
 ];
