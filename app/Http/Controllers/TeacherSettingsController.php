@@ -10,6 +10,7 @@ use App\Models\TeacherAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -77,6 +78,7 @@ class TeacherSettingsController extends Controller
             abort_if($current->isPrincipal() && $data['school'] !== $current->school, 422, 'School affiliation for Principal access must be confirmed by the System Admin.');
             if ($data['email'] !== $current->email) {
                 $this->confirmPassword($request, $current);
+                PasswordBroker::broker('staff')->deleteToken($current);
                 $current->forceFill(['email_verified_at' => null, 'session_version' => $current->session_version + 1]);
             }
             $current->fill($data)->save();
@@ -122,6 +124,7 @@ class TeacherSettingsController extends Controller
                 throw ValidationException::withMessages(['password' => 'Choose a new password different from your current password.']);
             }
             $current->forceFill(['password' => $data['password'], 'password_changed_at' => now(), 'session_version' => $current->session_version + 1])->save();
+            PasswordBroker::broker('staff')->deleteToken($current);
             $request->session()->regenerate();
             $request->session()->regenerateToken();
             $request->session()->put('teacher_session_version', $current->session_version);
@@ -137,6 +140,7 @@ class TeacherSettingsController extends Controller
             $current = TeacherAccount::whereKey($teacher->id)->lockForUpdate()->firstOrFail();
             $this->confirmPassword($request, $current);
             $current->forceFill(['session_version' => $current->session_version + 1])->save();
+            PasswordBroker::broker('staff')->deleteToken($current);
             $request->session()->regenerate();
             $request->session()->regenerateToken();
             $request->session()->put('teacher_session_version', $current->session_version);

@@ -65,10 +65,11 @@ class LessonService
         $workspaces = $workspaces->keyBy('activity_key');
         $cards = [];
         $catalog = $this->catalogForTeacher($student->classroom?->teacher_account_id);
+        $pretestRequired = ! app(CourseAssessments::class)->hasCompleted($student, CourseAssessments::PRE);
         $previousComplete = true;
         foreach ($catalog as $key => $lesson) {
             $record = $progress->get($key);
-            $locked = (bool) $student->classroom?->sequential_learning && ! $previousComplete && ! $record?->completed_at;
+            $locked = $pretestRequired || ((bool) $student->classroom?->sequential_learning && ! $previousComplete && ! $record?->completed_at);
             $cards[] = ['key' => $key, ...$lesson, 'locked' => $locked, 'progress' => $record, 'plan' => $plans->get($key), 'status' => $record?->completed_at ? 'completed' : ($record ? 'in_progress' : 'not_started'), 'practice_progress' => app(ChallengeService::class)->describe($workspaces->get('practice:'.$lesson['practice']))];
             $previousComplete = $previousComplete && (bool) $record?->completed_at;
         }
@@ -78,6 +79,6 @@ class LessonService
             ?? $available->filter(fn ($item) => $item['status'] !== 'completed' && $item['plan'])->first()
             ?? $available->firstWhere('status', 'not_started');
 
-        return ['cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count()];
+        return ['cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count(), 'pretest_required' => $pretestRequired];
     }
 }

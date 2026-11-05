@@ -38,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('home-live', fn (Request $request) => Limit::perMinute(12)->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
         RateLimiter::for('match-read', fn (Request $request) => Limit::perMinute(240)->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
         RateLimiter::for('match-write', fn (Request $request) => Limit::perMinute(120)->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
+        RateLimiter::for('staff-reset-request', fn (Request $request): Limit => Limit::perMinute(6)->by($request->ip()));
+        RateLimiter::for('staff-reset-submit', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
         RateLimiter::for('system-feedback', function (Request $request): Limit {
             $session = $request->session();
             $actor = $session->has('teacher_id') ? 'staff:'.$session->get('teacher_id')

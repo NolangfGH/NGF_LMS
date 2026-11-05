@@ -144,6 +144,7 @@ class PlatformFeaturesTest extends TestCase
     public function test_curriculum_content_resources_and_prerequisites_are_scoped_to_the_teacher(): void
     {
         extract($this->fixture());
+        $this->recordCompletedPretest($student, $peer);
         Storage::fake('local');
         $definition = config('lessons.arrays');
         $this->withSession(['teacher_id' => $teacher->id, 'student_id' => null]);
@@ -227,6 +228,7 @@ class PlatformFeaturesTest extends TestCase
     public function test_full_pages_render_and_generated_browser_scripts_can_be_checked(): void
     {
         extract($this->fixture());
+        $this->recordCompletedPretest($student);
         $directory = storage_path('framework/testing/lms-script-checks');
         File::ensureDirectoryExists($directory);
         $urls = [route('student.dashboard'), route('student.learn'), route('student.lesson.show', 'arrays'), route('student.code-lab', ['activity' => 'arrays']), route('student.leaderboard', ['period' => 'month'])];

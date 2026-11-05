@@ -119,6 +119,7 @@ class LessonCheckpointQuestionsTest extends TestCase
         $answers = array_column(config('lessons.output.checks'), 'correct');
         $evidence = ['version' => 1, 'score' => 3, 'total' => 3, 'answers' => array_slice($answers, 0, 3), 'reflection' => 'I traced each line in order.'];
         $record = LessonProgress::create(['student_id' => $student->id, 'lesson_key' => 'output', 'answers' => $evidence['answers'], 'attempts' => 1, 'latest_score' => 3, 'best_score' => 3, 'completed_at' => now(), 'started_at' => now(), 'last_opened_at' => now(), 'completion_evidence' => $evidence]);
+        $this->recordCompletedPretest($student);
         $this->withSession(['student_id' => $student->id]);
         $this->get(route('student.lesson.show', 'output'))->assertOk()->assertSee('Latest 3 / 3')->assertSee('Get all 5 questions correct');
         $this->get(route('teacher.lessons.progress'))->assertOk()->assertSee('Latest: 3 / 3');

@@ -6,6 +6,7 @@ use App\Models\TeacherAccount;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 class StaffAccessService
@@ -38,6 +39,7 @@ class StaffAccessService
             $role = $decision === 'approved' ? $data['role'] : $target->role;
             abort_if($decision === 'approved' && $role === 'principal' && $target->classrooms()->exists(), 422, 'Archive or reassign this account’s teaching classes before granting read-only Principal access.');
             $prior = $target->role;
+            Password::broker('staff')->deleteToken($target);
             $target->forceFill(['role' => $role, 'staff_access_status' => $decision === 'approved' ? 'active' : 'rejected',
                 'staff_reviewed_by' => $actor->id, 'staff_reviewed_at' => now(), 'staff_review_note' => $data['note'] ?? null,
                 'staff_revision' => $target->staff_revision + 1, 'session_version' => $target->session_version + 1])->save();
@@ -51,6 +53,7 @@ class StaffAccessService
         DB::transaction(function () use ($account): void {
             $current = TeacherAccount::whereKey($account->id)->lockForUpdate()->firstOrFail();
             $prior = $current->role;
+            Password::broker('staff')->deleteToken($current);
             $current->forceFill(['role' => 'school_admin', 'staff_access_status' => 'active', 'staff_reviewed_at' => now(),
                 'staff_revision' => $current->staff_revision + 1, 'session_version' => $current->session_version + 1])->save();
             DB::table('staff_role_reviews')->insert(['account_id' => $current->id, 'reviewer_id' => null, 'previous_role' => $prior,

@@ -2,11 +2,16 @@
 @section('content')@include('quest-map')
 <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
     <div><p class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Explore · understand · build</p><h1 class="mt-2 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Your C++ learning path</h1><p class="mt-3 max-w-2xl text-sm leading-6 text-muted">Small steps, real programs. Read an example, check your understanding, then build your own solution in Code Lab.</p></div>
-    <a href="{{ route('student.learn') }}" class="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold text-primary">↻ Refresh progress</a>
+    <a href="{{ route('student.assessments.index') }}" class="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold text-primary">Pre-test, post-test &amp; certificate →</a>
 </div>
 <section class="mb-6 grid gap-5 lg:grid-cols-[1.35fr_1fr]">
     <article class="rounded-2xl bg-primary p-6 text-white shadow-card sm:p-8">
-        @if($lessonPath['next'])
+        @if($lessonPath['pretest_required'])
+            <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest">Your first step</span>
+            <h2 class="mt-5 text-2xl font-extrabold">Take the C++ pre-test</h2>
+            <p class="mt-3 text-sm leading-6 text-green-100">Submit the pre-test to unlock Introduction and the rest of the lesson path. Your score shows your starting point.</p>
+            <a href="{{ route('student.assessments.show', 'pre-test') }}" class="mt-6 inline-flex rounded-xl bg-secondary-soft px-5 py-3 text-sm font-bold text-primary">Open pre-test →</a>
+        @elseif($lessonPath['next'])
             <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest">Your next step</span><h2 class="mt-5 text-2xl font-extrabold">{{ $lessonPath['next']['title'] }}</h2><p class="mt-3 text-sm leading-6 text-green-100">{{ $lessonPath['next']['objective'] }}</p>
             <a href="{{ route('student.lesson.show',$lessonPath['next']['key']) }}#section-{{ $lessonPath['next']['progress']?->last_section ?? 0 }}" class="mt-6 inline-flex rounded-xl bg-secondary-soft px-5 py-3 text-sm font-bold text-primary">{{ $lessonPath['next']['status']==='in_progress' ? 'Continue lesson' : 'Start learning' }} →</a>
             <span class="ml-3 text-xs text-green-100">About {{ $lessonPath['next']['minutes'] }} min to read</span>
@@ -37,7 +42,7 @@
             <div class="mt-4 rounded-xl border border-secondary-soft bg-paper p-3 text-xs leading-5"><b class="text-primary">Teacher's learning target</b><p class="mt-1 text-muted">{{ $lesson['plan']->due_at ? $lesson['plan']->due_at->copy()->timezone(config('learning.timezone'))->format('M j, Y · g:i A').' (UTC+08:00)' : 'Work at your own pace' }}</p>@if($lesson['plan']->instructions)<p class="mt-2 whitespace-pre-wrap text-muted">{{ $lesson['plan']->instructions }}</p>@endif</div>
         @endif
         <div class="mt-5 space-y-2 border-t border-black/5 pt-4 text-xs"><p class="text-primary"><b>{{ ['not_started'=>'Ready to learn','in_progress'=>'In progress','completed'=>'Checkpoint complete'][$lesson['status']] }}</b>@if($lesson['progress']?->attempts) · Best {{ $lesson['progress']->best_score }} / {{ count($lesson['checks']) }}@endif</p><p class="text-muted">Code Lab: {{ $lesson['practice_progress']['label'] }}</p>@if($lesson['progress']?->teacher_feedback)<p class="font-bold text-secondary">Teacher feedback available in this lesson</p>@endif</div>
-        <div class="mt-5 flex flex-wrap gap-3">@if($lesson['locked'])<span class="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">🔒 Complete earlier checkpoints</span>@else<a href="{{ route('student.lesson.show',$lesson['key']) }}#section-{{ $lesson['progress']?->last_section ?? 0 }}" class="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-tactile">{{ ['not_started'=>'Start lesson','in_progress'=>'Continue lesson','completed'=>'Revisit lesson'][$lesson['status']] }} →</a><a href="{{ route('student.code-lab',['activity'=>$lesson['practice']]) }}" class="rounded-xl border border-black/10 px-4 py-3 text-sm font-bold text-primary">Practise in Code Lab</a>@endif</div>
+        <div class="mt-5 flex flex-wrap gap-3">@if($lesson['locked'])<span class="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">🔒 {{ $lessonPath['pretest_required'] ? 'Pre-test required' : 'Complete earlier checkpoints' }}</span>@else<a href="{{ route('student.lesson.show',$lesson['key']) }}#section-{{ $lesson['progress']?->last_section ?? 0 }}" class="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-tactile">{{ ['not_started'=>'Start lesson','in_progress'=>'Continue lesson','completed'=>'Revisit lesson'][$lesson['status']] }} →</a><a href="{{ route('student.code-lab',['activity'=>$lesson['practice']]) }}" class="rounded-xl border border-black/10 px-4 py-3 text-sm font-bold text-primary">Practise in Code Lab</a>@endif</div>
     </article>
 @endforeach
 </section>

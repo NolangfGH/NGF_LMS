@@ -42,7 +42,7 @@
                 <label class="block" for="email"><span class="mb-2 block text-sm font-bold">School email or System Admin/Teacher ID <span class="text-red-600">*</span></span>
                     <input id="email" name="identifier" type="text" required autocomplete="username" placeholder="School email or System Admin/Teacher ID" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100">
                 </label>
-                <div><div class="mb-2 flex items-center justify-between gap-3"><label for="password" class="text-sm font-bold">Password</label><button type="button" id="forgot-password" class="text-xs font-semibold text-primary hover:underline">Forgot password?</button></div>
+                <div><div class="mb-2 flex items-center justify-between gap-3"><label for="password" class="text-sm font-bold">Password</label><a href="{{ route('staff.password.request') }}" class="text-xs font-semibold text-primary hover:underline">Forgot username or password?</a></div>
                     <div class="relative"><input id="password" name="password" type="password" required autocomplete="current-password" placeholder="Password" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-14 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100"><button id="toggle-password" type="button" aria-label="Show password" class="absolute right-3 top-3 text-xs font-bold text-secondary">Show</button></div>
                 </div>
                 <button id="submit" type="submit" class="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white shadow-[0_4px_0_#022100] hover:bg-green-800 disabled:opacity-60">Sign In to Classroom Workspace →</button>
@@ -64,7 +64,7 @@ document.getElementById('toggle-password').onclick = event => {
     event.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
     event.target.setAttribute('aria-label', input.type === 'password' ? 'Show password' : 'Hide password');
 };
-document.getElementById('forgot-password').onclick = () => showFeedback('Contact your school administrator to arrange a password reset.');
+
 document.getElementById('teacher-login-form').onsubmit = async event => {
     event.preventDefault();
     const button = document.getElementById('submit');

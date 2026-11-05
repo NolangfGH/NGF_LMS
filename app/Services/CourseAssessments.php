@@ -1,0 +1,148 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\LessonProgress;
+use App\Models\Student;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use stdClass;
+
+class CourseAssessments
+{
+    public const PRE = 'pre-test';
+
+    public const POST = 'post-test';
+
+    public const REASONING = 'reasoning';
+
+    public const TITLES = [
+        self::PRE => 'C++ Pre-Test',
+        self::POST => 'C++ Post-Test',
+        self::REASONING => 'Grade 8 Reasoning Challenge',
+    ];
+
+    public function hasCompleted(Student $student, string $assessment): bool
+    {
+        return DB::table('course_assessment_results')->where('student_id', $student->id)->where('assessment', $assessment)->exists();
+    }
+
+    public function results(Student $student): Collection
+    {
+        return DB::table('course_assessment_results')->where('student_id', $student->id)->get()->keyBy('assessment');
+    }
+
+    public function progress(Student $student): array
+    {
+        $keys = array_keys(config('lessons'));
+        $completed = LessonProgress::where('student_id', $student->id)->whereIn('lesson_key', $keys)->whereNotNull('completed_at')->count();
+
+        return ['completed' => $completed, 'total' => count($keys)];
+    }
+
+    public function canTakePostTest(Student $student): bool
+    {
+        $progress = $this->progress($student);
+
+        return $progress['total'] > 0 && $progress['completed'] === $progress['total'] && $this->hasCompleted($student, self::PRE);
+    }
+
+    /** @return list<array{skill: string, type: string, prompt: string, options: list<string>, correct: list<string>}> */
+    public function questions(string $assessment): array
+    {
+        $questions = [];
+        foreach (config('course_assessments.'.$assessment, []) as $skill => $bank) {
+            foreach (explode("\n", trim($bank)) as $row) {
+                [$type, $prompt, $answer] = $parts = explode(' | ', trim($row));
+                $correct = $type === 'multiple_answer' ? explode(' / ', $answer) : [$answer];
+                $options = array_slice($parts, 3);
+                if ($options && $type !== 'multiple_answer') {
+                    array_splice($options, crc32($prompt) % (count($options) + 1), 0, $correct);
+                }
+                $questions[] = ['skill' => $skill, 'type' => $type, 'prompt' => $prompt, 'options' => $options, 'correct' => $correct];
+            }
+        }
+
+        return $questions;
+    }
+
+    /** @return list<array{skill: string, type: string, prompt: string, options: list<string>}> */
+    public function publicQuestions(string $assessment): array
+    {
+        return array_map(static fn (array $question): array => Arr::except($question, ['correct']), $this->questions($assessment));
+    }
+
+    public function answerRules(array $questions): array
+    {
+        $rules = ['answers' => ['required', 'array:'.implode(',', array_keys($questions)), 'size:'.count($questions)]];
+        foreach ($questions as $index => $question) {
+            $field = 'answers.'.$index;
+            if ($question['type'] === 'multiple_answer') {
+                $rules[$field] = ['required', 'array', 'min:1', 'max:'.count($question['options'])];
+                $rules[$field.'.*'] = ['required', 'string', 'distinct', Rule::in($question['options'])];
+            } elseif ($question['type'] === 'identification') {
+                $rules[$field] = ['required', 'string', 'max:80'];
+            } else {
+                $rules[$field] = ['required', 'string', Rule::in($question['options'])];
+            }
+        }
+
+        return $rules;
+    }
+
+    public function submit(Student $student, string $assessment, array $questions, array $answers, QuizGrader $grader): void
+    {
+        DB::transaction(function () use ($student, $assessment, $questions, $answers, $grader): void {
+            $current = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
+            abort_unless($current->classroom && ! $current->classroom->archived_at, 403);
+            if ($this->hasCompleted($current, $assessment)) {
+                return;
+            }
+            abort_if($assessment === self::POST && ! $this->canTakePostTest($current), 403, 'Complete the pre-test and every core lesson checkpoint to take the post-test.');
+            $grade = $grader->grade($questions, $answers);
+            $details = json_decode($grade['grading_results'], true, flags: JSON_THROW_ON_ERROR);
+            $skills = [];
+            foreach ($questions as $index => $question) {
+                $skill = $question['skill'];
+                $skills[$skill] ??= ['score' => 0, 'total' => 0];
+                $skills[$skill]['total']++;
+                $skills[$skill]['score'] += (int) $details[$index]['correct'];
+            }
+
+            $completedAt = now();
+            DB::table('course_assessment_results')->insert([
+                'student_id' => $current->id, 'assessment' => $assessment, 'score' => $grade['score'],
+                'total_questions' => $grade['total_questions'], 'skill_scores' => json_encode($skills, JSON_THROW_ON_ERROR), 'completed_at' => $completedAt,
+            ]);
+            if ($assessment === self::POST) {
+                $teacher = $current->classroom->teacher;
+                $recipient = trim(implode(' ', array_filter([$current->first_name, $current->middle_name, $current->surname])));
+                DB::table('course_certificates')->insert([
+                    'student_id' => $current->id, 'teacher_account_id' => $teacher?->id,
+                    'certificate_code' => (string) Str::ulid(), 'recipient' => $recipient ?: $current->nickname,
+                    'school' => $teacher?->school ?: 'NGF_C++CodeQuest', 'issuer' => $teacher?->fullName() ?: 'NGF_C++CodeQuest',
+                    'title' => 'Certificate of Completion', 'message' => 'Has completed the C++ Programming course, including all required lesson checkpoints and the course assessments.',
+                    'issued_at' => $completedAt,
+                ]);
+            }
+        }, 3);
+    }
+
+    public function certificate(Student $student): ?stdClass
+    {
+        return DB::table('course_certificates')->where('student_id', $student->id)->first();
+    }
+
+    public static function practiceBand(int $score, int $total): string
+    {
+        return match (true) {
+            $score * 10 >= $total * 9 => 'Ready for a stretch task',
+            $score * 10 >= $total * 7 => 'Secure on these items',
+            $score * 10 >= $total * 4 => 'Developing with practice',
+            default => 'Start with guided examples',
+        };
+    }
+}

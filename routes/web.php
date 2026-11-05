@@ -11,6 +11,7 @@ use App\Http\Controllers\ClassReportController;
 use App\Http\Controllers\CodeExecutionController;
 use App\Http\Controllers\CodeLabController;
 use App\Http\Controllers\CodingMatchController;
+use App\Http\Controllers\CourseAssessmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GradingSheetController;
 use App\Http\Controllers\HomeController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\QuizBeeController;
 use App\Http\Controllers\QuizSubmissionController;
 use App\Http\Controllers\SchoolAdminController;
 use App\Http\Controllers\SecondChanceController;
+use App\Http\Controllers\StaffPasswordController;
 use App\Http\Controllers\StaffRegistrationStatusController;
 use App\Http\Controllers\StudentRegistrationApprovalController;
 use App\Http\Controllers\StudentRegistrationStatusController;
@@ -30,6 +32,7 @@ use App\Http\Controllers\TeacherLessonController;
 use App\Http\Controllers\TeacherSettingsController;
 use App\Http\Controllers\TeacherStudentController;
 use App\Http\Controllers\TeachingLibraryController;
+use App\Http\Middleware\RequireCoursePretest;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
@@ -79,7 +82,7 @@ Route::post('/teaching-library/{key}/{kind}', [TeachingLibraryController::class,
 Route::get('/teacher-content/{key}/edit', [LessonContentController::class, 'edit'])->where('key', '[a-z0-9-]+')->name('teacher.content.edit');
 Route::post('/teacher-content/{key}', [LessonContentController::class, 'save'])->where('key', '[a-z0-9-]+')->name('teacher.content.save');
 Route::get('/teacher-content/{content}/image', [LessonContentController::class, 'image'])->whereNumber('content')->name('teacher.content.image');
-Route::get('/lesson-resource/{content}', [LessonContentController::class, 'image'])->whereNumber('content')->name('student.lesson.image');
+Route::get('/lesson-resource/{content}', [LessonContentController::class, 'image'])->whereNumber('content')->middleware(RequireCoursePretest::class)->name('student.lesson.image');
 
 Route::post('/code-lab/{workspace}/run', [CodeExecutionController::class, 'store'])->middleware('throttle:compiler-run')->name('student.code-runs.store');
 Route::get('/code-runs/{run}', [CodeExecutionController::class, 'show'])->middleware('throttle:match-read')->name('student.code-runs.show');
@@ -209,11 +212,24 @@ Route::post('/student-logout', [StudentSettingsController::class, 'logout'])->na
 Route::get('/learn', [HomeController::class, 'studentLearn'])->name('student.learn');
 Route::get('/student-assignments', [HomeController::class, 'studentAssignments'])->name('student.assignments');
 Route::post('/student-assignments/{assignment}/open', [CodeLabController::class, 'openAssignment'])->middleware('throttle:60,1')->name('student.assignments.open');
-Route::get('/lesson', [LessonController::class, 'resume'])->name('student.lesson');
-Route::get('/lesson/{lesson}', [LessonController::class, 'show'])->name('student.lesson.show');
-Route::post('/lesson/{lesson}/bookmark', [LessonController::class, 'bookmark'])->middleware('throttle:60,1')->name('student.lesson.bookmark');
-Route::post('/lesson/{lesson}/checkpoint', [LessonController::class, 'checkpoint'])->middleware('throttle:20,1')->name('student.lesson.checkpoint');
-Route::post('/lesson/{lesson}/support', [LessonController::class, 'support'])->middleware('throttle:20,1')->name('student.lesson.support');
+Route::prefix('lesson')->name('student.lesson')->controller(LessonController::class)->middleware(RequireCoursePretest::class)->group(function () {
+    Route::get('/', 'resume');
+    Route::get('/{lesson}', 'show')->name('.show');
+    Route::post('/{lesson}/bookmark', 'bookmark')->middleware('throttle:60,1')->name('.bookmark');
+    Route::post('/{lesson}/checkpoint', 'checkpoint')->middleware('throttle:20,1')->name('.checkpoint');
+    Route::post('/{lesson}/support', 'support')->middleware('throttle:20,1')->name('.support');
+});
+Route::prefix('course-assessments')->name('student.assessments.')->controller(CourseAssessmentController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/certificate', 'studentCertificate')->name('certificate');
+    Route::get('/{assessment}', 'show')->where('assessment', 'pre-test|post-test|reasoning')->name('show');
+    Route::post('/{assessment}', 'submit')->where('assessment', 'pre-test|post-test|reasoning')->middleware('throttle:match-write')->name('submit');
+});
+Route::prefix('teacher-course-certificates')->name('teacher.certificates.')->controller(CourseAssessmentController::class)->group(function () {
+    Route::get('/{student}', 'editCertificate')->whereNumber('student')->name('edit');
+    Route::put('/{student}', 'updateCertificate')->whereNumber('student')->middleware('throttle:match-write')->name('update');
+    Route::get('/{student}/print', 'teacherCertificate')->whereNumber('student')->name('print');
+});
 Route::get('/teacher-lessons', [TeacherLessonController::class, 'index'])->name('teacher.lessons');
 Route::post('/teacher-lessons', [TeacherLessonController::class, 'store'])->name('teacher.lessons.store');
 Route::put('/teacher-lessons/{plan}', [TeacherLessonController::class, 'update'])->name('teacher.lessons.update');
@@ -259,6 +275,12 @@ Route::get('/reports', [ClassReportController::class, 'index'])->name('teacher.r
 Route::get('/reports/export', [ClassReportController::class, 'export'])->name('teacher.reports.export');
 Route::view('/teacher-login', 'teacher-login')->name('teacher.login');
 Route::post('/teacher-login', [HomeController::class, 'loginTeacher'])->name('teacher.login.store');
+Route::prefix('staff-password')->name('staff.password.')->controller(StaffPasswordController::class)->group(function () {
+    Route::get('/forgot', 'request')->name('request');
+    Route::post('/forgot', 'email')->middleware('throttle:staff-reset-request')->name('email');
+    Route::get('/reset/{token}', 'form')->where('token', '[a-f0-9]{64}')->name('reset');
+    Route::post('/reset', 'reset')->middleware('throttle:staff-reset-submit')->name('update');
+});
 Route::get('/teacher-logout', [HomeController::class, 'logoutTeacher'])->name('teacher.logout');
 Route::view('/teacher-register', 'teacher-register')->name('teacher.register');
 Route::post('/teacher-register', [HomeController::class, 'registerTeacher'])->name('teacher.register.store');

@@ -28,6 +28,7 @@ class LearningPathTest extends TestCase
         $student = Student::create(['classroom_id' => $room->id, 'first_name' => 'Alex', 'nickname' => 'MyLearner', 'student_id' => 'LEARN1', 'password' => 'password123', 'xp' => 100]);
         $peer = Student::create(['classroom_id' => $other->id, 'first_name' => 'Peer', 'nickname' => 'PeerLearner', 'student_id' => 'LEARN2', 'password' => 'password123', 'xp' => 100]);
         $stranger = Student::create(['classroom_id' => $foreign->id, 'first_name' => 'Private', 'nickname' => 'PrivateLearner', 'student_id' => 'LEARN3', 'password' => 'password123', 'xp' => 100]);
+        $this->recordCompletedPretest($student, $peer, $stranger);
         $this->withSession(['teacher_id' => $teacher->id, 'student_id' => $student->id]);
         $payload = ['lesson_key' => 'output', 'classroom_ids' => [$room->id, $other->id], 'instructions' => 'Trace both lines before you try the checkpoint.', 'status' => 'published', 'due_at' => '2026-11-01T09:30'];
 
