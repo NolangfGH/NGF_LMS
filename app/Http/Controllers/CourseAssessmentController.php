@@ -23,7 +23,9 @@ class CourseAssessmentController extends Controller
             return redirect()->route('student.login');
         }
 
-        return $this->studentView('course-assessments.index', $student, $this->assessments->results($student));
+        return $this->studentView('course-assessments.index', $student, $this->assessments->results($student), [
+            'certificate' => $this->assessments->certificate($student),
+        ]);
     }
 
     public function show(string $assessment): Response|RedirectResponse
@@ -34,12 +36,11 @@ class CourseAssessmentController extends Controller
         }
         $results = $this->assessments->results($student);
         $result = $results->get($assessment);
-        $locked = ! $result && $assessment === CourseAssessments::POST && ! $this->assessments->canTakePostTest($student);
 
         return $this->studentView('course-assessments.show', $student, $results, [
-            'assessment' => $assessment, 'title' => CourseAssessments::TITLES[$assessment], 'locked' => $locked,
+            'assessment' => $assessment, 'title' => CourseAssessments::TITLES[$assessment],
             'result' => $result, 'skills' => $result ? json_decode($result->skill_scores, true, flags: JSON_THROW_ON_ERROR) : [],
-            'questions' => $locked || $result ? [] : $this->assessments->publicQuestions($assessment),
+            'questions' => $result ? [] : $this->assessments->publicQuestions($assessment),
         ]);
     }
 
@@ -50,7 +51,6 @@ class CourseAssessmentController extends Controller
         if ($this->assessments->hasCompleted($student, $assessment)) {
             return redirect()->route('student.assessments.show', $assessment);
         }
-        abort_if($assessment === CourseAssessments::POST && ! $this->assessments->canTakePostTest($student), 403, 'Complete the pre-test and every core lesson checkpoint to take the post-test.');
         $questions = $this->assessments->questions($assessment);
         $data = $request->validate($this->assessments->answerRules($questions));
         $this->assessments->submit($student, $assessment, $questions, $data['answers'], $grader);
@@ -85,14 +85,15 @@ class CourseAssessmentController extends Controller
     {
         [$teacher, $learner] = $this->teacherAndStudent($student);
         $data = $request->validate([
-            'revision' => ['required', 'integer', 'min:1'], 'title' => ['required', 'string', 'max:120'], 'message' => ['required', 'string', 'max:600'],
+            'certificate_id' => ['required', 'integer', 'min:1'], 'revision' => ['required', 'integer', 'min:1'],
+            'title' => ['required', 'string', 'max:120'], 'message' => ['required', 'string', 'max:600'],
         ]);
         $updated = DB::transaction(function () use ($teacher, $learner, $data): int {
             $current = Student::whereKey($learner->id)->lockForUpdate()->firstOrFail();
             abort_unless($current->classroom?->teacher_account_id === $teacher->id && ! $current->classroom->archived_at, 403);
 
             return DB::table('course_certificates')->where('student_id', $current->id)->where('teacher_account_id', $teacher->id)
-                ->where('revision', $data['revision'])->update([
+                ->where('id', $data['certificate_id'])->where('revision', $data['revision'])->update([
                     'title' => $data['title'], 'message' => $data['message'], 'revision' => (int) $data['revision'] + 1,
                 ]);
         }, 3);
@@ -116,7 +117,7 @@ class CourseAssessmentController extends Controller
         return response()->view($view, $data + [
             'student' => $student, 'classroom' => $student->classroom,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A'),
-            'pretest' => $results->get(CourseAssessments::PRE), 'posttest' => $results->get(CourseAssessments::POST),
+            'pretest' => $results->get(CourseAssessments::PRE),
             'reasoning' => $results->get(CourseAssessments::REASONING), 'courseProgress' => $this->assessments->progress($student),
         ])->header('Cache-Control', 'private, no-store');
     }

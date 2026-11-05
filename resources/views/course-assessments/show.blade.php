@@ -6,25 +6,13 @@
 @if($assessment === 'reasoning')
     <p class="mb-5 max-w-3xl text-sm leading-6">This 50-question Grade 8 practice exercise reports your performance on these items. The skill breakdown is for classroom practice and personal reflection.</p>
 @endif
-@if($locked)
-    <div class="rounded-2xl border border-green-100 bg-white p-6">
-        <h2 class="text-lg font-extrabold text-primary">Post-test locked</h2>
-        <p class="mt-2 text-sm leading-6">Submit the pre-test and complete all {{ $courseProgress['total'] }} core checkpoints. You’ve completed {{ $courseProgress['completed'] }} so far.</p>
-        <a href="{{ $pretest ? route('student.learn') : route('student.assessments.show', 'pre-test') }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">{{ $pretest ? 'Continue lessons' : 'Open pre-test' }} →</a>
-    </div>
-@elseif($result)
+@if($result)
     <div class="rounded-2xl border border-green-100 bg-white p-6 shadow-card">
         <p class="text-xs font-bold uppercase text-secondary">Saved result · {{ \Illuminate\Support\Carbon::parse($result->completed_at)->timezone(config('learning.timezone'))->format('M j, Y') }}</p>
         <h2 class="mt-2 text-3xl font-extrabold text-primary">{{ $result->score }} / {{ $result->total_questions }} correct</h2>
         @if($assessment === 'pre-test')
             <p class="mt-3 text-sm">Your pre-test is complete. You can now open the C++ lessons.</p>
             <a href="{{ route('student.learn') }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Open the learning path →</a>
-        @elseif($assessment === 'post-test')
-            @if($pretest)
-                @php($change = round(100 * ($result->score / $result->total_questions - $pretest->score / $pretest->total_questions), 1))
-                <p class="mt-3 text-sm">Pre-test {{ $pretest->score }} / {{ $pretest->total_questions }} · Post-test {{ $result->score }} / {{ $result->total_questions }} · {{ $change > 0 ? '+' : '' }}{{ $change }} percentage points across the two tests</p>
-            @endif
-            <a href="{{ route('student.assessments.certificate') }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Open completion certificate →</a>
         @else
             <p class="mt-3 text-sm font-bold text-primary">{{ \App\Services\CourseAssessments::practiceBand($result->score, $result->total_questions) }}</p>
             <p class="mt-2 text-sm leading-6">Practise the areas with the fewest correct answers first. For each area and the overall result, 90–100% suggests a stretch task, 70–89% is secure, 40–69% is developing, and below 40% suggests starting with guided examples.</p>

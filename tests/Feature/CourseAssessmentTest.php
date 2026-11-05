@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Classroom;
-use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\CourseAssessments;
@@ -29,14 +28,14 @@ class CourseAssessmentTest extends TestCase
         $this->postJson(route('student.lesson.checkpoint', 'introduction'), [])->assertForbidden();
         $this->assertDatabaseEmpty('lesson_progress');
 
-        $this->get($pretest)->assertOk()->assertSee('Answer all 25 questions')->assertViewHas('questions', fn (array $items): bool => ! isset($items[0]['correct']));
+        $this->get($pretest)->assertOk()->assertSee('Answer all 50 questions')->assertViewHas('questions', fn (array $items): bool => ! isset($items[0]['correct']));
         $submit = route('student.assessments.submit', CourseAssessments::PRE);
         $this->postJson($submit, ['answers' => ['made up choice']])->assertUnprocessable();
         $this->assertDatabaseEmpty('course_assessment_results');
         $questions = app(CourseAssessments::class)->questions(CourseAssessments::PRE);
         $wrong = array_map(fn (array $question): string => array_values(array_diff($question['options'], $question['correct']))[0], $questions);
         $this->post($submit, ['answers' => $wrong])->assertRedirect($pretest);
-        $this->get($pretest)->assertOk()->assertSee('0 / 25 correct')->assertSee('You can now open the C++ lessons');
+        $this->get($pretest)->assertOk()->assertSee('0 / 50 correct')->assertSee('You can now open the C++ lessons');
         $this->get($intro)->assertOk();
         $this->post($submit, ['answers' => $this->answers(CourseAssessments::PRE)])->assertRedirect($pretest);
         $this->assertDatabaseHas('course_assessment_results', ['student_id' => $student->id, 'assessment' => CourseAssessments::PRE, 'score' => 0]);
@@ -44,33 +43,20 @@ class CourseAssessmentTest extends TestCase
         $this->assertSame(100, $student->fresh()->xp);
     }
 
-    public function test_posttest_issues_one_private_printable_certificate_that_the_teacher_can_edit(): void
+    public function test_legacy_completion_certificate_stays_private_printable_and_editable_by_its_teacher(): void
     {
         [$teacher, $student, $peer] = $this->classroom();
-        $posttest = route('student.assessments.show', CourseAssessments::POST);
-        $submit = route('student.assessments.submit', CourseAssessments::POST);
         $print = route('student.assessments.certificate');
-        $this->withSession(['student_id' => $student->id])->post(route('student.assessments.submit', CourseAssessments::PRE), ['answers' => $this->answers(CourseAssessments::PRE)])->assertRedirect();
-        $keys = array_keys(config('lessons'));
-        foreach (array_slice($keys, 0, -1) as $key) {
-            LessonProgress::create(['student_id' => $student->id, 'lesson_key' => $key, 'started_at' => now(), 'last_opened_at' => now(), 'completed_at' => now()]);
-        }
-        $this->get($posttest)->assertOk()->assertSee('Post-test locked')->assertViewHas('questions', []);
-        $this->postJson($submit, ['answers' => $this->answers(CourseAssessments::POST)])->assertForbidden();
-        $this->get($print)->assertNotFound();
-        LessonProgress::create(['student_id' => $student->id, 'lesson_key' => end($keys), 'started_at' => now(), 'last_opened_at' => now(), 'completed_at' => now()]);
-        $this->get($posttest)->assertOk()->assertSee('Answer all 25 questions');
-        $this->post($submit, ['answers' => $this->answers(CourseAssessments::POST)])->assertRedirect($posttest);
-        $this->get($posttest)->assertOk()->assertSee('25 / 25 correct')->assertSee('Open completion certificate');
-        $certificate = DB::table('course_certificates')->sole();
-        $this->assertSame('Test Cadet', $certificate->recipient);
-        $this->post($submit, ['answers' => $this->answers(CourseAssessments::POST)])->assertRedirect($posttest);
-        $this->assertDatabaseCount('course_certificates', 1);
-        $this->get($print)->assertOk()->assertSee($certificate->certificate_code)->assertSee('Print / Save as PDF');
+        $certificate = DB::table('course_certificates')->insertGetId([
+            'student_id' => $student->id, 'teacher_account_id' => $teacher->id, 'certificate_code' => 'LEGACY-CERTIFICATE',
+            'recipient' => 'Test Cadet', 'school' => $teacher->school, 'issuer' => $teacher->fullName(),
+            'title' => 'Original course certificate', 'message' => 'Completed the course.', 'issued_at' => now(),
+        ]);
+        $this->withSession(['student_id' => $student->id])->get($print)->assertOk()->assertSee('LEGACY-CERTIFICATE')->assertSee('Print / Save as PDF');
 
         $edit = route('teacher.certificates.edit', $student);
         $update = route('teacher.certificates.update', $student);
-        $payload = ['title' => 'C++ Course Completion', 'message' => 'Completed the core C++ learning path.', 'revision' => 1, 'recipient' => 'Forged name'];
+        $payload = ['certificate_id' => $certificate, 'title' => 'C++ Course Completion', 'message' => 'Completed the core C++ learning path.', 'revision' => 1, 'recipient' => 'Forged name'];
         $this->withSession(['student_id' => $peer->id])->get($print)->assertNotFound();
         $this->putJson($update, $payload)->assertForbidden();
         $this->withSession(['student_id' => null, 'teacher_id' => $this->staff('other-course')->id])->get($edit)->assertNotFound();
@@ -86,7 +72,7 @@ class CourseAssessmentTest extends TestCase
         [, $student, $peer] = $this->classroom();
         $assessments = app(CourseAssessments::class);
         $prompts = [];
-        foreach ([CourseAssessments::PRE => 25, CourseAssessments::POST => 25, CourseAssessments::REASONING => 50] as $kind => $count) {
+        foreach ([CourseAssessments::PRE => 50, CourseAssessments::POST => 50, CourseAssessments::REASONING => 50] as $kind => $count) {
             $questions = $assessments->questions($kind);
             $this->assertCount($count, $questions);
             $this->assertSame($count, app(QuizGrader::class)->grade($questions, $this->answers($kind))['score']);
@@ -98,7 +84,7 @@ class CourseAssessmentTest extends TestCase
             }
             array_push($prompts, ...array_column($questions, 'prompt'));
         }
-        $this->assertCount(100, array_unique($prompts));
+        $this->assertCount(150, array_unique($prompts));
         $questions = $assessments->questions(CourseAssessments::REASONING);
         $this->assertCount(5, array_unique(array_column($questions, 'skill')));
         $this->assertEqualsCanonicalizing(['multiple_choice', 'identification', 'multiple_answer', 'true_false'], array_values(array_unique(array_column($questions, 'type'))));

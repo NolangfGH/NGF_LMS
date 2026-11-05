@@ -20,6 +20,13 @@ use Illuminate\Support\Str;
 
 class LearningNotifications
 {
+    public function postTestCodeRequested(Student $student, int $requestId): void
+    {
+        $this->send('teacher', $student->classroom?->teacher_account_id, 'quizzes', 'post-test-code:'.$requestId,
+            'Post-test code requested', $student->nickname.' is ready for the C++ certification exam. Open Post-test codes to issue a personal code.',
+            'post_test_code', $requestId);
+    }
+
     public function ilawPlanEvaluated(int $teacherId, int $planId, int $revision): void
     {
         $this->send('teacher', $teacherId, 'feedback', 'ilaw-evaluated:'.$planId.':'.$revision, 'ILAW lesson plan evaluated',

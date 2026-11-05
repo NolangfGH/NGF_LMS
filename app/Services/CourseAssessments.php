@@ -95,13 +95,13 @@ class CourseAssessments
 
     public function submit(Student $student, string $assessment, array $questions, array $answers, QuizGrader $grader): void
     {
+        abort_if($assessment === self::POST, 403);
         DB::transaction(function () use ($student, $assessment, $questions, $answers, $grader): void {
             $current = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
             abort_unless($current->classroom && ! $current->classroom->archived_at, 403);
             if ($this->hasCompleted($current, $assessment)) {
                 return;
             }
-            abort_if($assessment === self::POST && ! $this->canTakePostTest($current), 403, 'Complete the pre-test and every core lesson checkpoint to take the post-test.');
             $grade = $grader->grade($questions, $answers);
             $details = json_decode($grade['grading_results'], true, flags: JSON_THROW_ON_ERROR);
             $skills = [];
@@ -117,23 +117,26 @@ class CourseAssessments
                 'student_id' => $current->id, 'assessment' => $assessment, 'score' => $grade['score'],
                 'total_questions' => $grade['total_questions'], 'skill_scores' => json_encode($skills, JSON_THROW_ON_ERROR), 'completed_at' => $completedAt,
             ]);
-            if ($assessment === self::POST) {
-                $teacher = $current->classroom->teacher;
-                $recipient = trim(implode(' ', array_filter([$current->first_name, $current->middle_name, $current->surname])));
-                DB::table('course_certificates')->insert([
-                    'student_id' => $current->id, 'teacher_account_id' => $teacher?->id,
-                    'certificate_code' => (string) Str::ulid(), 'recipient' => $recipient ?: $current->nickname,
-                    'school' => $teacher?->school ?: 'NGF_C++CodeQuest', 'issuer' => $teacher?->fullName() ?: 'NGF_C++CodeQuest',
-                    'title' => 'Certificate of Completion', 'message' => 'Has completed the C++ Programming course, including all required lesson checkpoints and the course assessments.',
-                    'issued_at' => $completedAt,
-                ]);
-            }
         }, 3);
     }
 
     public function certificate(Student $student): ?stdClass
     {
-        return DB::table('course_certificates')->where('student_id', $student->id)->first();
+        return DB::table('course_certificates')->where('student_id', $student->id)->orderByDesc('award_type')->first();
+    }
+
+    public function awardExcellence(Student $student): void
+    {
+        $teacher = $student->classroom->teacher;
+        $recipient = trim(implode(' ', array_filter([$student->first_name, $student->middle_name, $student->surname])));
+        DB::table('course_certificates')->insert([
+            'student_id' => $student->id, 'teacher_account_id' => $teacher?->id, 'award_type' => 'excellence',
+            'certificate_code' => (string) Str::ulid(), 'recipient' => $recipient ?: $student->nickname,
+            'school' => $teacher?->school ?: 'NGF_C++CodeQuest', 'issuer' => $teacher?->fullName() ?: 'NGF_C++CodeQuest',
+            'title' => 'Certificate of Excellence in C++ Average Programmer',
+            'message' => 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.',
+            'issued_at' => now(),
+        ]);
     }
 
     public static function practiceBand(int $score, int $total): string

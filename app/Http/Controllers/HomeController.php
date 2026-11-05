@@ -551,7 +551,7 @@ class HomeController extends Controller
             ->where('student_id', $data['student']->id)->orderBy('attempt_number')->get()->keyBy('teacher_quiz_id');
         $data['quizFinalResults'] = DB::table('quiz_submissions')->where('student_id', $data['student']->id)->where('attempt_number', 2)->get()->keyBy('teacher_quiz_id');
 
-        return view('quiz', $data);
+        return response()->view('quiz', $data, 200, ['Cache-Control' => 'private, no-store', 'Permissions-Policy' => 'display-capture=()']);
     }
 
     public function teacherQuizzes()

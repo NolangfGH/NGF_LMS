@@ -13,6 +13,7 @@
             <form method="POST" action="{{ route('teacher.certificates.update', $student->id) }}" class="mt-6 space-y-4">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="certificate_id" value="{{ $certificate->id }}">
                 <input type="hidden" name="revision" value="{{ old('revision', $certificate->revision) }}">
                 <label for="certificate-title" class="block text-sm font-bold text-primary">Certificate title
                     <input id="certificate-title" name="title" value="{{ old('title', $certificate->title) }}" required maxlength="120" class="mt-2 w-full rounded-xl border border-green-200 p-3 font-normal">
@@ -27,6 +28,6 @@
         @endif
     </div>
 @else
-    <p class="mt-6 rounded-2xl border border-green-100 bg-white p-6 text-sm">The certificate becomes available after the student submits the pre-test, completes all required checkpoints, and submits the post-test.</p>
+    <p class="mt-6 rounded-2xl border border-green-100 bg-white p-6 text-sm">The excellence certificate becomes available after the student finishes the course and passes the timed post-test with at least 45 correct answers.</p>
 @endif
 @endsection

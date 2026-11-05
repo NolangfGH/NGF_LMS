@@ -43,6 +43,13 @@ class LearningNotificationTargets
             return route($role.'.matches.show', $match);
         }
         $id = (int) $notice->target_id;
+        if ($notice->target_type === 'post_test_code' && $teacher) {
+            $pending = DB::table('course_post_test_attempts')->where('id', $id)->whereNull('started_at')
+                ->whereIn('student_id', Student::whereHas('classroom', fn ($rooms) => $rooms->where('teacher_account_id', $actor->id)->whereNull('archived_at'))->select('id'))
+                ->exists();
+
+            return $pending ? route('teacher.post-test.index', ['request' => $id]).'#request-'.$id : null;
+        }
         if ($notice->target_type === 'ilaw_plan' && $teacher) {
             $key = DB::table('ilaw_lesson_plans')->where('id', $id)->where('teacher_account_id', $actor->id)->value('lesson_key');
 

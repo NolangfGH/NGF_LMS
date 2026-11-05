@@ -14,6 +14,16 @@ multiple_choice | Which statement reads a value into a declared variable named a
 multiple_choice | Which type best represents the temperature 27.5 in a beginner program? | double | bool | char | int
 multiple_choice | What does 14 % 5 give? | 4 | 2 | 5 | 9
 multiple_choice | What is the length of the C++ string "Sun"? | 3 | 2 | 4 | 5
+multiple_choice | A weather tool accepts three temperatures and displays their mean. Which step is processing? | Add the temperatures and divide by three. | Type the temperatures. | Display the answer. | Name the source file.
+multiple_choice | What should you inspect first when the compiler reports a missing closing brace? | The reported block and its matching opening brace | The screen brightness | Your account nickname | The console's background color
+multiple_choice | Which line makes std::cout available to a C++ console program? | #include <iostream> | #include <cmath> | int main(); | using int;
+multiple_choice | What does std::cout << "A" << '\n' << "B"; display? | A and B on separate lines | AB on a single line | A space and nothing else | The letter n between A and B
+multiple_choice | Which characters start a C++ comment that can span several source lines? | /* | // | */ | ##
+multiple_choice | Which is a valid name for a count of plant trays? | trayCount | tray count | 4trays | const
+multiple_choice | After int a = 0, b = 0; std::cin >> a >> b;, what is a if the input is 12 7? | 12 | 7 | 19 | 127
+multiple_choice | Which declaration stores a single letter as a char? | char code = 'N'; | char code = "N"; | char code = true; | char code = N;
+multiple_choice | What is the value of 3 + 2 * 5? | 13 | 25 | 30 | 10
+multiple_choice | Which line reads a full name with spaces into std::string name? | std::getline(std::cin, name); | std::cin >> name; | std::cout << name; | name.length();
 QUESTIONS,
         'Term 2 · Decisions and collections' => <<<'QUESTIONS'
 multiple_choice | What value should std::sqrt(64.0) give? | 8 | 16 | 32 | 4096
@@ -24,6 +34,14 @@ multiple_choice | How many times does the body run in int x = 5; while (x < 3) {
 multiple_choice | How many times does for (int i = 1; i <= 3; ++i) execute its body? | 3 | 1 | 2 | 4
 multiple_choice | What does break usually do in a single loop? | Exits that loop | Starts it again | Skips just one statement and resumes at the next | Doubles the counter
 multiple_choice | Given int scores[] = {9, 4, 2};, what is scores[0]? | 9 | 4 | 2 | 0
+multiple_choice | What does std::ceil(3.2) return? | 4 | 3 | 2 | 3.2
+multiple_choice | Which value does !(7 < 3) produce? | true | false | 7 | 3
+multiple_choice | Which condition is true when points is at least 15? | points >= 15 | points > 15 | points < 15 | points != 15
+multiple_choice | Which statement keeps a switch case from continuing into the next case? | break; | continue; | case; | default;
+multiple_choice | How many times does the body run in int n = 0; do { ++n; } while (n < 0);? | 1 | 0 | 2 | 3
+multiple_choice | Which loop prints 0, 1, and 2 in that order? | for (int i = 0; i < 3; ++i) std::cout << i; | for (int i = 0; i <= 3; ++i) std::cout << i; | for (int i = 1; i < 3; ++i) std::cout << i; | for (int i = 2; i < 3; ++i) std::cout << i;
+multiple_choice | Which statement skips the rest of the current loop iteration? | continue; | break; | default; | return 0;
+multiple_choice | What is the last valid index for int distances[6]{};? | 5 | 6 | 1 | 7
 QUESTIONS,
         'Term 3 · Data and functions' => <<<'QUESTIONS'
 multiple_choice | Which C++ construct can group an item's label and quantity into one record? | A struct | A single char | An else statement | A comparison
@@ -33,39 +51,71 @@ multiple_choice | Given int count = 6; int* p = &count;, which expression reads 
 multiple_choice | Which statement releases an allocation made by int* p = new int(3);? | delete p; | delete[] p; | p = nullptr; | delete *p;
 multiple_choice | Given int twice(int n) { return n * 2; }, what value does twice(4) return? | 8 | 4 | 6 | 16
 multiple_choice | In scale(4, 5), what are the values 4 and 5 called? | Arguments | Return types | Headers | Function names
+multiple_choice | Given struct Tray { int seeds; }; Tray a{6};, which expression reads the number of seeds? | a.seeds | Tray.seeds | a[seeds] | a->seeds
+multiple_choice | Given enum class Fan { Off, Low, High };, which expression names the High choice? | Fan::High | Fan.High | Fan->High | High::Fan
+multiple_choice | Given int n = 7;, which declaration makes r another name for n? | int& r = n; | int r = n; | int* r = &n; | int r = 0;
+multiple_choice | Which expression obtains the address of an existing integer count? | &count | *count | count++ | count + 1
+multiple_choice | Which statement releases memory allocated by int* readings = new int[5];? | delete[] readings; | delete readings; | readings = nullptr; | delete readings[5];
+multiple_choice | Which return type fits a function that prints a message without returning a value? | void | int | bool | double
+multiple_choice | Given int cost(int count, int price = 4) { return count * price; }, what is cost(3)? | 12 | 7 | 3 | 4
 QUESTIONS,
     ],
     'post-test' => [
         'Term 1 · Foundations' => <<<'QUESTIONS'
-multiple_choice | A ticket tool should collect a quantity and display the total price. Which algorithm follows that specification? | Read quantity, multiply by unit price, display the result. | Display the quantity before reading it, then stop. | Read quantity and ignore the unit price. | Add one ticket to the total price and display the unit price.
-multiple_choice | You fixed main.cpp, but your program still shows the old output. Which step is most useful first? | Save, rebuild and run the updated program. | Rename the executable without rebuilding. | Change the expected output to the old result. | Clear the output without running the program.
-multiple_choice | Which edit completes the statement std::cout << "Begin" inside main? | Append a semicolon. | Add a second opening brace. | Replace the closing quote with a colon. | Remove the angle brackets in the header.
-multiple_choice | What does std::cout << (6 + 4) << '-' << 3; display? | 10-3 | 6+4-3 | 7 | 103
-multiple_choice | What does /* old message */ std::cout << "Now"; display? | Now | old message Now | old message | Nothing
-multiple_choice | Which declaration prevents later reassignment of the class capacity? | const int capacity = 32; | int capacity = 32; | auto capacity = 32; | int capacity;
-multiple_choice | With int x = 0, y = 0; std::cin >> x >> y;, what is x - y after entering 11 3? | 8 | -8 | 14 | 113
-multiple_choice | Which expression calculates a fractional average of 9 and 4? | (9 + 4) / 2.0 | (9 + 4) / 2 | 9 + 4 / 2.0 | (9 + 4) % 2
-multiple_choice | After int total = 3; total += 2 * 4;, what is total? | 11 | 20 | 24 | 8
-multiple_choice | Given std::string label = "Mars";, what does label[1] contain? | 'a' | 'M' | 'r' | 's'
+multiple_choice | A bookcart algorithm must display the larger of two entered counts. Which test also checks a tie? | Enter 8 and 8 and expect 8. | Enter 3 and 8 and expect 3. | Enter 8 and 4 and expect 12. | Enter 5 and 9 and expect 5.
+multiple_choice | A device accepts three humidity values and shows the highest. Which item describes output? | The highest humidity shown on the display | The three humidity readings | The comparison step | The filename
+multiple_choice | A source file now contains a corrected formula. What is the best way to ensure the run uses it? | Save the source, compile it successfully, and run that build. | Run the previous executable twice. | Rename the old executable. | Write the expected value in a comment.
+multiple_choice | After a successful build, a conversion program prints 70 for a case expected to give 7. What should you check? | The formula and the values used in the calculation | The login account role | Whether the compiler rejects all integers | Whether the source file needs an image extension
+multiple_choice | Which line is a valid declaration of a function named main with no parameters followed by its body? | int main() { return 0; } | int main { return 0; } | main int() { return 0; } | int Main() { return 0; }
+multiple_choice | Which of these statements contains a correctly quoted string literal? | std::cout << "Lab 8"; | std::cout << Lab 8; | std::cout << "Lab 8; | std::cout "Lab 8";
+multiple_choice | What is displayed by std::cout << 5 << ':' << (8 - 3);? | 5:5 | 5:8-3 | 10 | 55
+multiple_choice | Which statement displays the numeric value of 12 minus 4, followed by a newline? | std::cout << (12 - 4) << '\n'; | std::cout << "12 - 4" << '\n'; | std::cout << 12 << 4 << '\n'; | std::cout << '\n' << "12-4";
+multiple_choice | What is displayed by std::cout << "Note // OK";? | Note // OK | Note | OK | Nothing
+multiple_choice | Which comment explains why a program stops collecting readings at ten? | // The sensor stores only ten readings per trial. | // Ten is ten. | // Start of this line. | // Repeat the text of the next statement.
+multiple_choice | After int red = 3, blue = red; red = 11;, what value is stored in blue? | 3 | 11 | 14 | 8
+multiple_choice | Which declaration best represents a fixed capacity of 28 seats? | const int seatCapacity = 28; | int seatCapacity; | auto seatCapacity = 28; | int seatCapacity = 0;
+multiple_choice | After int a = 0, b = 0; std::cin >> b >> a;, what is a + b when input is 14 6? | 20 | 8 | 14 | 146
+multiple_choice | A program expects an integer from 1 through 12. Which input pair tests the upper boundary and the first value outside it? | 12 and 13 | 1 and 2 | 5 and 6 | 10 and 11
+multiple_choice | Which declaration deduces double for distance? | auto distance = 12.5; | auto distance = 12; | auto distance = 'd'; | auto distance = false;
+multiple_choice | What does std::cout << true; print by default without boolalpha? | 1 | true | 0 | -1
+multiple_choice | After int count = 10; count -= 3 * 2;, what is count? | 4 | 14 | 20 | 8
+multiple_choice | Which expression computes the remainder left when 23 items are packed in groups of 6? | 23 % 6 | 23 / 6 | 23 * 6 | 6 % 23
+multiple_choice | Given std::string word = "Robot";, what is word[3]? | 'o' | 'b' | 'R' | 't'
+multiple_choice | What is the length of std::string("Lab ") + "One"? | 7 | 6 | 8 | 3
 QUESTIONS,
         'Term 2 · Decisions and collections' => <<<'QUESTIONS'
-multiple_choice | Which value does std::floor(-2.3) return? | -3 | -2 | 2 | 3
-multiple_choice | Which expression is true when exactly one of the Boolean flags north and south is true? | north != south | north && south | north == south | north || south
-multiple_choice | Which expression returns "retry" if points is under 10 and "ready" otherwise? | points < 10 ? "retry" : "ready" | points <= 10 ? "ready" : "retry" | points > 10 ? "retry" : "ready" | points == 10 ? "retry" : "ready"
-multiple_choice | In a switch, case 1 prints X and has no break. Case 2 prints Y then breaks. What prints when option 1 is selected? | XY | X | Y | Nothing
-multiple_choice | What value remains after int k = 1; while (k < 9) { k += 3; }? | 10 | 7 | 9 | 12
-multiple_choice | An outer loop makes three rows. An inner loop prints four symbols for each row. How many symbols print? | 12 | 7 | 9 | 16
-multiple_choice | What is printed by for (int i = 0; i < 5; ++i) { if (i == 1) continue; if (i == 4) break; std::cout << i; }? | 023 | 0123 | 0234 | 0
-multiple_choice | Given int grid[2][3] = {{2,4,6},{8,10,12}};, what is grid[1][0]? | 8 | 2 | 4 | 12
+multiple_choice | A robot needs the real-valued square root of 121. Which value is returned by std::sqrt(121.0)? | 11 | 12.1 | 60.5 | 121
+multiple_choice | Which value does std::ceil(-2.1) return? | -2 | -3 | 2 | 3
+multiple_choice | Which expression checks that the lab is open and has space, given Boolean flags open and full? | open && !full | open && full | open || full | !open && full
+multiple_choice | What does !(4 == 4 && 3 > 5) evaluate to? | true | false | 4 | An error
+multiple_choice | For int score = 80;, what prints in if (score > 80) std::cout << "H"; else if (score == 80) std::cout << "M"; else std::cout << "L";? | M | H | L | HM
+multiple_choice | Which expression chooses 2 when v is less than zero and 4 otherwise? | v < 0 ? 2 : 4 | v <= 0 ? 2 : 4 | v < 0 ? 4 : 2 | v > 0 ? 2 : 4
+multiple_choice | In a switch, case 2 prints A and falls through to case 3, which prints B and breaks. Which text prints for option 2? | AB | A | B | BA
+multiple_choice | Which form is valid for a switch that takes a char named option? | case 'Q': | case "Q": | case Q(): | default 'Q':
+multiple_choice | What does int n = 5; while (n > 1) { std::cout << n; n -= 2; } display? | 53 | 531 | 35 | 5432
+multiple_choice | How many times does int k = 8; do { k -= 3; } while (k > 1); execute its body? | 3 | 2 | 4 | 8
+multiple_choice | How many times does for (int i = 2; i <= 10; i += 4) run its body? | 3 | 2 | 4 | 8
+multiple_choice | Given int values[] = {3, 2, 5}; int sum = 0; for (int v : values) sum += v;, what is sum? | 10 | 5 | 3 | 0
+multiple_choice | What prints from for (int i = 0; i < 5; ++i) { if (i == 2) break; std::cout << i; }? | 01 | 012 | 0134 | 234
+multiple_choice | What prints from for (int i = 1; i <= 5; ++i) { if (i % 2 == 0) continue; std::cout << i; }? | 135 | 24 | 12345 | 15
+multiple_choice | Given int map[2][3] = {{8,6,4},{3,1,5}};, what is map[1][1]? | 1 | 6 | 3 | 5
+multiple_choice | Which loop accesses every index of int a[4]{}; exactly once without going out of bounds? | for (int i = 0; i < 4; ++i) a[i] = i; | for (int i = 0; i <= 4; ++i) a[i] = i; | for (int i = 1; i <= 4; ++i) a[i] = i; | for (int i = 0; i < 3; ++i) a[i] = i;
 QUESTIONS,
         'Term 3 · Data and functions' => <<<'QUESTIONS'
-multiple_choice | Given struct Seed { int count; }; Seed tray{4};, which statement increases the count by two? | tray.count += 2; | Seed.count += 2; | tray += 2; | count.tray += 2;
-multiple_choice | Given enum class Signal { Stop, Ready, Go }; and Signal s, which expression compares s with Go? | s == Signal::Go | s = Signal::Go | s == "Go" | s == Signal.Go
-multiple_choice | Given int x = 3, y = 9; int& ref = x; ref = y; y = 2;, what is ref now? | 9 | 3 | 2 | 11
-multiple_choice | After int a = 4, b = 6; int* p = &a; p = &b; *p += 3;, what is b? | 9 | 6 | 7 | 4
-multiple_choice | A program allocates int* values = new int[3];. Which line releases the array? | delete[] values; | delete values; | values = nullptr; | delete values[0];
-multiple_choice | Given int next(int x) { return x + 1; }, what value is returned by next(next(6))? | 8 | 6 | 7 | 13
-multiple_choice | Given void addOne(int& n) { ++n; } and int x = 4;, what happens after addOne(x);? | x becomes 5. | x remains 4. | x becomes 1. | The call returns 5.
+multiple_choice | Given struct Pair { int left; int right; }; Pair readings{4,9};, which expression gives 13? | readings.left + readings.right | readings.left * readings.right | readings.right - readings.left | Pair.left + Pair.right
+multiple_choice | Given struct Part { int stock; }; Part a{3}; Part b = a; b.stock = 8;, what is a.stock? | 3 | 8 | 11 | 0
+multiple_choice | Given enum class Zone { Lab = 5, Hall, Gate };, what is static_cast<int>(Zone::Gate)? | 7 | 5 | 6 | 8
+multiple_choice | Which expression checks if variable action of type Mode is equal to Mode::Sleep? | action == Mode::Sleep | action = Mode::Sleep | action == "Sleep" | Mode.action == Sleep
+multiple_choice | After int n = 8; int& alias = n; alias -= 2;, what is n? | 6 | 8 | 2 | 10
+multiple_choice | Given int a = 4, b = 7; int& r = a; r = b; b = 11;, what is r? | 7 | 4 | 11 | 0
+multiple_choice | After int n = 2; int* p = &n; *p *= 4;, what is n? | 8 | 2 | 4 | 6
+multiple_choice | Which expression compares two pointers p and q to see if they store the same address? | p == q | *p == *q | p = q | &p == &q
+multiple_choice | If int* p = new int[7]; created an array, which expression releases it correctly? | delete[] p; | delete p; | delete p[0]; | p = nullptr;
+multiple_choice | After delete p; frees an allocation, q still holds its old address. What should the program do before accessing anything through q? | Give q the address of a live object or stop using it. | Read *q immediately. | Delete the same allocation again through q. | Assume q was set to nullptr by delete p.
+multiple_choice | Given int combine(int a, int b) { return a * 2 + b; }, what does combine(3, 4) return? | 10 | 14 | 7 | 24
+multiple_choice | Which declaration lets main call a function defined later that takes a double and returns bool? | bool ready(double voltage); | double ready(bool voltage); | ready(double voltage); | bool ready;
+multiple_choice | Given int area(int width, int height = 3) { return width * height; }, what does area(4, 5) return? | 20 | 12 | 15 | 9
+multiple_choice | Given void boost(int& points) { points += 3; } and int total = 9;, what is total after boost(total);? | 12 | 9 | 3 | 27
 QUESTIONS,
     ],
     'reasoning' => [

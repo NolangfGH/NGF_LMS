@@ -81,6 +81,8 @@ class TermExamTest extends TestCase
         $this->post(route('student.quiz.start', $quiz))->assertRedirect();
         $attempt = QuizAttempt::sole();
         $this->assertSame(25 * 60, $attempt->expires_at->timestamp - $attempt->started_at->timestamp);
+        $this->get(route('student.quiz'))->assertOk()->assertHeader('Permissions-Policy', 'display-capture=()')
+            ->assertSee('Question 1 of 25')->assertSee($attempt->questions[0]['prompt'])->assertDontSee($attempt->questions[1]['prompt']);
         foreach ($attempt->questions as $index => $question) {
             $this->travel(10)->seconds();
             $this->postJson(route('student.quiz.question', $quiz), ['question_index' => $index, 'answer' => $question['correct'][0]])

@@ -1,8 +1,24 @@
+<style>
+    html[data-assessment-background] [data-assessment-content] { visibility: hidden; }
+    @media print { [data-assessment-content] { display: none !important; } }
+</style>
 <script>
+if (document.querySelector('.question-quiz')) {
+    const setAssessmentVisibility = () => document.documentElement.toggleAttribute('data-assessment-background', document.hidden);
+    setAssessmentVisibility();
+    document.addEventListener('visibilitychange', setAssessmentVisibility);
+    window.addEventListener('pagehide', () => document.documentElement.setAttribute('data-assessment-background', ''));
+    window.addEventListener('pageshow', event => {
+        if (event.persisted) location.reload();
+        else setAssessmentVisibility();
+    });
+}
 document.querySelectorAll('.question-quiz').forEach(form => {
     form.style.scrollMarginTop='80px';
     requestAnimationFrame(()=>form.scrollIntoView({block:'start'}));
     const deadline=Number(form.dataset.deadline), index=Number(form.dataset.index), untimed=form.dataset.untimed==="true", allotted=Number(form.dataset.seconds)||60;
+    const baseline = performance.now();
+    const serverNow = () => Number(form.dataset.serverTime) + (performance.now() - baseline);
     const status=form.querySelector('.question-save-status'), button=form.querySelector('.question-next');
     let busy=false, advancing=false, changed=false, queue=Promise.resolve(), debounce;
     function answer() {
@@ -27,6 +43,10 @@ document.querySelectorAll('.question-quiz').forEach(form => {
     }
     async function next(expired=false) {
         if(advancing) return;
+        if(!navigator.onLine) {
+            status.textContent=expired?'Time is up. Reconnect to continue with your last saved answer.':'You are offline. Reconnect to save your answer.';
+            return;
+        }
         advancing=true;
         const value=answer();
         button.disabled=true;form.querySelectorAll('[name^="answer"]').forEach(input=>input.disabled=true);

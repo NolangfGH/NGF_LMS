@@ -12,6 +12,7 @@ use App\Http\Controllers\CodeExecutionController;
 use App\Http\Controllers\CodeLabController;
 use App\Http\Controllers\CodingMatchController;
 use App\Http\Controllers\CourseAssessmentController;
+use App\Http\Controllers\CoursePostTestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GradingSheetController;
 use App\Http\Controllers\HomeController;
@@ -222,8 +223,19 @@ Route::prefix('lesson')->name('student.lesson')->controller(LessonController::cl
 Route::prefix('course-assessments')->name('student.assessments.')->controller(CourseAssessmentController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('/certificate', 'studentCertificate')->name('certificate');
-    Route::get('/{assessment}', 'show')->where('assessment', 'pre-test|post-test|reasoning')->name('show');
-    Route::post('/{assessment}', 'submit')->where('assessment', 'pre-test|post-test|reasoning')->middleware('throttle:match-write')->name('submit');
+    Route::get('/{assessment}', 'show')->where('assessment', 'pre-test|reasoning')->name('show');
+    Route::post('/{assessment}', 'submit')->where('assessment', 'pre-test|reasoning')->middleware('throttle:match-write')->name('submit');
+});
+Route::prefix('course-assessments/post-test')->name('student.post-test.')->controller(CoursePostTestController::class)->group(function () {
+    Route::get('/', 'show')->name('show');
+    Route::post('/request-code', 'requestCode')->middleware('throttle:post-test-code')->name('request');
+    Route::post('/start', 'start')->middleware('throttle:post-test-code')->name('start');
+    Route::post('/draft', 'draft')->middleware('throttle:match-write')->name('draft');
+    Route::post('/question', 'question')->middleware('throttle:match-write')->name('question');
+});
+Route::prefix('teacher-post-test')->name('teacher.post-test.')->controller(CoursePostTestController::class)->group(function () {
+    Route::get('/', 'teacherRequests')->name('index');
+    Route::post('/{requestId}/issue-code', 'issue')->whereNumber('requestId')->middleware('throttle:match-write')->name('issue');
 });
 Route::prefix('teacher-course-certificates')->name('teacher.certificates.')->controller(CourseAssessmentController::class)->group(function () {
     Route::get('/{student}', 'editCertificate')->whereNumber('student')->name('edit');
