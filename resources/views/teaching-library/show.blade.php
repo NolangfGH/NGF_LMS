@@ -5,11 +5,18 @@
     <div><p class="text-xs font-bold uppercase tracking-widest text-secondary">{{ $lesson['topic'] }} · Review {{ $kind }}</p><h1 class="mt-3 text-3xl font-extrabold text-primary">{{ $activity['title'] }}</h1></div>
     <span class="rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-primary">Teacher preview · Not assigned</span>
 </div>
-<details class="mt-5 rounded-xl border border-green-100 bg-white p-4 text-sm"><summary class="cursor-pointer font-bold text-primary">Lesson coverage · {{ $lesson['term'] }}</summary><p class="mt-3 text-xs leading-7">{{ implode(' · ', $lesson['subtopics']) }}</p><a href="{{ route('teacher.content.edit', $lesson['key']) }}" class="mt-3 inline-block text-xs font-bold text-primary underline">Review or edit the lesson →</a></details>
+<details class="mt-5 rounded-xl border border-green-100 bg-white p-4 text-sm">
+    <summary class="cursor-pointer font-bold text-primary">{{ ($lesson['assessment'] ?? false) ? 'Exam topics' : 'Lesson coverage' }} · {{ $lesson['term'] }}</summary>
+    <p class="mt-3 text-xs leading-7">{{ implode(' · ', $lesson['subtopics']) }}</p>
+    @empty($lesson['assessment'])
+        <a href="{{ route('teacher.content.edit', $lesson['key']) }}" class="mt-3 inline-block text-xs font-bold text-primary underline">Review or edit the lesson →</a>
+        <a href="{{ route('teacher.ilaw.edit', $lesson['key']) }}" class="ml-3 mt-3 inline-block text-xs font-bold text-primary underline">Edit ILAW plan →</a>
+    @endempty
+</details>
 <div class="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
 <div class="min-w-0 space-y-5">
 @if($kind === 'quiz')
-    <div class="rounded-2xl border border-green-100 bg-white p-6 text-sm leading-7"><h2 class="font-bold text-primary">10 multiple-choice questions</h2><p>{{ $activity['instructions'] }}</p><p class="mt-2 text-xs text-secondary">Existing quiz rewards apply: +10 XP per correct answer, +5 for correct answers within 30 seconds, and +100 XP for a perfect quiz. Answer keys below are visible only in this teacher preview.</p></div>
+    <div class="rounded-2xl border border-green-100 bg-white p-6 text-sm leading-7"><h2 class="font-bold text-primary">{{ count($activity['questions']) }} multiple-choice questions</h2><p>{{ $activity['instructions'] }}</p><p class="mt-2 text-xs text-secondary">Earn +10 XP per correct answer, +5 for correct answers within 30 seconds, and +100 XP for a perfect score. The answer key is private to teaching staff.</p></div>
     @foreach($activity['questions'] as $question)
         <article class="rounded-2xl border border-green-100 bg-white p-5 shadow-card">
             <h2 class="whitespace-pre-wrap break-words font-bold text-primary">{{ $loop->iteration }}. {{ $question['prompt'] }}</h2>
@@ -18,7 +25,7 @@
                 <li class="break-words rounded-xl border px-4 py-3 {{ in_array($option, $question['correct'], true) ? 'border-green-300 bg-green-50' : 'border-gray-100' }}"><span class="font-mono">{{ chr(65 + $loop->index) }}.</span> <code class="whitespace-pre-wrap">{{ $option }}</code>@if(in_array($option, $question['correct'], true))<b class="ml-2 text-primary">✓ Correct</b>@endif</li>
             @endforeach
             </ol>
-            <p class="mt-4 text-xs leading-6 text-secondary"><b>Why:</b> {{ $question['explanation'] }}</p>
+            @if(!empty($question['explanation']))<p class="mt-4 text-xs leading-6 text-secondary"><b>Why</b> {{ $question['explanation'] }}</p>@endif
         </article>
     @endforeach
 @elseif($kind === 'article')

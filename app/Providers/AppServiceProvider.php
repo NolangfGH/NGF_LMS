@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\BlogComment;
+use App\Models\BlogPost;
+use App\Models\BlogResponse;
+use App\Models\LabSubmission;
+use App\Models\LessonProgress;
+use App\Models\Student;
+use App\Observers\LearningActivityObserver;
+use App\Observers\XpEventObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,17 +30,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \App\Models\Student::observe(\App\Observers\XpEventObserver::class);
+        Student::observe(XpEventObserver::class);
         RateLimiter::for('compiler-run', fn (Request $request) => Limit::perMinute(6)->by('compiler:'.$request->session()->get('student_id', $request->ip())));
-        foreach ([\App\Models\BlogPost::class,\App\Models\BlogComment::class,\App\Models\BlogResponse::class,\App\Models\LabSubmission::class,\App\Models\LessonProgress::class,\App\Models\Student::class] as $model) {
-            $model::observe(\App\Observers\LearningActivityObserver::class);
+        foreach ([BlogPost::class, BlogComment::class, BlogResponse::class, LabSubmission::class, LessonProgress::class, Student::class] as $model) {
+            $model::observe(LearningActivityObserver::class);
         }
         RateLimiter::for('home-live', fn (Request $request) => Limit::perMinute(12)->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
         RateLimiter::for('match-read', fn (Request $request) => Limit::perMinute(240)->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
         RateLimiter::for('match-write', fn (Request $request) => Limit::perMinute(120)->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
+        RateLimiter::for('system-feedback', function (Request $request): Limit {
+            $session = $request->session();
+            $actor = $session->has('teacher_id') ? 'staff:'.$session->get('teacher_id')
+                : ($session->has('student_id') ? 'student:'.$session->get('student_id') : 'guest:'.$request->ip());
+
+            return Limit::perMinute(6)->by($actor);
+        });
         $blogKey = function (Request $request) {
             $role = $request->routeIs('teacher.blog*') ? 'teacher' : 'student';
             $id = $request->session()->get($role.'_id');
+
             return hash('sha256', $role.':'.($id ?: $request->session()->getId().'|'.$request->ip()));
         };
         RateLimiter::for('blog-write', fn (Request $request) => Limit::perMinute(120)->by($blogKey($request)));

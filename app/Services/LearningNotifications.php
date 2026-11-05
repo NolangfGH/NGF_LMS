@@ -20,6 +20,12 @@ use Illuminate\Support\Str;
 
 class LearningNotifications
 {
+    public function ilawPlanEvaluated(int $teacherId, int $planId, int $revision): void
+    {
+        $this->send('teacher', $teacherId, 'feedback', 'ilaw-evaluated:'.$planId.':'.$revision, 'ILAW lesson plan evaluated',
+            'Your principal checked your lesson plan. Open it to see the review and any coaching comments.', 'ilaw_plan', $planId);
+    }
+
     public function quizBee(QuizBeeMatch $match, string $role, int $recipient, string $event, string $title, string $message): void
     {
         $this->send($role, $recipient, 'challenges', 'quiz-bee:'.$match->id.':'.$event, $title, $message, 'quiz_bee', $match->id);

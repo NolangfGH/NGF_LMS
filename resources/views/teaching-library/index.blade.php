@@ -14,6 +14,15 @@
     @endforeach
 </div>
 <div class="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-7"><b class="text-primary">You stay in control.</b> Copying creates a private draft. Edit the content and settings in the existing builder. Quizzes and coding tasks target selected sections; blog articles use your blog audience across all your sections. Publish only after your review.</div>
+<details id="term-exams" class="mb-6 rounded-2xl border border-green-200 bg-white p-5" @if(request('term')) open @endif>
+    <summary class="cursor-pointer text-lg font-extrabold text-primary">Summative &amp; term exams</summary>
+    <p class="my-3 text-sm leading-6">Two summative exams and one term exam for each term. Each has 25 multiple-choice questions, automatic checking and the usual quiz XP. Review a set, copy it to a private draft, and edit it in Quiz Builder.</p>
+    <div class="grid gap-3 md:grid-cols-3">
+        @foreach($termExams as $exam)
+            <a href="{{ route('teacher.library.show', [$exam['key'], 'quiz']) }}" class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm font-bold text-primary hover:bg-green-100">{{ $exam['title'] }} →</a>
+        @endforeach
+    </div>
+</details>
 <nav aria-label="Teaching library school term" class="mb-5 flex flex-wrap gap-2">
     @foreach(['' => 'All topics', 'Term1' => 'Term 1 · Foundations', 'Term2' => 'Term 2 · Decisions & collections', 'Term3' => 'Term 3 · Data & functions'] as $term => $label)
         <a href="{{ route('teacher.library', array_filter(['term' => $term, 'q' => request('q')])) }}" @if((string)request('term') === (string)$term) aria-current="page" @endif class="rounded-xl border border-green-200 px-4 py-3 text-xs font-bold {{ (string)request('term') === (string)$term ? 'bg-primary text-white' : 'bg-white text-primary' }}">{{ $label }}</a>
@@ -35,6 +44,7 @@
         <p class="my-4 text-sm leading-6">{{ $lesson['objective'] }}</p>
         <details class="mb-5 rounded-xl bg-paper p-3 text-xs leading-6"><summary class="cursor-pointer font-bold text-primary">{{ count($lesson['subtopics']) }} subtopics in this lesson</summary><ul class="mt-2 list-inside list-disc">@foreach($lesson['subtopics'] as $subtopic)<li>{{ $subtopic }}</li>@endforeach</ul></details>
         <div class="mt-auto flex flex-wrap gap-2">
+            <a href="{{ route('teacher.ilaw.edit', $key) }}" class="rounded-xl border border-green-200 bg-paper px-3 py-3 text-xs font-bold text-primary hover:bg-green-100">Edit ILAW lesson plan →</a>
             @foreach(['quiz' => 'Review 10-question quiz', 'assignment' => 'Review assignment', 'challenge' => 'Review challenge', 'article' => 'Review blog/article'] as $kind => $label)
                 <a href="{{ route('teacher.library.show', [$key, $kind]) }}" class="rounded-xl border border-green-200 px-3 py-3 text-xs font-bold text-primary hover:bg-paper">{{ $label }} →</a>
             @endforeach

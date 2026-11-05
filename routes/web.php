@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AboutSystemController;
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AiLabReviewController;
 use App\Http\Controllers\AttendanceController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\CodingMatchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GradingSheetController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\IlawPlanController;
 use App\Http\Controllers\LearningNotificationController;
 use App\Http\Controllers\LessonContentController;
 use App\Http\Controllers\LessonController;
@@ -33,6 +35,20 @@ use Illuminate\Support\Facades\Route;
 Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
 Route::get('/staff-registration-status/check', [StaffRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('staff.registration.check');
 Route::get('/school-overview', [SchoolAdminController::class, 'overview'])->name('school.overview');
+Route::prefix('school-overview/lesson-plans')->name('school.ilaw.')->controller(IlawPlanController::class)->group(function () {
+    Route::get('/', 'reviews')->name('index');
+    Route::get('/{plan}', 'show')->whereNumber('plan')->name('show');
+    Route::post('/{plan}/evaluate', 'evaluate')->whereNumber('plan')->middleware('throttle:match-write')->name('evaluate');
+});
+Route::prefix('teacher-ilaw')->name('teacher.ilaw.')->controller(IlawPlanController::class)->group(function () {
+    Route::get('/{key}', 'edit')->where('key', '[a-z0-9-]+')->name('edit');
+    Route::put('/{key}', 'save')->where('key', '[a-z0-9-]+')->middleware('throttle:match-write')->name('save');
+    Route::get('/{key}/download', 'download')->where('key', '[a-z0-9-]+')->name('download');
+});
+Route::get('/about-system', [AboutSystemController::class, 'index'])->name('system.about');
+Route::post('/about-system/feedback', [AboutSystemController::class, 'store'])->middleware('throttle:system-feedback')->name('system.feedback.store');
+Route::get('/about-system/feedback/{feedback}/image', [AboutSystemController::class, 'image'])->whereNumber('feedback')->name('system.feedback.image');
+Route::get('/school-admin/system-feedback', [AboutSystemController::class, 'inbox'])->name('school.feedback');
 Route::get('/class-attendance', [AttendanceController::class, 'index'])->name('teacher.attendance');
 Route::get('/class-attendance/status', [AttendanceController::class, 'status'])->middleware('throttle:match-read')->name('teacher.attendance.status');
 Route::get('/class-attendance/export', [AttendanceController::class, 'export'])->middleware('throttle:20,1')->name('teacher.attendance.export');

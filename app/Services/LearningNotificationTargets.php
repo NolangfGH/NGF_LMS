@@ -43,6 +43,11 @@ class LearningNotificationTargets
             return route($role.'.matches.show', $match);
         }
         $id = (int) $notice->target_id;
+        if ($notice->target_type === 'ilaw_plan' && $teacher) {
+            $key = DB::table('ilaw_lesson_plans')->where('id', $id)->where('teacher_account_id', $actor->id)->value('lesson_key');
+
+            return $key ? route('teacher.ilaw.edit', $key) : null;
+        }
         if ($notice->target_type === 'quiz_bee') {
             $match = $this->find(QuizBeeMatch::class, $id);
             if (! $match || ($teacher ? $match->teacher_account_id !== $actor->id : $match->status === 'draft'

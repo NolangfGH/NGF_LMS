@@ -72,4 +72,44 @@ class ReadyMadeActivities
 
         return $catalog[$key];
     }
+
+    /** @return array<string, array<string, mixed>> */
+    public function termExams(): array
+    {
+        $rounds = [];
+        $topics = [];
+        foreach (config('lessons') as $key => $lesson) {
+            $term = $lesson['term'];
+            $topics[$term][] = $lesson['topic'];
+            foreach (explode("\n", config('term_exams.'.$key)) as $position => $row) {
+                [$prompt, $answer, $choiceOne, $choiceTwo, $choiceThree] = explode(' | ', trim($row));
+                $options = [$choiceOne, $choiceTwo, $choiceThree];
+                array_splice($options, crc32($prompt) % 4, 0, [$answer]);
+                $rounds[$term][$position][] = [
+                    'type' => 'multiple_choice', 'prompt' => $prompt, 'options' => $options, 'correct' => [$answer],
+                ];
+            }
+        }
+
+        $exams = [];
+        foreach ($rounds as $term => $questionsByRound) {
+            ksort($questionsByRound);
+            $questionSets = array_chunk(array_merge(...$questionsByRound), 25);
+            foreach (['summative-1' => 'Summative Exam 1', 'summative-2' => 'Summative Exam 2', 'term-exam' => 'Term Exam'] as $type => $label) {
+                $key = strtolower($term).'-'.$type;
+                $title = 'Term '.substr($term, -1).' · '.$label;
+                $exams[$key] = [
+                    'key' => $key, 'title' => $title, 'topic' => $label, 'term' => $term,
+                    'subtopics' => $topics[$term], 'assessment' => true,
+                    'quiz' => [
+                        'title' => $title, 'instructions' => 'Choose one answer for each of the 25 questions. Read code carefully and trace variable values before answering.',
+                        'questions' => array_shift($questionSets),
+                        'xp' => 0, 'time_limit' => 25, 'untimed' => false, 'question_seconds' => 60,
+                    ],
+                ];
+            }
+        }
+
+        return $exams;
+    }
 }

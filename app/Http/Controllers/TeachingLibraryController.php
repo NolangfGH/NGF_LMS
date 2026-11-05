@@ -29,7 +29,11 @@ class TeachingLibraryController extends Controller
         $catalog = array_filter($library->catalog(), static fn (array $lesson): bool => (empty($data['term']) || $lesson['term'] === $data['term'])
             && ($query === '' || str_contains(mb_strtolower($lesson['title'].' '.$lesson['topic'].' '.implode(' ', $lesson['subtopics'])), $query)));
 
-        return view('teaching-library.index', ['pageTitle' => 'Ready-made Library', 'teacher' => $teacher, 'catalog' => $catalog, 'topicCount' => count($library->catalog())]);
+        return view('teaching-library.index', [
+            'pageTitle' => 'Ready-made Library', 'teacher' => $teacher, 'catalog' => $catalog,
+            'topicCount' => count($library->catalog()),
+            'termExams' => array_filter($library->termExams(), fn (array $exam): bool => empty($data['term']) || $exam['term'] === $data['term']),
+        ]);
     }
 
     public function show(string $key, string $kind, ReadyMadeActivities $library): View|RedirectResponse
@@ -40,7 +44,7 @@ class TeachingLibraryController extends Controller
         }
         abort_if($teacher->isPrincipal(), 403);
         abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge', 'article'], true), 404);
-        $lesson = $library->lesson($key);
+        $lesson = $this->template($library, $key, $kind);
 
         return view('teaching-library.show', [
             'pageTitle' => 'Review ready-made '.$kind, 'teacher' => $teacher,
@@ -54,7 +58,7 @@ class TeachingLibraryController extends Controller
         $teacher = TeacherAccount::find(session('teacher_id'));
         abort_unless($teacher && ! $teacher->isPrincipal(), 403);
         abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge', 'article'], true), 404);
-        $lesson = $library->lesson($key);
+        $lesson = $this->template($library, $key, $kind);
         if ($kind === 'article') {
             $post = new BlogPost(Arr::only($lesson['article'], ['title', 'category', 'body', 'is_graded', 'response_time_limit_minutes']));
             $post->forceFill(['teacher_account_id' => $teacher->id, 'status' => 'draft', 'published_at' => null])->save();
@@ -89,5 +93,17 @@ class TeachingLibraryController extends Controller
 
         return redirect()->route($route, ['edit' => $activity->id])
             ->with('library_notice', 'Your private draft is ready. Review or edit it, set dates, and publish when ready. Students have not been notified.');
+    }
+
+    private function template(ReadyMadeActivities $library, string $key, string $kind): array
+    {
+        if ($kind === 'quiz' && preg_match('/^term[123]-/', $key)) {
+            $exam = $library->termExams()[$key] ?? null;
+            abort_unless($exam, 404);
+
+            return $exam;
+        }
+
+        return $library->lesson($key);
     }
 }

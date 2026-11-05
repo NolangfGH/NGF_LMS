@@ -23,7 +23,7 @@ class CheckTeacherSessionVersion
                     if ($request->routeIs('teacher.dashboard')) {
                         return redirect()->route('school.overview');
                     }
-                    abort_unless($request->routeIs('school.overview', 'teacher.settings', 'teacher.settings.account', 'teacher.settings.profile', 'teacher.settings.preferences', 'teacher.settings.password', 'teacher.settings.sessions', 'teacher.settings.avatar*', 'teacher.logout', 'teacher.login*', 'teacher.register*'), 403, 'Principal access is limited to the read-only school overview and personal account settings.');
+                    abort_unless($request->routeIs('school.overview', 'school.ilaw.*', 'teacher.settings', 'teacher.settings.account', 'teacher.settings.profile', 'teacher.settings.preferences', 'teacher.settings.password', 'teacher.settings.sessions', 'teacher.settings.avatar*', 'teacher.logout', 'teacher.login*', 'teacher.register*'), 403, 'Principal access is limited to the school overview, lesson plan reviews and personal account settings.');
                 }
             }
         }
