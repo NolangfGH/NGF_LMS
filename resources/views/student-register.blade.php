@@ -27,13 +27,15 @@
 <label class="block"><span class="mb-2 block text-sm font-bold">First name *</span><input name="first_name" required maxlength="80" autocomplete="given-name" class="w-full rounded-xl border p-3"></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Middle name (optional)</span><input name="middle_name" maxlength="80" autocomplete="additional-name" class="w-full rounded-xl border p-3"></label>
 <label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Surname *</span><input name="surname" required maxlength="80" autocomplete="family-name" class="w-full rounded-xl border p-3"></label>
+<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Name of school *</span><input name="school_name" required maxlength="180" autocomplete="organization" placeholder="Your current school" class="w-full rounded-xl border p-3"></label>
+<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Name of ICT teacher *</span><input name="ict_teacher_name" required maxlength="180" placeholder="Your school ICT teacher’s full name" class="w-full rounded-xl border p-3"></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Grade level *</span><select id="gradeLevel" name="grade_level" required class="w-full rounded-xl border bg-white p-3"><option value="">Choose grade level</option>@foreach($gradeLevels as $grade)<option value="{{ $grade }}" @selected($grade===config('student_registration.grade'))>{{ $grade }}</option>@endforeach</select></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Section *</span><select id="section" name="section" required disabled class="w-full rounded-xl border bg-white p-3"><option value="">Choose grade level first</option></select></label>
 </div>
 <p id="sectionHelp" class="text-xs text-slate-500" aria-live="polite">Choose your grade and section. Use that section’s class code.</p>
 <button type="button" id="refreshClasses" class="text-xs font-bold text-primary underline">Refresh class list</button>
 <label class="block"><span class="mb-2 block text-sm font-bold">Class join code *</span><input id="classCode" name="class_code" required maxlength="20" autocomplete="off" class="w-full rounded-xl border p-4 text-center font-mono text-xl uppercase tracking-widest" placeholder="Enter your teacher’s code"></label>
-<p class="text-xs text-slate-500">The join code must belong to the selected grade and section.</p>
+<p class="text-xs text-slate-500">Students from RS and other schools are welcome. Enter your actual school and ICT teacher; a valid class code and teacher approval are still required.</p>
 <button type="submit" class="w-full rounded-xl bg-primary p-4 font-bold text-white">Verify Code & Continue →</button>
 </form>
 <form id="accountForm" class="hidden space-y-5">

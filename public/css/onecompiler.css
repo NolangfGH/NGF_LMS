@@ -1,0 +1,33 @@
+.onecompiler-launcher { margin: 1rem 0; }
+.onecompiler-open, .onecompiler-dialog button, .onecompiler-link {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    min-height: 42px; padding: .65rem 1rem; border: 1px solid #aacb9d;
+    border-radius: .75rem; background: #fff; color: #123a0c;
+    font: inherit; font-size: .875rem; font-weight: 600; line-height: 1.4; cursor: pointer; text-decoration: none;
+}
+.onecompiler-open, .onecompiler-dialog .onecompiler-apply { background: #0b4e00; color: #fff; }
+.onecompiler-open:focus-visible, .onecompiler-dialog :focus-visible { outline: 3px solid #397ee8; outline-offset: 3px; }
+.onecompiler-note { margin: .5rem 0 0; font-size: .75rem; line-height: 1.6; color: #4c5f45; }
+.onecompiler-dialog {
+    position: fixed; inset: 0; width: min(1200px, calc(100vw - 24px)); max-width: none;
+    height: min(850px, calc(100dvh - 24px)); max-height: none; margin: auto;
+    padding: 0; border: 1px solid #b5d3a9; border-radius: 1rem;
+    background: #fff; color: #183311; box-shadow: 0 16px 60px #0004;
+}
+.onecompiler-dialog::backdrop { background: #102416b3; }
+.onecompiler-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.onecompiler-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; padding: .85rem 1rem; }
+.onecompiler-header > div { flex: 1; min-width: 0; }
+.onecompiler-header h2 { margin: 0; font-size: 1.125rem; font-weight: 800; }
+.onecompiler-header p { margin: .25rem 0 0; font-size: .75rem; line-height: 1.5; }
+.onecompiler-dialog .onecompiler-close { flex-shrink: 0; padding: .4rem .8rem; }
+.onecompiler-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .5rem 1rem; border-block: 1px solid #dce8d6; background: #f5faef; }
+.onecompiler-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.onecompiler-status { margin: 0; padding: .5rem 1rem; font-size: .8rem; line-height: 1.5; }
+.onecompiler-frame { flex: 1; width: 100%; min-height: 220px; border: 0; }
+.onecompiler-dialog .onecompiler-manual { width: calc(100% - 2rem); min-height: 100px; margin: .5rem 1rem; font-family: monospace; }
+@media (max-width: 600px) {
+    .onecompiler-dialog { width: 100vw; height: 100dvh; border-radius: 0; }
+    .onecompiler-header, .onecompiler-toolbar { padding: .65rem; }
+    .onecompiler-toolbar button, .onecompiler-link { padding: .5rem .65rem; font-size: .75rem; }
+}

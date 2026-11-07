@@ -271,7 +271,7 @@ class HomeController extends Controller
 
             return response()->json(['message' => 'Check your staff access request.', 'status' => $teacher->staff_access_status, 'redirect' => route('staff.registration.status')]);
         }
-        session()->forget('pending_staff_registration_id');
+        session()->forget(['pending_staff_registration_id', 'parent_id', 'parent_session_version']);
         session(['teacher_id' => $teacher->id, 'teacher_session_version' => $teacher->session_version, 'teacher_authenticated_at' => now()->toIso8601String()]);
 
         return response()->json(['message' => 'Signed in successfully.', 'redirect' => route($teacher->dashboardRoute())]);
@@ -288,6 +288,8 @@ class HomeController extends Controller
             'first_name' => ['required', 'string', 'max:80'],
             'middle_name' => ['nullable', 'string', 'max:80'],
             'surname' => ['required', 'string', 'max:80'],
+            'school_name' => ['nullable', 'string', 'max:180'],
+            'ict_teacher_name' => ['nullable', 'string', 'max:180'],
             'grade_level' => ['required', 'string', 'max:50'],
             'classroom_id' => ['required', 'integer'],
             'nickname' => ['required', 'string', 'min:3', 'max:40'],
@@ -307,6 +309,8 @@ class HomeController extends Controller
                 'first_name' => $data['first_name'],
                 'middle_name' => $data['middle_name'] ?? null,
                 'surname' => $data['surname'],
+                'school_name' => $data['school_name'] ?? null,
+                'ict_teacher_name' => $data['ict_teacher_name'] ?? null,
                 'grade_level' => $classroom->grade,
                 'section' => $classroom->section ?? $classroom->period,
                 'nickname' => $data['nickname'],
@@ -355,7 +359,7 @@ class HomeController extends Controller
 
             return response()->json(['message' => 'Check your registration review status.', 'status' => $student->registration_status, 'redirect' => route('student.registration.status')]);
         }
-        $request->session()->forget('pending_registration_id');
+        $request->session()->forget(['pending_registration_id', 'parent_id', 'parent_session_version']);
         session([
             'student_id' => $student->id,
             'student_session_version' => $student->session_version,

@@ -1,5 +1,7 @@
 <section class="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5" id="assignmentTests"><h3 class="font-bold text-primary">Automatic C++ checks</h3><p class="mt-2 text-xs leading-6 text-secondary">Add up to eight input/output tests. Hidden tests stay private. Weights give partial credit; these checks support the teacher's final rubric.</p>
-<details class="mt-4"><summary class="cursor-pointer text-sm font-bold">Optional C++ starter code</summary><label class="mt-3 block text-xs font-bold">Starter main.cpp<textarea name="starter_code" maxlength="20000" rows="6" class="mt-2 w-full rounded-xl border bg-white p-3 font-mono text-xs">{{ $editingAssignment?->starter_code }}</textarea></label></details>
+<details class="mt-4"><summary class="cursor-pointer text-sm font-bold">Optional C++ starter code</summary><label class="mt-3 block text-xs font-bold">Starter main.cpp<textarea id="assignment-starter-editor" name="starter_code" maxlength="20000" rows="6" class="mt-2 w-full rounded-xl border bg-white p-3 font-mono text-xs">{{ $editingAssignment?->starter_code }}</textarea></label>
+@include('onecompiler-button', ['compilerEditor'=>'assignment-starter-editor'])
+</details>
 <div id="testCaseRows" class="mt-4 space-y-3"></div><button type="button" id="addTestCase" class="mt-3 rounded-xl border border-green-200 bg-white px-4 py-3 text-xs font-bold text-primary">＋ Add input/output test</button>
 <input type="hidden" name="tests_included" value="1"><label class="mt-5 block text-xs font-bold">Progressive hints (one per line; up to five)<textarea id="assignmentHints" rows="3" maxlength="5000" class="mt-2 w-full rounded-xl border bg-white p-3 text-sm">{{ implode("\n", $editingAssignment?->hints ?? []) }}</textarea></label>
 </section>
