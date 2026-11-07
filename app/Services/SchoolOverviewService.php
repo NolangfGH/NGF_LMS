@@ -19,6 +19,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SchoolOverviewService
@@ -32,15 +33,34 @@ class SchoolOverviewService
         $staff = TeacherAccount::where('school', $teacher->school)->where('staff_access_status', 'active')->get(['id', 'first_name', 'middle_initial', 'last_name', 'role']);
         $teachers = $staff->whereIn('role', ['teacher', 'school_admin'])->keyBy('id');
         $allClassrooms = Classroom::whereNull('archived_at')->whereIn('teacher_account_id', $teachers->keys())
-            ->select('id', 'teacher_account_id', 'name', 'grade', 'section')->withCount('students')->orderBy('grade')->orderBy('section')->get();
+            ->select('id', 'teacher_account_id', 'name', 'grade', 'section')->withCount('students')->orderBy('grade')->orderBy('section')->orderBy('id')->get();
+        $sections = $allClassrooms->groupBy(fn (Classroom $room): string => json_encode([
+            Str::lower(Str::squish($room->grade)),
+            Str::lower(Str::squish($room->section ?: $room->name)),
+        ], JSON_THROW_ON_ERROR))->map(function (Collection $rooms) use ($teachers): array {
+            $rooms = $rooms->sortBy('id');
+            $first = $rooms->first();
+
+            return [
+                'id' => $first->id, 'grade' => Str::squish($first->grade), 'section' => Str::squish($first->section ?: $first->name),
+                'classroom_ids' => $rooms->pluck('id')->all(), 'subjects' => $rooms->pluck('name')->unique()->implode(', '),
+                'teachers' => $rooms->map(fn (Classroom $room): string => $teachers->get($room->teacher_account_id)?->fullName() ?? '')
+                    ->filter()->unique()->implode(', '),
+                'students_count' => $rooms->sum('students_count'),
+            ];
+        })->values();
         $selected = isset($filter['classroom']) ? (int) $filter['classroom'] : null;
         abort_if($selected && ! $allClassrooms->contains('id', $selected), 404);
-        $classrooms = $selected ? $allClassrooms->where('id', $selected) : $allClassrooms;
+        $selectedSection = $selected ? $sections->first(fn (array $section): bool => in_array($selected, $section['classroom_ids'], true)) : null;
+        $selected = $selectedSection['id'] ?? null;
+        $classrooms = $selectedSection ? $allClassrooms->whereIn('id', $selectedSection['classroom_ids']) : $allClassrooms;
+        $visibleSections = $selectedSection ? collect([$selectedSection]) : $sections;
         $roomIds = $classrooms->pluck('id');
         $students = Student::whereIn('classroom_id', $roomIds);
         $quizResults = $this->quizResults($roomIds);
         $data = ['teacher' => $teacher, 'tab' => $tab, 'tabs' => self::TABS, 'allClassrooms' => $allClassrooms, 'classrooms' => $classrooms,
-            'teachers' => $teachers, 'selected' => $selected, 'studentCount' => (clone $students)->count(), 'staffCount' => $staff->count(),
+            'teachers' => $teachers, 'selected' => $selected, 'sections' => $sections, 'visibleSections' => $visibleSections,
+            'studentCount' => (clone $students)->count(), 'staffCount' => $staff->count(),
             'totalXp' => (int) (clone $students)->sum('xp'),
             'quizAverage' => DB::query()->fromSub($quizResults, 'results')->avg('percent'),
             'completedLessons' => LessonProgress::whereNotNull('completed_at')->whereIn('student_id', (clone $students)->select('id'))->count(),

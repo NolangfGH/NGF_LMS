@@ -69,6 +69,7 @@
     text-align: left;
 }
 .app-profile-menu > summary {
+    gap: 8px;
     min-height: 44px;
     margin-bottom: 0;
     padding: 2px;
@@ -77,7 +78,7 @@
 }
 .app-profile-menu > summary::-webkit-details-marker { display: none; }
 .app-profile-menu > summary:focus-visible { outline: 2px solid #146902; outline-offset: 3px; }
-.app-profile-menu__chevron { width: 14px; font-size: 16px; }
+.app-profile-menu__chevron { display: block; width: 16px; height: 16px; flex: 0 0 16px; margin-right: 2px; transform-origin: center; }
 .app-profile-menu[open] .app-profile-menu__chevron { transform: rotate(180deg); }
 .app-profile-menu__student-avatar {
     display: grid;

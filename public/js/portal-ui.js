@@ -1,13 +1,11 @@
 (() => {
     document.querySelectorAll('[data-clear-on-entry]').forEach(field => {
-        const clearPrefill = () => {
+        const clearCredentials = () => {
             field.value = '';
-            field.removeEventListener('focus', clearPrefill);
-            field.removeEventListener('pointerdown', clearPrefill);
             field.dispatchEvent(new Event('input', {bubbles: true}));
         };
-        field.addEventListener('focus', clearPrefill);
-        field.addEventListener('pointerdown', clearPrefill);
+        field.addEventListener('focus', clearCredentials);
+        field.addEventListener('click', clearCredentials);
     });
 
     const menus = [...document.querySelectorAll('[data-profile-menu]')];

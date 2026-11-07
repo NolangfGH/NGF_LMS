@@ -106,6 +106,43 @@ class SchoolOverviewTest extends TestCase
         $this->assertSame(100.0, round($page->viewData('quizAverage'), 1));
     }
 
+    public function test_repeated_classrooms_have_one_section_choice_and_include_each_teachers_students(): void
+    {
+        extract($this->fixture());
+        $rooms['Foreign']->update(['section' => 'AM']);
+        $sameName = TeacherAccount::create(['first_name' => 'Teacher', 'last_name' => 'Staff', 'school' => 'Our School', 'email' => 'same-name@example.test', 'password' => 'Password123']);
+        $another = TeacherAccount::create(['first_name' => 'Another', 'last_name' => 'Teacher', 'school' => 'Our School', 'email' => 'another@example.test', 'password' => 'Password123']);
+        $duplicateRooms = collect([$staff['teacher'], $sameName, $another])->map(function ($account, $index): Classroom {
+            $room = Classroom::create(['teacher_account_id' => $account->id, 'name' => 'AM C++ Classroom', 'grade' => $index === 0 ? ' Grade 8 ' : 'Grade 8',
+                'section' => $index === 0 ? ' am ' : 'AM', 'join_code' => 'DUPLICATE-'.$index]);
+            Student::create(['classroom_id' => $room->id, 'first_name' => 'Test', 'nickname' => 'ExtraCoder'.$index, 'student_id' => 'EXTRA-'.$index, 'password' => 'Password123', 'xp' => 100]);
+
+            return $room;
+        });
+        Classroom::create(['teacher_account_id' => $staff['teacher']->id, 'name' => 'Grade 9 C++', 'grade' => 'Grade 9', 'section' => 'AM', 'join_code' => 'NINTH-AM']);
+
+        $page = $this->get(route('school.overview'))->assertOk()->assertViewHas('studentCount', 6);
+        $sections = $page->viewData('sections');
+        $this->assertCount(4, $sections);
+        $section = $sections->firstWhere('id', $rooms['AM']->id);
+        $this->assertSame('Teacher Staff, Another Teacher', $section['teachers']);
+        $this->assertSame(4, $section['students_count']);
+        $this->assertCount(4, $section['classroom_ids']);
+        $this->assertSame('AM C++ Classroom', $section['subjects']);
+        $this->assertStringNotContainsString('Foreign', $section['teachers']);
+        $this->assertSame(1, substr_count($page->getContent(), '<option value="'.$section['id'].'"'));
+
+        foreach (['overview', 'students', 'leaderboard', 'lessons', 'assignments', 'quizzes', 'challenges'] as $tab) {
+            $filtered = $this->get(route('school.overview', ['tab' => $tab, 'classroom' => $duplicateRooms->last()->id]))->assertOk()
+                ->assertViewHas('studentCount', 4)->assertViewHas('selected', $rooms['AM']->id)->assertDontSee('ForeignCoder');
+            $this->assertCount(4, $filtered->viewData('classrooms'));
+        }
+        $this->assertDatabaseCount('students', 7);
+        if ($preview = getenv('PORTAL_UI_PREVIEW')) {
+            file_put_contents($preview.'/principal-sections.html', $page->getContent());
+        }
+    }
+
     public function test_school_and_section_rankings_have_fair_ties_and_respect_private_nicknames(): void
     {
         extract($this->fixture());

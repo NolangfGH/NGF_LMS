@@ -56,7 +56,7 @@ class PortalProfileMenuTest extends TestCase
         }
     }
 
-    public function test_both_login_forms_mark_only_credentials_for_clearing_on_first_entry(): void
+    public function test_both_login_forms_mark_only_credentials_for_clearing_on_entry(): void
     {
         foreach (['student', 'teacher'] as $role) {
             $page = $this->get(route($role.'.login'))->assertOk();
