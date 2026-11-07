@@ -1,0 +1,52 @@
+@php
+    $profileIsStudent = $profileAccount instanceof \App\Models\Student;
+    $profileName = $profileIsStudent ? $profileAccount->nickname : $profileAccount->fullName();
+    $profileRole = $profileIsStudent ? 'Student' : $profileAccount->roleLabel();
+    $profileSettings = route($profileIsStudent ? 'student.settings' : 'teacher.settings');
+    $profileLinks = [
+        [$profileSettings.'#profile', 'person', 'My profile'],
+        [$profileSettings.'#account', 'manage_accounts', 'Account settings'],
+        [$profileSettings.'#notifications', 'notifications', 'Notifications'],
+        [$profileSettings.($profileIsStudent ? '#display' : '#preferences'), 'accessibility_new', 'Display & accessibility'],
+        [$profileSettings.'#help', 'help', 'Help & support'],
+    ];
+@endphp
+<details class="app-profile-menu" data-profile-menu>
+    <summary class="{{ !empty($profileMenuChip) ? 'app-admin-profile-chip' : 'app-admin-profile-link' }}" aria-label="Open {{ $profileRole }} account menu">
+        @if($profileIsStudent)
+            <span class="app-profile-menu__student-avatar">@include('student-avatar', ['student' => $profileAccount])</span>
+        @else
+            @include('admin-avatar', ['teacher' => $profileAccount])
+        @endif
+        @if(!empty($profileMenuChip))<span>{{ $profileRole }}</span>@endif
+        <span class="material-symbols-outlined app-profile-menu__chevron" aria-hidden="true">expand_more</span>
+    </summary>
+    <div class="app-profile-menu__panel">
+        <div class="app-profile-menu__identity">
+            <strong>{{ $profileName }}</strong>
+            <span>{{ $profileRole }} · NGF_C++CodeQuest</span>
+        </div>
+        <nav aria-label="{{ $profileRole }} account options">
+            @if($profileIsStudent)
+                <a href="{{ route('student.progress') }}"><span class="material-symbols-outlined" aria-hidden="true">school</span>My learning progress</a>
+            @endif
+            @foreach($profileLinks as [$profileHref, $profileIcon, $profileLabel])
+                <a href="{{ $profileHref }}"><span class="material-symbols-outlined" aria-hidden="true">{{ $profileIcon }}</span>{{ $profileLabel }}</a>
+            @endforeach
+            @if(!$profileIsStudent && $profileAccount->isSchoolAdmin())
+                <a href="{{ route('school.admin') }}"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>School administration</a>
+            @endif
+            <div class="app-profile-menu__system">
+                <a href="{{ route('system.about') }}"><span class="material-symbols-outlined" aria-hidden="true">info</span>About the system</a>
+                <a href="{{ route('system.about') }}#feedback"><span class="material-symbols-outlined" aria-hidden="true">feedback</span>Suggestions & feedback</a>
+            </div>
+        </nav>
+        <div class="app-profile-menu__signout">
+            @if($profileIsStudent)
+                <form method="POST" action="{{ route('student.logout') }}">@csrf<button type="submit"><span class="material-symbols-outlined" aria-hidden="true">logout</span>Sign Out</button></form>
+            @else
+                <a href="{{ route('teacher.logout') }}"><span class="material-symbols-outlined" aria-hidden="true">logout</span>Sign Out</a>
+            @endif
+        </div>
+    </div>
+</details>

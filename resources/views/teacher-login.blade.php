@@ -40,10 +40,10 @@
             <div id="feedback" role="alert" class="mb-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
             <form id="teacher-login-form" class="space-y-5">
                 <label class="block" for="email"><span class="mb-2 block text-sm font-bold">School email or System Admin/Teacher ID <span class="text-red-600">*</span></span>
-                    <input id="email" name="identifier" type="text" required autocomplete="username" placeholder="School email or System Admin/Teacher ID" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100">
+                    <input id="email" name="identifier" type="text" required autocomplete="username" data-clear-on-entry placeholder="School email or System Admin/Teacher ID" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100">
                 </label>
                 <div><div class="mb-2 flex items-center justify-between gap-3"><label for="password" class="text-sm font-bold">Password</label><a href="{{ route('staff.password.request') }}" class="text-xs font-semibold text-primary hover:underline">Forgot username or password?</a></div>
-                    <div class="relative"><input id="password" name="password" type="password" required autocomplete="current-password" placeholder="Password" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-14 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100"><button id="toggle-password" type="button" aria-label="Show password" class="absolute right-3 top-3 text-xs font-bold text-secondary">Show</button></div>
+                    <div class="relative"><input id="password" name="password" type="password" required autocomplete="current-password" data-clear-on-entry placeholder="Password" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-14 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100"><button id="toggle-password" type="button" aria-label="Show password" class="absolute right-3 top-3 text-xs font-bold text-secondary">Show</button></div>
                 </div>
                 <button id="submit" type="submit" class="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white shadow-[0_4px_0_#022100] hover:bg-green-800 disabled:opacity-60">Sign In to Classroom Workspace →</button>
             </form>
