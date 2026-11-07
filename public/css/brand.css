@@ -102,6 +102,74 @@
 }
 .app-admin-page-header :is(.app-brand, .app-admin-profile-chip) { margin-bottom: 0; }
 .app-admin-page-header .app-brand img { max-height: 56px; }
+.principal-menu-link,
+.portal-sidebar .portal-signout,
+.portal-menu .portal-signout,
+.portal-sidebar .portal-menu-link {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    min-height: 2.75rem;
+    padding: .5rem .625rem;
+    border-radius: .625rem;
+    color: #000;
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    text-decoration: none;
+}
+.principal-menu-link > .material-symbols-outlined,
+.portal-sidebar .material-symbols-outlined,
+.portal-signout > .material-symbols-outlined,
+.portal-menu-link > .material-symbols-outlined {
+    flex: 0 0 1.25rem;
+    width: 1.25rem;
+    font-size: 1.25rem;
+    line-height: 1.25rem;
+    text-align: center;
+}
+.portal-sidebar nav > a,
+.portal-sidebar .portal-menu-link,
+.portal-sidebar .portal-signout,
+.portal-sidebar a[href$="logout"],
+.portal-sidebar form[action$="logout"] > button {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    min-height: 2.5rem;
+    margin-top: .125rem;
+    margin-bottom: 0;
+    padding: .4375rem .625rem;
+    border-radius: .625rem;
+    color: #000;
+    font-size: .875rem;
+    line-height: 1.25rem;
+}
+.portal-menu > a { color: #000; }
+.portal-sidebar nav > a:hover,
+.principal-menu-link:hover,
+.portal-sidebar .portal-signout:hover,
+.portal-sidebar a[href$="logout"]:hover,
+.portal-sidebar .portal-menu-link:hover,
+.portal-sidebar form[action$="logout"] > button:hover {
+    background-color: #eef7e8;
+}
+.portal-sidebar nav > :is(a[aria-current="page"], a.bg-primary, a.bg-primary-container),
+.principal-menu-link[aria-current="page"],
+.portal-menu > :is(a[aria-current="page"], a.bg-primary) {
+    background-color: #dcefd1;
+    color: #000;
+    font-weight: 700;
+    box-shadow: inset 3px 0 #146902;
+}
+.portal-sidebar nav > a:focus-visible,
+.principal-menu-link:focus-visible,
+.portal-signout:focus-visible,
+.portal-menu-link:focus-visible {
+    outline: 2px solid #146902;
+    outline-offset: 2px;
+}
+.portal-sidebar .app-brand--sidebar { margin-bottom: 1rem; }
 @media screen {
     .portal-header {
         position: fixed;

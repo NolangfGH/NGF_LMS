@@ -1,6 +1,31 @@
 @foreach(\App\Services\SchoolOverviewService::TABS as $principalTab=>$principalLabel)
-<a href="{{ route('school.overview',['tab'=>$principalTab]) }}" @if(request()->routeIs('school.overview') && request('tab','overview') === $principalTab) aria-current="page" @endif class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold {{ request()->routeIs('school.overview') && request('tab','overview') === $principalTab ? 'bg-primary text-white' : 'text-primary hover:bg-green-50' }}">{{ $principalLabel }}</a>
+@php
+    $principalIcon = match ($principalTab) {
+        'overview' => 'space_dashboard',
+        'students' => 'school',
+        'achievements' => 'military_tech',
+        'leaderboard' => 'leaderboard',
+        'lessons' => 'menu_book',
+        'quizzes' => 'quiz',
+        'assignments' => 'assignment',
+        'challenges' => 'sports_esports',
+        default => 'dashboard',
+    };
+@endphp
+<a href="{{ route('school.overview',['tab'=>$principalTab]) }}" @if(request()->routeIs('school.overview') && request('tab','overview') === $principalTab) aria-current="page" @endif class="principal-menu-link">
+    <span class="material-symbols-outlined" aria-hidden="true">{{ $principalIcon }}</span>
+    <span>{{ $principalLabel }}</span>
+</a>
 @endforeach
-<a href="{{ route('school.ilaw.index') }}" @if(request()->routeIs('school.ilaw.*')) aria-current="page" @endif class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold {{ request()->routeIs('school.ilaw.*') ? 'bg-primary text-white' : 'text-primary hover:bg-green-50' }}">ILAW Lesson Plan Reviews</a>
-<a href="{{ route('system.about') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-primary hover:bg-green-50">About the System</a>
-<a href="{{ route('teacher.settings') }}" @if(request()->routeIs('teacher.settings')) aria-current="page" @endif class="mt-3 block rounded-xl border-t border-green-100 px-4 py-3 text-sm font-bold text-primary">Account Settings</a>
+<a href="{{ route('school.ilaw.index') }}" @if(request()->routeIs('school.ilaw.*')) aria-current="page" @endif class="principal-menu-link">
+    <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+    <span>ILAW Lesson Plan Reviews</span>
+</a>
+<a href="{{ route('system.about') }}" @if(request()->routeIs('system.about')) aria-current="page" @endif class="principal-menu-link">
+    <span class="material-symbols-outlined" aria-hidden="true">info</span>
+    <span>About the System</span>
+</a>
+<a href="{{ route('teacher.settings') }}" @if(request()->routeIs('teacher.settings')) aria-current="page" @endif class="principal-menu-link">
+    <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+    <span>Account Settings</span>
+</a>
