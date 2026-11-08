@@ -73,7 +73,8 @@ class RecitationTest extends TestCase
         $this->asStudent($students[1])->get(route('student.recitations.show', $round))->assertOk()->assertDontSee('private draft')->assertDontSee('PRIVATE-ANSWER-KEY');
         $this->getJson(route('student.recitations.status', $round))->assertOk()->assertDontSee('private draft')->assertDontSee('PRIVATE-ANSWER-KEY');
         $this->withSession(['student_id' => null, 'teacher_id' => $teacher->id])->getJson(route('teacher.recitations.status', $round))->assertOk()->assertJsonPath('drafts.0.answer', '<script>private draft</script>');
-        $this->getJson(route('teacher.recitations.status', ['round' => $round, 'revision' => $round->fresh()->revision]))->assertJsonPath('unchanged', true);
+        $revision = $this->getJson(route('teacher.recitations.status', $round))->json('revision');
+        $this->getJson(route('teacher.recitations.status', ['round' => $round, 'revision' => $revision]))->assertJsonPath('unchanged', true);
         [$other, , $foreign] = $this->room();
         $this->withSession(['teacher_id' => $other->id])->get(route('teacher.recitations.show', $round))->assertForbidden();
         $this->asStudent($foreign[0])->postJson(route('student.recitations.submit', $round), ['answer' => 'PRIVATE-ANSWER-KEY', 'request_key' => Str::uuid()->toString()])->assertForbidden();
@@ -112,5 +113,57 @@ class RecitationTest extends TestCase
             file_put_contents($preview.'/recitation-teacher.html', $page->getContent());
             file_put_contents($preview.'/recitation-student.html', $studentPage->getContent());
         }
+    }
+
+    public function test_each_student_can_earn_only_two_correct_places_per_term_and_year_without_losing_previous_rewards(): void
+    {
+        [$teacher, $room, $students, $first] = $this->room();
+        $second = RecitationRound::factory()->forClassroom($room)->create(['term' => $first->term, 'school_year' => $first->school_year]);
+        $third = RecitationRound::factory()->forClassroom($room)->create(['term' => $first->term, 'school_year' => $first->school_year]);
+        $student = $students[0];
+        $this->asStudent($student)->postJson(route('student.recitations.submit', $first), ['answer' => 'wrong', 'request_key' => Str::uuid()->toString()])->assertOk()->assertJsonPath('term_progress.correct_answers', 0);
+        foreach ([$first, $second] as $index => $round) {
+            $key = Str::uuid()->toString();
+            $this->postJson(route('student.recitations.submit', $round), ['answer' => 'cout', 'request_key' => $key])->assertOk()->assertJsonPath('term_progress.correct_answers', $index + 1)->assertJsonPath('term_progress.score', ($index + 1) * 10);
+        }
+        $this->postJson(route('student.recitations.submit', $second), ['answer' => 'cout', 'request_key' => $key])->assertOk()->assertJsonPath('term_progress.score', 20);
+        $this->postJson(route('student.recitations.submit', $third), ['answer' => 'cout', 'request_key' => Str::uuid()->toString(), 'term' => 'Term2', 'school_year' => '2027-2028'])->assertConflict()->assertSee('20 recitation points');
+        $this->putJson(route('student.recitations.save', $third), ['answer' => 'cout', 'revision' => 0])->assertConflict();
+        $this->getJson(route('student.recitations.status', $third))->assertOk()->assertJsonPath('term_progress.limit_reached', true)->assertJsonPath('term_progress.remaining', 0);
+        $page = $this->get(route('student.recitations.show', $third))->assertOk()->assertSee('Term limit reached')->assertSee('readonly', false)->assertSee('disabled', false);
+        $this->get(route('student.recitations'))->assertOk()->assertSee('20 points')->assertSee('Term limit reached');
+        $this->assertSame(120, $student->fresh()->xp);
+        $this->assertSame(20, (int) RecitationAward::where('student_id', $student->id)->sum('score'));
+        $this->assertDatabaseCount('recitation_drafts', 0);
+        $this->assertDatabaseCount('recitation_attempts', 3);
+        $this->asStudent($students[1])->postJson(route('student.recitations.submit', $third), ['answer' => 'cout', 'request_key' => Str::uuid()->toString()])->assertOk()->assertJsonPath('award.position', 1);
+        foreach ([['Term2', $first->school_year], ['Term1', '2027-2028']] as [$term, $year]) {
+            $newRound = RecitationRound::factory()->forClassroom($room)->create(['term' => $term, 'school_year' => $year]);
+            $this->asStudent($student)->postJson(route('student.recitations.submit', $newRound), ['answer' => 'cout', 'request_key' => Str::uuid()->toString()])->assertOk()->assertJsonPath('term_progress.correct_answers', 1);
+        }
+        $this->withSession(['student_id' => null, 'teacher_id' => $teacher->id])->getJson(route('teacher.recitations.status', $third))->assertOk()->assertJsonPath('drafts.0.term_score', 20)->assertJsonPath('drafts.0.term_limit_reached', true);
+        if ($preview = getenv('CLASSROOM_PREVIEW')) {
+            file_put_contents($preview.'/recitation-term-limit.html', $page->getContent());
+        }
+    }
+
+    public function test_term_limits_survive_section_changes_and_monitor_refresh_detects_awards_in_other_rounds(): void
+    {
+        [$teacher, $room, $students, $first] = $this->room();
+        $student = $students[0];
+        $monitor = $this->withSession(['teacher_id' => $teacher->id])->getJson(route('teacher.recitations.status', $first))->assertOk()->json('revision');
+        foreach (range(1, 2) as $index) {
+            $round = RecitationRound::factory()->forClassroom($room)->create(['term' => $first->term, 'school_year' => $first->school_year]);
+            $this->asStudent($student)->postJson(route('student.recitations.submit', $round), ['answer' => 'cout', 'request_key' => Str::uuid()->toString()])->assertOk();
+        }
+        $this->withSession(['student_id' => null, 'teacher_id' => $teacher->id])->getJson(route('teacher.recitations.status', ['round' => $first, 'revision' => $monitor]))->assertOk()->assertJsonPath('drafts.0.term_limit_reached', true);
+        [$otherTeacher, $otherRoom] = $this->room();
+        $otherRound = RecitationRound::factory()->forClassroom($otherRoom)->create(['term' => $first->term, 'school_year' => $first->school_year]);
+        $student->update(['classroom_id' => $otherRoom->id]);
+        $this->asStudent($student)->postJson(route('student.recitations.submit', $otherRound), ['answer' => 'cout', 'request_key' => Str::uuid()->toString()])->assertConflict();
+        $this->assertSame(120, $student->fresh()->xp);
+        $service = app(GradingSheetService::class);
+        $this->assertTrue($service->sources($teacher->id, $room->id, 'Term1', $first->school_year)->contains('key', 'recitation:'.$first->id));
+        $this->assertFalse($service->sources($teacher->id, $room->id, 'Term1', '2027-2028')->contains('key', 'recitation:'.$first->id));
     }
 }

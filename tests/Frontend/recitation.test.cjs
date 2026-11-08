@@ -79,3 +79,16 @@ test('closed rounds and draft conflicts preserve unsaved text and prevent furthe
     assert.equal(conflict.get('[data-recitation-answer]').readOnly,true);
     assert.equal(conflict.get('[data-recitation-answer]').value,'local answer');
 });
+
+test('reaching the term allowance in another round locks this answer without erasing its draft',async()=>{
+    const app=environment();await settle();app.input('keep my unfinished answer');
+    app.network.state.term_progress={correct_answers:2,score:20,remaining:0,limit_reached:true};
+    await app.poll();await app.autosave();
+    assert.equal(app.get('[data-recitation-answer]').readOnly,true);
+    assert.equal(app.get('[data-recitation-submit]').disabled,true);
+    assert.equal(app.get('[data-recitation-answer]').value,'keep my unfinished answer');
+    assert.match(app.get('[data-recitation-term-progress]').textContent,/20 recitation points.*2\/2/);
+    assert.match(app.get('[data-recitation-result]').textContent,/Term limit reached/);
+    await app.get('[data-recitation-submit]').fire('click');
+    assert.equal(app.requests.filter(r=>r.method!=='GET').length,0);
+});

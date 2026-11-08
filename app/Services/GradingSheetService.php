@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class GradingSheetService
 {
-    public function sources(int $teacherId, int $classroomId, string $term): Collection
+    public function sources(int $teacherId, int $classroomId, string $term, ?string $schoolYear = null): Collection
     {
         $quizzes = TeacherQuiz::where('teacher_account_id', $teacherId)->where('status', 'published')
             ->forClassroom($classroomId)->orderBy('title')->get(['id', 'title', 'questions', 'closes_at'])
@@ -30,7 +30,8 @@ class GradingSheetService
                 'assessment_title' => $assignment->title, 'max' => 16, 'category' => $assignment->kind === 'challenge' ? 'CH' : 'PT',
                 'due_date' => $assignment->due_at?->timezone(config('learning.timezone'))->format('Y-m-d')]);
 
-        $recitations = RecitationRound::where('teacher_account_id', $teacherId)->where('classroom_id', $classroomId)->where('term', $term)->where('status', '!=', 'draft')->orderBy('title')->get()
+        $year = now(config('learning.timezone'))->year;
+        $recitations = RecitationRound::where('teacher_account_id', $teacherId)->where('classroom_id', $classroomId)->where('term', $term)->where('school_year', $schoolYear ?? $year.'-'.($year + 1))->where('status', '!=', 'draft')->orderBy('title')->get()
             ->map(fn ($round) => ['key' => 'recitation:'.$round->id, 'title' => 'Recitation · '.$round->title, 'assessment_title' => $round->title, 'max' => 10, 'category' => 'WW', 'due_date' => null]);
 
         return $quizzes->concat($assignments)->concat($recitations)->values();
@@ -38,7 +39,7 @@ class GradingSheetService
 
     public function linkSources(GradingSheet $sheet, array $keys): int
     {
-        $available = $this->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term)->keyBy('key');
+        $available = $this->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term, $sheet->school_year)->keyBy('key');
         foreach ($keys as $key) {
             if (! $available->has($key)) {
                 throw ValidationException::withMessages(['source_keys' => 'Choose published activities assigned to this section and term.']);

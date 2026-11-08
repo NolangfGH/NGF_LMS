@@ -3,6 +3,7 @@
     $principalIcon = match ($principalTab) {
         'overview' => 'space_dashboard',
         'students' => 'school',
+        'attendance' => 'event_available',
         'achievements' => 'military_tech',
         'leaderboard' => 'leaderboard',
         'lessons' => 'menu_book',

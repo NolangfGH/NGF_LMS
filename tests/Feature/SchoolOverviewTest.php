@@ -15,6 +15,7 @@ use App\Models\TeacherLessonPlan;
 use App\Models\TeacherQuiz;
 use App\Services\SchoolOverviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
@@ -215,6 +216,7 @@ class SchoolOverviewTest extends TestCase
 
     #[TestWith(['overview'])]
     #[TestWith(['students'])]
+    #[TestWith(['attendance'])]
     #[TestWith(['achievements'])]
     #[TestWith(['leaderboard'])]
     #[TestWith(['lessons'])]
@@ -227,5 +229,38 @@ class SchoolOverviewTest extends TestCase
         $principal->forceFill(['role' => 'principal'])->save();
 
         $this->withSession(['teacher_id' => $principal->id, 'teacher_session_version' => 1])->get(route('school.overview', ['tab' => $tab]))->assertOk()->assertViewHas('studentCount', 0)->assertViewHas('quizAverage', null);
+    }
+
+    public function test_principal_rankings_support_overall_grade_section_and_validated_period_filters(): void
+    {
+        extract($this->fixture());
+        $gradeNine = Classroom::create(['teacher_account_id' => $staff['teacher']->id, 'name' => 'Grade 9 C++', 'grade' => 'Grade 9', 'section' => 'AM', 'join_code' => 'NINTH-RANK']);
+        Student::create(['classroom_id' => $gradeNine->id, 'first_name' => 'GradeNine', 'nickname' => 'NinthCoder', 'student_id' => 'NINTH-ID', 'password' => 'Password123', 'xp' => 600]);
+        $page = $this->get(route('school.overview', ['tab' => 'leaderboard', 'scope' => 'overall']))->assertOk()->assertSee('Ranking scope')->assertSee('This week')->assertSee('This month');
+        $this->assertSame(['NinthCoder', 'AMCoder', 'BPCoder', 'DBCoder'], $page->viewData('rows')->getCollection()->pluck('name')->all());
+        $this->get(route('school.overview', ['tab' => 'leaderboard', 'scope' => 'grade', 'grade' => 'Grade 8']))->assertOk()->assertDontSee('NinthCoder')->assertViewHas('rows', fn ($rows) => $rows->total() === 3)->assertViewHas('rankingTitle', 'Grade 8 ranking');
+        $this->get(route('school.overview', ['tab' => 'leaderboard', 'scope' => 'grade', 'grade' => 'Grade 9']))->assertOk()->assertViewHas('rows', fn ($rows) => $rows->total() === 1 && (int) $rows->items()[0]['rank'] === 1);
+        $this->get(route('school.overview', ['tab' => 'leaderboard', 'scope' => 'section', 'classroom' => $rooms['BP']->id]))->assertOk()->assertViewHas('rows', fn ($rows) => $rows->total() === 1 && $rows->items()[0]['name'] === 'BPCoder');
+        $this->get(route('school.overview', ['tab' => 'leaderboard', 'scope' => 'grade', 'grade' => 'Foreign grade']))->assertNotFound();
+        $this->getJson(route('school.overview', ['tab' => 'leaderboard', 'period' => 'year']))->assertUnprocessable()->assertJsonValidationErrors('period');
+    }
+
+    public function test_weekly_and_monthly_xp_use_school_timezone_boundaries_and_exclude_balance_imports_and_future_rewards(): void
+    {
+        extract($this->fixture());
+        $this->travelTo(Carbon::parse('2026-11-12 04:00:00', 'UTC'));
+        DB::table('xp_events')->delete();
+        foreach ([['AM', 5, '2026-10-31 16:00:00', true], ['AM', 500, '2026-10-31 15:59:59', true], ['AM', 10, '2026-11-08 16:00:00', true], ['AM', 20, '2026-11-12 03:59:59', true], ['AM', -5, '2026-11-12 04:00:00', true], ['AM', 900, '2026-11-12 04:00:01', true], ['AM', 1000, '2026-11-10 01:00:00', false], ['BP', 30, '2026-11-08 15:59:59', true], ['DB', 25, '2026-11-10 02:00:00', true], ['Foreign', 9999, '2026-11-10 02:00:00', true]] as [$section, $points, $at, $counts]) {
+            DB::table('xp_events')->insert(['student_id' => $students[$section]->id, 'amount' => $points, 'reason' => 'Test activity', 'counts_for_period' => $counts, 'created_at' => $at]);
+        }
+        $weekly = $this->get(route('school.overview', ['tab' => 'leaderboard', 'period' => 'week']))->assertOk()->assertViewHas('rankingPeriodLabel', 'This week')->assertDontSee('ForeignCoder');
+        $this->assertSame(['AMCoder' => 25, 'DBCoder' => 25, 'BPCoder' => 0], $weekly->viewData('rows')->getCollection()->pluck('xp', 'name')->all());
+        $this->assertSame([1, 1, 3], $weekly->viewData('rows')->getCollection()->pluck('rank')->map(fn ($rank) => (int) $rank)->all());
+        $monthly = $this->get(route('school.overview', ['tab' => 'leaderboard', 'period' => 'month']))->assertOk()->assertViewHas('rankingPeriodLabel', 'This month');
+        $this->assertSame(['AMCoder' => 30, 'BPCoder' => 30, 'DBCoder' => 25], $monthly->viewData('rows')->getCollection()->pluck('xp', 'name')->all());
+        $this->get(route('school.overview', ['tab' => 'leaderboard', 'scope' => 'section', 'classroom' => $rooms['BP']->id, 'period' => 'week']))->assertOk()->assertViewHas('rows', fn ($rows) => $rows->items()[0]['xp'] === 0 && (int) $rows->items()[0]['rank'] === 1);
+        if ($preview = getenv('CLASSROOM_PREVIEW')) {
+            file_put_contents($preview.'/principal-leaderboard.html', $weekly->getContent());
+        }
     }
 }

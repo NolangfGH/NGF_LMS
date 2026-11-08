@@ -17,6 +17,14 @@ class RecitationRound extends Model
 
     protected $attributes = ['status' => 'draft', 'revision' => 1, 'case_sensitive' => true];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $round): void {
+            $year = now(config('learning.timezone'))->year;
+            $round->school_year ??= $year.'-'.($year + 1);
+        });
+    }
+
     protected function casts(): array
     {
         return ['accepted_answers' => 'array', 'case_sensitive' => 'boolean', 'revision' => 'integer'];

@@ -72,7 +72,7 @@ class GradingSheetController extends Controller
         }
 
         return $data + compact('book', 'rows', 'selectedStudent', 'trajectory') + [
-            'sources' => $room ? $service->sources($teacher->id, $room->id, $term) : collect(),
+            'sources' => $room ? $service->sources($teacher->id, $room->id, $term, $schoolYear) : collect(),
             'generatedAt' => now(config('learning.timezone')), 'pageTitle' => 'Grading Sheet',
         ];
     }
@@ -168,7 +168,7 @@ class GradingSheetController extends Controller
                 $selection = $request->validate(['source' => ['required_if:entry_mode,automatic', 'nullable', 'string', 'max:50']]);
                 $sourceKey = $selection['source'] ?? '';
                 if ($sourceKey !== '') {
-                    $source = $service->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term)->firstWhere('key', $sourceKey);
+                    $source = $service->sources($sheet->teacher_account_id, $sheet->classroom_id, $sheet->term, $sheet->school_year)->firstWhere('key', $sourceKey);
                     if (! $source || ($entry['entry_mode'] ?? null) === 'manual') {
                         throw ValidationException::withMessages(['source' => 'Choose a published activity in Automatic score entry mode for this section and term.']);
                     }

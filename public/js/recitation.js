@@ -33,7 +33,7 @@
             find('[data-recitation-winners]').replaceChildren(...(winners.length ? winners : [node('p', `No correct places yet · ${state.status}`, 'rounded-xl bg-white p-4 text-sm')]));
             find('[data-recitation-drafts]').replaceChildren(...state.drafts.map(draft => {
                 const card = node('article', '', 'min-w-0 rounded-2xl border bg-white p-5');
-                card.append(node('h3', draft.name, 'font-bold text-primary'), node('p', `Saved revision ${draft.revision}`, 'mt-2 text-xs text-secondary'), node('pre', draft.answer || 'No draft saved yet.', 'mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-[#102416] p-4 font-mono text-sm text-green-100'));
+                card.append(node('h3', draft.name, 'font-bold text-primary'), node('p', `Saved revision ${draft.revision} · Term score ${draft.term_score || 0}/20 · ${draft.term_correct || 0}/2 correct answers`, 'mt-2 text-xs text-secondary'), node('p', draft.term_limit_reached ? 'Term limit reached · giving classmates a turn' : 'Eligible for a correct-answer place', 'mt-2 text-xs font-bold text-secondary'), node('pre', draft.answer || 'No draft saved yet.', 'mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-[#102416] p-4 font-mono text-sm text-green-100'));
                 return card;
             }));
             connection.textContent = `Round ${state.status} · ${state.winners.length}/5 correct places · Last synced ${new Date().toLocaleTimeString()}`;
@@ -54,17 +54,23 @@
         return;
     }
     const editor = find('[data-recitation-answer]'), submit = find('[data-recitation-submit]'), saveStatus = find('[data-recitation-save]'), result = find('[data-recitation-result]');
-    let revision = Number(root.dataset.revision), saved = editor.value, saving = null, timer = null, busy = false, conflicted = false, locked = root.dataset.locked === '1', awarded = root.dataset.awarded === '1', requestKey = null;
+    let revision = Number(root.dataset.revision), saved = editor.value, saving = null, timer = null, busy = false, conflicted = false, locked = root.dataset.locked === '1', awarded = root.dataset.awarded === '1', termLimit = root.dataset.termLimit === '1', requestKey = null;
     const updateControls = () => { editor.readOnly = locked || conflicted; submit.disabled = locked || conflicted || busy || stopped; };
     function updateState(data) {
+        if (data.term_progress) {
+            termLimit = data.term_progress.limit_reached;
+            const termStatus = find('[data-recitation-term-progress]');
+            if (termStatus) termStatus.textContent = `${data.term_progress.score} recitation points · ${data.term_progress.correct_answers}/2 correct answers this term · ${data.term_progress.remaining} remaining`;
+            if (termLimit && !awarded) result.textContent = 'Term limit reached: two correct answers (20 recitation points). Please give your classmates a turn. You can participate again next term.';
+        }
         if (data.award) {
             awarded = true;
             result.textContent = `Correct place #${data.award.position} · ${data.award.score} recitation points · +${data.award.xp} XP.`;
         }
         if (data.status) {
-            locked = data.status !== 'open' || awarded;
+            locked = data.status !== 'open' || awarded || termLimit;
             connection.textContent = `${data.status} · ${data.places_taken}/5 correct places taken · Last synced ${new Date().toLocaleTimeString()}`;
-        } else if (awarded) locked = true;
+        } else if (awarded || termLimit) locked = true;
         if (data.xp !== undefined) document.querySelectorAll('[data-student-xp]').forEach(label => { label.textContent = `${data.xp} XP · Level ${data.level}`; });
         updateControls();
     }

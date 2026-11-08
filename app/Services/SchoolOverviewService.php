@@ -24,11 +24,12 @@ use Illuminate\Validation\Rule;
 
 class SchoolOverviewService
 {
-    public const TABS = ['overview' => 'School Overview', 'students' => 'Student Progress', 'achievements' => 'Achievements', 'leaderboard' => 'Leaderboard', 'lessons' => 'Lessons', 'quizzes' => 'Quizzes', 'assignments' => 'Assignments', 'challenges' => 'Challenges'];
+    public const TABS = ['overview' => 'School Overview', 'students' => 'Student Progress', 'attendance' => 'Class Attendance', 'achievements' => 'Achievements', 'leaderboard' => 'Leaderboard', 'lessons' => 'Lessons', 'quizzes' => 'Quizzes', 'assignments' => 'Assignments', 'challenges' => 'Challenges'];
 
     public function build(TeacherAccount $teacher, Request $request): array
     {
-        $filter = $request->validate(['tab' => ['nullable', Rule::in(array_keys(self::TABS))], 'classroom' => ['nullable', 'integer', 'min:1'], 'page' => ['nullable', 'integer', 'min:1'], 'content_page' => ['nullable', 'integer', 'min:1']]);
+        $filter = $request->validate(['tab' => ['nullable', Rule::in(array_keys(self::TABS))], 'classroom' => ['nullable', 'integer', 'min:1'], 'page' => ['nullable', 'integer', 'min:1'], 'content_page' => ['nullable', 'integer', 'min:1'],
+            'scope' => ['nullable', Rule::in(['overall', 'grade', 'section'])], 'grade' => ['nullable', 'string', 'max:80'], 'period' => ['nullable', Rule::in(['all', 'week', 'month'])]]);
         $tab = $filter['tab'] ?? 'overview';
         $staff = TeacherAccount::where('school', $teacher->school)->where('staff_access_status', 'active')->get(['id', 'first_name', 'middle_initial', 'last_name', 'role']);
         $teachers = $staff->whereIn('role', ['teacher', 'school_admin'])->keyBy('id');
@@ -49,17 +50,39 @@ class SchoolOverviewService
                 'students_count' => $rooms->sum('students_count'),
             ];
         })->values();
+        $grades = $sections->pluck('grade')->unique(fn (string $grade): string => Str::lower($grade))->values();
         $selected = isset($filter['classroom']) ? (int) $filter['classroom'] : null;
         abort_if($selected && ! $allClassrooms->contains('id', $selected), 404);
         $selectedSection = $selected ? $sections->first(fn (array $section): bool => in_array($selected, $section['classroom_ids'], true)) : null;
         $selected = $selectedSection['id'] ?? null;
         $classrooms = $selectedSection ? $allClassrooms->whereIn('id', $selectedSection['classroom_ids']) : $allClassrooms;
         $visibleSections = $selectedSection ? collect([$selectedSection]) : $sections;
+        $rankingScope = $filter['scope'] ?? ($selected ? 'section' : (filled($filter['grade'] ?? null) ? 'grade' : 'overall'));
+        $rankingGrade = $filter['grade'] ?? $grades->first();
+        $rankingPeriod = $filter['period'] ?? 'all';
+        if ($tab === 'leaderboard') {
+            if ($rankingScope === 'grade') {
+                abort_if($rankingGrade !== null && ! $grades->contains($rankingGrade), 404);
+                $classrooms = $allClassrooms->filter(fn (Classroom $room): bool => Str::lower(Str::squish($room->grade)) === Str::lower($rankingGrade ?? ''));
+                $visibleSections = $sections->filter(fn (array $section): bool => Str::lower($section['grade']) === Str::lower($rankingGrade ?? ''));
+                $selected = null;
+            } elseif ($rankingScope === 'section') {
+                $selectedSection ??= $sections->first();
+                $selected = $selectedSection['id'] ?? null;
+                $classrooms = $allClassrooms->whereIn('id', $selectedSection['classroom_ids'] ?? []);
+                $visibleSections = $selectedSection ? collect([$selectedSection]) : collect();
+            } else {
+                $classrooms = $allClassrooms;
+                $visibleSections = $sections;
+                $selected = null;
+            }
+        }
         $roomIds = $classrooms->pluck('id');
         $students = Student::whereIn('classroom_id', $roomIds);
         $quizResults = $this->quizResults($roomIds);
         $data = ['teacher' => $teacher, 'tab' => $tab, 'tabs' => self::TABS, 'allClassrooms' => $allClassrooms, 'classrooms' => $classrooms,
             'teachers' => $teachers, 'selected' => $selected, 'sections' => $sections, 'visibleSections' => $visibleSections,
+            'grades' => $grades, 'rankingScope' => $rankingScope, 'rankingGrade' => $rankingGrade, 'rankingPeriod' => $rankingPeriod,
             'studentCount' => (clone $students)->count(), 'staffCount' => $staff->count(),
             'totalXp' => (int) (clone $students)->sum('xp'),
             'quizAverage' => DB::query()->fromSub($quizResults, 'results')->avg('percent'),
@@ -69,11 +92,28 @@ class SchoolOverviewService
 
         if ($tab === 'students') {
             $data['rows'] = $this->progress($roomIds, $classrooms);
+        } elseif ($tab === 'attendance') {
+            $data += app(SchoolAttendanceService::class)->build($classrooms, $teachers, $request, $selected);
         } elseif ($tab === 'leaderboard') {
-            $data['rows'] = (clone $students)->select('id', 'classroom_id', 'nickname', 'leaderboard_visible', 'xp', 'level')
-                ->selectRaw('RANK() OVER (ORDER BY COALESCE(xp, 0) DESC) AS ranking_position')->orderByRaw('COALESCE(xp, 0) DESC')->orderBy('id')
+            $ranking = clone $students;
+            $points = 'COALESCE(students.xp, 0)';
+            $now = now(config('learning.timezone'));
+            $start = $rankingPeriod === 'week' ? $now->copy()->startOfWeek() : $now->copy()->startOfMonth();
+            if ($rankingPeriod !== 'all') {
+                $events = DB::table('xp_events')->whereIn('student_id', (clone $students)->select('students.id'))->where('counts_for_period', true)
+                    ->whereBetween('created_at', [$start->copy()->utc(), $now->copy()->utc()])->groupBy('student_id')->selectRaw('student_id, SUM(amount) AS points');
+                $ranking->leftJoinSub($events, 'period_points', 'period_points.student_id', '=', 'students.id');
+                $points = 'COALESCE(period_points.points, 0)';
+            }
+            $data['rankingTitle'] = match ($rankingScope) {
+                'grade' => ($rankingGrade ?? 'Grade').' ranking', 'section' => 'Section ranking', default => 'Overall school ranking'
+            };
+            $data['rankingPeriodLabel'] = ['all' => 'All time', 'week' => 'This week', 'month' => 'This month'][$rankingPeriod];
+            $data['rankingRange'] = $rankingPeriod === 'all' ? null : $start->format('M j, Y').' – '.$now->format('M j, Y').' · UTC+08:00';
+            $data['rows'] = $ranking->select('students.id', 'classroom_id', 'nickname', 'leaderboard_visible', 'xp', 'level')->selectRaw($points.' AS ranking_xp')
+                ->selectRaw('RANK() OVER (ORDER BY '.$points.' DESC) AS ranking_position')->orderByRaw($points.' DESC')->orderBy('students.id')
                 ->paginate(25)->withQueryString()->through(fn ($student) => ['name' => $student->rankingName(0), 'rank' => $student->ranking_position,
-                    'section' => $this->section($classrooms->firstWhere('id', $student->classroom_id)), 'xp' => (int) $student->xp, 'level' => max(1, (int) $student->level)]);
+                    'section' => $this->section($classrooms->firstWhere('id', $student->classroom_id)), 'xp' => (int) $student->ranking_xp, 'level' => max(1, (int) $student->level)]);
         } elseif ($tab === 'achievements') {
             $data['rows'] = StudentAchievement::whereIn('student_id', (clone $students)->select('id'))
                 ->with('student:id,classroom_id,nickname,leaderboard_visible')->orderByDesc('earned_at')->orderByDesc('id')

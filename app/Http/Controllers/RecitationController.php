@@ -50,7 +50,10 @@ class RecitationController extends Controller
 
     private function validated(Request $request, TeacherAccount $teacher): array
     {
-        $data = $request->validate(['classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')->where('teacher_account_id', $teacher->id)->whereNull('archived_at')], 'title' => ['required', 'string', 'max:160'], 'term' => ['required', Rule::in(['Term1', 'Term2', 'Term3'])], 'question' => ['required', 'string', 'max:5000'], 'accepted_answers' => ['required', 'string', 'max:20000'], 'case_sensitive' => ['required', 'boolean'], 'status' => ['required', Rule::in(['draft', 'open'])]]);
+        $data = $request->validate(['classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')->where('teacher_account_id', $teacher->id)->whereNull('archived_at')], 'title' => ['required', 'string', 'max:160'], 'term' => ['required', Rule::in(['Term1', 'Term2', 'Term3'])], 'school_year' => ['sometimes', 'required', 'string', 'regex:/^20\d{2}-20\d{2}$/'], 'question' => ['required', 'string', 'max:5000'], 'accepted_answers' => ['required', 'string', 'max:20000'], 'case_sensitive' => ['required', 'boolean'], 'status' => ['required', Rule::in(['draft', 'open'])]]);
+        if (isset($data['school_year']) && (int) substr($data['school_year'], 5) !== (int) substr($data['school_year'], 0, 4) + 1) {
+            throw ValidationException::withMessages(['school_year' => 'Use consecutive school years, such as 2026-2027.']);
+        }
         $answers = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/u', $data['accepted_answers'])), fn ($answer) => $answer !== '')));
         if (count($answers) < 1 || count($answers) > 20) {
             throw ValidationException::withMessages(['accepted_answers' => 'Provide one to twenty accepted answers, one per line.']);
@@ -114,16 +117,20 @@ class RecitationController extends Controller
         $awards = RecitationAward::where('recitation_round_id', $round->id)->orderBy('position')->get();
         $names = Student::whereIn('id', $awards->pluck('student_id'))->pluck('nickname', 'id');
         $answers = RecitationAttempt::whereIn('id', $awards->pluck('recitation_attempt_id'))->pluck('answer', 'id');
+        $standings = app(RecitationService::class)->termStandings($round, $students->pluck('id'));
 
-        return ['revision' => $round->revision, 'status' => $round->status, 'winners' => $awards->map(fn ($award) => ['student_id' => $award->student_id, 'name' => $names->get($award->student_id, 'Former class member'), 'position' => $award->position, 'score' => $award->score, 'xp' => $award->xp, 'answer' => $answers->get($award->recitation_attempt_id), 'at' => $award->created_at->toIso8601String()])->all(),
-            'drafts' => $students->map(fn ($student) => ['id' => $student->id, 'name' => trim($student->first_name.' '.$student->surname).' ('.$student->nickname.')', 'answer' => $drafts->get($student->id)?->answer ?? '', 'revision' => $drafts->get($student->id)?->revision ?? 0])->all()];
+        return ['revision' => $round->revision.':'.(int) $standings->max('last_award_id'), 'status' => $round->status, 'winners' => $awards->map(fn ($award) => ['student_id' => $award->student_id, 'name' => $names->get($award->student_id, 'Former class member'), 'position' => $award->position, 'score' => $award->score, 'xp' => $award->xp, 'answer' => $answers->get($award->recitation_attempt_id), 'at' => $award->created_at->toIso8601String()])->all(),
+            'drafts' => $students->map(fn ($student) => ['id' => $student->id, 'name' => trim($student->first_name.' '.$student->surname).' ('.$student->nickname.')', 'answer' => $drafts->get($student->id)?->answer ?? '', 'revision' => $drafts->get($student->id)?->revision ?? 0,
+                'term_score' => (int) ($standings->get($student->id)?->points ?? 0), 'term_correct' => (int) ($standings->get($student->id)?->correct_answers ?? 0),
+                'term_limit_reached' => (int) ($standings->get($student->id)?->correct_answers ?? 0) >= RecitationService::TERM_LIMIT || (int) ($standings->get($student->id)?->points ?? 0) >= 20])->all()];
     }
 
     public function status(Request $request, RecitationRound $round): Response
     {
         $this->owned($round);
+        $state = $this->teacherState($round);
 
-        return response()->json($request->query('revision') === (string) $round->revision ? ['unchanged' => true] : $this->teacherState($round))->header('Cache-Control', 'private, no-store');
+        return response()->json($request->query('revision') === $state['revision'] ? ['unchanged' => true] : $state)->header('Cache-Control', 'private, no-store');
     }
 
     public function studentIndex(): Response
@@ -131,8 +138,9 @@ class RecitationController extends Controller
         $student = $this->student();
         $rounds = RecitationRound::where('classroom_id', $student->classroom_id)->where('teacher_account_id', $student->classroom->teacher_account_id)->where('status', '!=', 'draft')->latest('id')->paginate(20);
         $awards = RecitationAward::where('student_id', $student->id)->get()->keyBy('recitation_round_id');
+        $termTotals = app(RecitationService::class)->studentTermTotals($student);
 
-        return response()->view('recitation-student-list', [...compact('student', 'rounds', 'awards'), 'classroom' => $student->classroom, 'lastSyncedAt' => now('Asia/Singapore')->format('M j, Y g:i A')])->header('Cache-Control', 'private, no-store');
+        return response()->view('recitation-student-list', [...compact('student', 'rounds', 'awards', 'termTotals'), 'classroom' => $student->classroom, 'lastSyncedAt' => now('Asia/Singapore')->format('M j, Y g:i A')])->header('Cache-Control', 'private, no-store');
     }
 
     private function studentRound(RecitationRound $round): Student
@@ -148,8 +156,9 @@ class RecitationController extends Controller
         $student = $this->studentRound($round);
         $draft = RecitationDraft::where('recitation_round_id', $round->id)->where('student_id', $student->id)->first();
         $award = RecitationAward::where('recitation_round_id', $round->id)->where('student_id', $student->id)->first();
+        $termProgress = app(RecitationService::class)->termProgress($round, $student);
 
-        return response()->view('recitation-student', [...compact('student', 'round', 'draft', 'award'), 'classroom' => $student->classroom, 'lastSyncedAt' => now('Asia/Singapore')->format('M j, Y g:i A')])->header('Cache-Control', 'private, no-store');
+        return response()->view('recitation-student', [...compact('student', 'round', 'draft', 'award', 'termProgress'), 'classroom' => $student->classroom, 'lastSyncedAt' => now('Asia/Singapore')->format('M j, Y g:i A')])->header('Cache-Control', 'private, no-store');
     }
 
     public function studentStatus(RecitationRound $round): Response
@@ -158,7 +167,7 @@ class RecitationController extends Controller
 
         $award = RecitationAward::where('recitation_round_id', $round->id)->where('student_id', $student->id)->first(['position', 'score', 'xp']);
 
-        return response()->json(['status' => $round->status, 'places_taken' => RecitationAward::where('recitation_round_id', $round->id)->count(), 'xp' => $student->xp, 'level' => $student->level, 'award' => $award])->header('Cache-Control', 'private, no-store');
+        return response()->json(['status' => $round->status, 'places_taken' => RecitationAward::where('recitation_round_id', $round->id)->count(), 'xp' => $student->xp, 'level' => $student->level, 'award' => $award, 'term_progress' => app(RecitationService::class)->termProgress($round, $student)])->header('Cache-Control', 'private, no-store');
     }
 
     public function save(Request $request, RecitationRound $round, RecitationService $service): Response
