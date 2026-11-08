@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('reviewed_at')->nullable();
             $table->string('review_note', 500)->nullable();
             $table->timestamps();
-            $table->index(['attendance_session_id', 'student_id', 'status']);
+            $table->index(['attendance_session_id', 'student_id', 'status'], 'attendance_photo_session_student_status');
         });
     }
 
