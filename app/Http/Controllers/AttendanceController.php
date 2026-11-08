@@ -70,7 +70,7 @@ class AttendanceController extends Controller
         $teacher = $this->teacher();
         $data = $request->validate(['classroom_id' => ['required', 'integer'], 'session_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.now(config('learning.timezone'))->addYear()->toDateString()],
             'title' => ['required', 'string', 'max:160'], 'start_time' => ['required', 'date_format:H:i'], 'end_time' => ['required', 'date_format:H:i'],
-            'open_time' => ['required', 'date_format:H:i'], 'close_time' => ['required', 'date_format:H:i']]);
+            'open_time' => ['required', 'date_format:H:i'], 'close_time' => ['required', 'date_format:H:i'], 'photo_required' => ['sometimes', 'boolean']]);
         $times = [];
         foreach (['start', 'end', 'open', 'close'] as $key) {
             $times[$key] = Carbon::parse($data['session_date'].' '.$data[$key.'_time'], config('learning.timezone'))->utc();
@@ -80,7 +80,7 @@ class AttendanceController extends Controller
             $room = Classroom::where('teacher_account_id', $teacher->id)->whereNull('archived_at')->lockForUpdate()->findOrFail($data['classroom_id']);
             abort_if(DB::table('attendance_sessions')->where('classroom_id', $room->id)->where('session_date', $data['session_date'])->exists(), 409, 'A session already exists for this section and date. Open that session instead.');
             $id = DB::table('attendance_sessions')->insertGetId(['teacher_account_id' => $teacher->id, 'classroom_id' => $room->id, 'session_date' => $data['session_date'], 'title' => $data['title'],
-                'starts_at' => $times['start'], 'ends_at' => $times['end'], 'checkin_opens_at' => $times['open'], 'checkin_closes_at' => $times['close'], 'checkin_code' => Str::upper(Str::random(8)), 'created_at' => now(), 'updated_at' => now()]);
+                'starts_at' => $times['start'], 'ends_at' => $times['end'], 'photo_required' => $data['photo_required'] ?? false, 'checkin_opens_at' => $times['open'], 'checkin_closes_at' => $times['close'], 'checkin_code' => Str::upper(Str::random(8)), 'created_at' => now(), 'updated_at' => now()]);
             $session = DB::table('attendance_sessions')->find($id);
             $service->sync($session);
             $service->record($session, 'teacher', $teacher->id, 'session_created');
@@ -164,10 +164,11 @@ class AttendanceController extends Controller
         $student = $this->student();
         $entries = DB::table('attendance_entries')->join('attendance_sessions', 'attendance_sessions.id', '=', 'attendance_entries.attendance_session_id')
             ->where('attendance_entries.student_id', $student->id)->where('attendance_sessions.classroom_id', $student->classroom_id)
-            ->orderByDesc('session_date')->select('attendance_entries.*', 'session_date', 'title', 'starts_at', 'checkin_opens_at', 'checkin_closes_at', 'checkin_enabled', 'finalized_at')->paginate(20);
+            ->orderByDesc('session_date')->select('attendance_entries.*', 'session_date', 'title', 'starts_at', 'checkin_opens_at', 'checkin_closes_at', 'checkin_enabled', 'finalized_at', 'photo_required')->paginate(20);
         $requests = DB::table('attendance_requests')->whereIn('attendance_entry_id', $entries->pluck('id'))->orderByDesc('id')->get()->groupBy('attendance_entry_id');
+        $photos = DB::table('attendance_photo_requests')->where('student_id', $student->id)->whereIn('attendance_entry_id', $entries->pluck('id'))->latest('id')->get()->groupBy('attendance_entry_id');
 
-        return response()->view('attendance.student', ['student' => $student, 'classroom' => $student->classroom, 'entries' => $entries, 'requests' => $requests,
+        return response()->view('attendance.student', ['student' => $student, 'classroom' => $student->classroom, 'entries' => $entries, 'requests' => $requests, 'photos' => $photos,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j · g:i A')])->header('Cache-Control', 'private, no-store');
     }
 
@@ -182,6 +183,7 @@ class AttendanceController extends Controller
                 $service->writable($current);
                 $entry = DB::table('attendance_entries')->where('attendance_session_id', $current->id)->where('student_id', $student->id)->first() ?? abort(404);
                 if ($data['action'] === 'checkin') {
+                    abort_if($current->photo_required, 422, 'This session requires a selfie for teacher review. Use the photo check-in form.');
                     abort_unless($current->checkin_enabled && now()->gte(Carbon::parse($current->checkin_opens_at)) && now()->lt(Carbon::parse($current->checkin_closes_at)), 422, 'Check-in is not open. Ask your teacher to record your attendance.');
                     abort_unless(hash_equals($current->checkin_code, Str::upper(trim($data['code']))), 422, 'The class passcode is incorrect. Ask your teacher for today’s code.');
                     if ($entry->checked_in_at) {

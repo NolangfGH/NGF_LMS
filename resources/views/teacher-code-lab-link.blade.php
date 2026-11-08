@@ -8,6 +8,7 @@ if (teacherNav && !teacherNav.querySelector('a[href="{{ route('teacher.library')
     const reportLink = teacherNav.querySelector('a[href="{{ route('teacher.reports') }}"]');
     if (reportLink) { reportLink.before(libraryLink); } else { teacherNav.append(libraryLink); }
 }
+if(teacherNav && !teacherNav.querySelector('a[href="{{ route('teacher.recitations') }}"]')) { const link=document.createElement('a'); link.href='{{ route('teacher.recitations') }}'; link.className='portal-menu-link'; link.innerHTML='<span class="material-symbols-outlined" aria-hidden="true">record_voice_over</span>Recitation'; teacherNav.append(link); }
 if(teacherNav) {
     let studentsLink=[...teacherNav.querySelectorAll('a')].find(link=>link.textContent.trim().endsWith('Students'));
     if(!studentsLink) {

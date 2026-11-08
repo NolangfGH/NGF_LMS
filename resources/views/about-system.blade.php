@@ -47,6 +47,10 @@
             </article>
         @endforeach
     </section>
+    <section aria-labelledby="developer-title" class="flex flex-col gap-6 rounded-3xl border border-green-100 bg-white p-6 sm:flex-row sm:items-center sm:p-8">
+        <img src="{{ asset('images/branding/system-admin-profile.png') }}" alt="Portrait provided by Nolan G. Fadriquilan" width="112" height="112" class="h-28 w-28 shrink-0 rounded-full object-cover" loading="lazy">
+        <div><p class="text-xs font-bold uppercase tracking-widest text-secondary">Developer · Programmer · Author</p><h2 id="developer-title" class="mt-2 text-2xl font-extrabold text-primary">Nolan G. Fadriquilan</h2><p class="mt-3 max-w-3xl text-sm leading-7">Creator of NGF_C++CodeQuest, a gamified learning platform designed to support C++ lessons, safe coding practice, classroom assessment, and learning progress for students, teachers, school leaders, and families.</p><p class="mt-3 text-xs text-secondary">NGF_LMS V1.0 · Built with Laravel and PHP for browser-based C++ learning.</p></div>
+    </section>
     <section id="feedback" class="scroll-mt-32 rounded-3xl border border-green-100 bg-white p-6 sm:p-8">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>

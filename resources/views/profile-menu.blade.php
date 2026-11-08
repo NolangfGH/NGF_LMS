@@ -39,6 +39,7 @@
             <div class="app-profile-menu__system">
                 @if(!$profileIsStudent && !$profileAccount->isPrincipal())<a href="{{ route('teacher.parents') }}"><span class="material-symbols-outlined" aria-hidden="true">family_restroom</span>Parent access requests</a>@endif
 @if(!$profileIsStudent && $profileAccount->isSchoolAdmin())<a href="{{ route('school.audit') }}"><span class="material-symbols-outlined" aria-hidden="true">history</span>Audit trail reports</a><a href="{{ route('school.donations') }}"><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span>Donation settings</a>@endif
+@if($profileIsStudent)<a href="{{ route('student.recitations') }}"><span class="material-symbols-outlined" aria-hidden="true">record_voice_over</span>Class recitation</a>@elseif(!$profileAccount->isPrincipal())<a href="{{ route('teacher.recitations') }}"><span class="material-symbols-outlined" aria-hidden="true">record_voice_over</span>Recitation Studio</a>@endif
 <a href="{{ route('donations') }}"><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span>Support C++ learning</a>
 <a href="{{ route('system.about') }}"><span class="material-symbols-outlined" aria-hidden="true">info</span>About the system</a>
                 <a href="{{ route('system.about') }}#feedback"><span class="material-symbols-outlined" aria-hidden="true">feedback</span>Suggestions & feedback</a>

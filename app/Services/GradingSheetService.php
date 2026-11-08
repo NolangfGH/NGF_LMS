@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\GradingNote;
 use App\Models\GradingSheet;
 use App\Models\LabSubmission;
+use App\Models\RecitationAward;
+use App\Models\RecitationRound;
 use App\Models\Student;
 use App\Models\TeacherAssignment;
 use App\Models\TeacherQuiz;
@@ -28,7 +30,10 @@ class GradingSheetService
                 'assessment_title' => $assignment->title, 'max' => 16, 'category' => $assignment->kind === 'challenge' ? 'CH' : 'PT',
                 'due_date' => $assignment->due_at?->timezone(config('learning.timezone'))->format('Y-m-d')]);
 
-        return $quizzes->concat($assignments)->values();
+        $recitations = RecitationRound::where('teacher_account_id', $teacherId)->where('classroom_id', $classroomId)->where('term', $term)->where('status', '!=', 'draft')->orderBy('title')->get()
+            ->map(fn ($round) => ['key' => 'recitation:'.$round->id, 'title' => 'Recitation · '.$round->title, 'assessment_title' => $round->title, 'max' => 10, 'category' => 'WW', 'due_date' => null]);
+
+        return $quizzes->concat($assignments)->concat($recitations)->values();
     }
 
     public function linkSources(GradingSheet $sheet, array $keys): int
@@ -91,7 +96,7 @@ class GradingSheetService
         return [
             'assessments' => $assessments, 'rows' => $rows, 'weights' => $weights,
             'automatic' => [
-                'linked' => $assessments->whereIn('source_type', ['quiz', 'assignment'])->count(),
+                'linked' => $assessments->whereIn('source_type', ['quiz', 'assignment', 'recitation'])->count(),
                 'recorded' => $rows->sum(fn ($row) => collect($row['cells'])->filter(fn ($cell) => $cell['automatic'] !== null && ! $cell['override'])->count()),
                 'overrides' => $rows->sum(fn ($row) => collect($row['cells'])->where('override', true)->count()),
             ],
@@ -192,6 +197,15 @@ class GradingSheetService
                     'label' => 'Latest final teacher rubric · '.$submission->score.'/16',
                     'url' => route('teacher.code-lab', ['submission' => $submission->id]),
                 ];
+            }
+        }
+
+        $recitations = $assessments->where('source_type', 'recitation');
+        $allowedRounds = RecitationRound::where('teacher_account_id', $teacherId)->where('classroom_id', $classroomId)->whereIn('id', $recitations->pluck('source_id'))->pluck('id');
+        $awards = RecitationAward::whereIn('recitation_round_id', $allowedRounds)->whereIn('student_id', $studentIds)->get();
+        foreach ($recitations as $assessment) {
+            foreach ($awards->where('recitation_round_id', $assessment->source_id) as $award) {
+                $scores[$assessment->id][$award->student_id] = ['score' => round($award->score / 10 * $assessment->max_score, 2), 'label' => 'Recitation correct place #'.$award->position.' · 10/10', 'url' => route('teacher.recitations.show', $award->recitation_round_id)];
             }
         }
 

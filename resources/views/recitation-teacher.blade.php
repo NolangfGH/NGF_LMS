@@ -1,0 +1,6 @@
+@extends('layouts.teacher-learning',['pageTitle'=>'Recitation Studio'])
+@section('content')
+<p class="text-xs font-bold uppercase tracking-widest text-secondary">Think · Respond · Learn</p><h1 class="mt-3 text-3xl font-extrabold text-primary">Recitation Studio</h1><p class="mt-3 max-w-3xl text-sm leading-7">Automatically record the first five different students to submit a correct answer in each round. Watch their saved drafts live. Submission order is determined by the server.</p>
+@include('recitation-rewards')
+<div class="mt-6 grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]"><div>@if($rooms->isNotEmpty())@include('recitation-form')@else<div class="rounded-2xl bg-white p-6">Create a class in <a href="{{ route('teacher.classes') }}" class="font-bold underline">My Classes</a> first.</div>@endif</div><section class="rounded-2xl border bg-white p-6"><h2 class="text-xl font-bold text-primary">Your rounds</h2>@forelse($rounds as $item)<a href="{{ route('teacher.recitations.show',$item) }}" class="mt-4 block rounded-xl border bg-paper p-4"><b>{{ $item->title }}</b><p class="mt-2 text-xs">{{ $item->term }} · {{ ucfirst($item->status) }} · {{ $item->created_at->timezone('Asia/Singapore')->format('M j, Y') }}</p></a>@empty<p class="mt-4 text-sm">No recitation rounds yet.</p>@endforelse<div class="mt-5">{{ $rounds->links() }}</div></section></div>
+@endsection
