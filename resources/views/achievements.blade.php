@@ -9,6 +9,7 @@
 @if($achievementReport['new_count'])
 <p role="status" class="mb-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-bold text-primary">A step forward! {{ $achievementReport['new_count'] }} earned {{ $achievementReport['new_count'] === 1 ? 'badge is' : 'badges are' }} ready to explore in your collection.</p>
 @endif
+@include('xp-history')
 <section class="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
     <article class="relative overflow-hidden rounded-3xl bg-primary p-6 text-white shadow-card sm:p-8">
         <div class="flex items-start justify-between gap-4"><div><p class="font-mono text-[10px] font-bold uppercase tracking-widest text-green-200">Your badge collection</p><p class="mt-4 text-5xl font-extrabold">{{ $achievementReport['earned'] }} <span class="text-xl text-green-200">/ {{ $achievementReport['total'] }}</span></p></div><span class="material-symbols-outlined rounded-2xl bg-white/10 p-4 text-5xl text-lime-200" aria-hidden="true">military_tech</span></div>

@@ -303,6 +303,7 @@ Route::get('/achievements', [HomeController::class, 'studentAchievements'])->nam
 Route::post('/achievements/goal', [AchievementController::class, 'goal'])->name('student.achievements.goal');
 Route::get('/teacher-achievements', [AchievementController::class, 'teacher'])->name('teacher.achievements');
 Route::get('/teacher-achievements/export', [AchievementController::class, 'export'])->name('teacher.achievements.export');
+Route::get('/teacher-achievements/{student}/xp-history', [AchievementController::class, 'teacherXp'])->whereNumber('student')->name('teacher.achievements.xp');
 Route::get('/leaderboard', [HomeController::class, 'studentLeaderboard'])->name('student.leaderboard');
 Route::get('/progress', [HomeController::class, 'studentProgress'])->name('student.progress');
 Route::get('/teacher-dashboard', [HomeController::class, 'teacherDashboard'])->name('teacher.dashboard');

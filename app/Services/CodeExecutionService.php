@@ -113,7 +113,7 @@ class CodeExecutionService
         });
         $run->refresh();
         if ($run->status === 'completed' && $run->mode === 'tests' && $run->possible > 0 && $run->earned === $run->possible && ! $run->workspace->teacher_assignment_id) {
-            app(LearningRewards::class)->award($run->student_id, 'practice:'.$run->workspace->activity_key, config('compiler.practice_xp'));
+            app(LearningRewards::class)->award($run->student_id, 'practice:'.$run->workspace->activity_key, config('compiler.practice_xp'), ['type' => 'practice', 'id' => $run->workspace->id, 'title' => $run->workspace->title, 'reason' => 'Code Lab practice tests passed', 'details' => ['All practice tests passed. One reward per practice activity.']]);
             app(AchievementService::class)->sync(Student::findOrFail($run->student_id));
         }
 

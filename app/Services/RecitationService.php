@@ -96,11 +96,15 @@ class RecitationService
                 $xp = [1 => 10, 2 => 5, 3 => 3, 4 => 0, 5 => 0][$position];
                 RecitationAward::create(['recitation_round_id' => $current->id, 'recitation_attempt_id' => $attempt->id, 'student_id' => $student->id, 'position' => $position, 'score' => 10, 'xp' => $xp]);
                 if ($xp > 0) {
-                    app(LearningRewards::class)->award($student->id, 'recitation:'.$current->id.':'.$student->id, $xp);
+                    app(LearningRewards::class)->award($student->id, 'recitation:'.$current->id.':'.$student->id, $xp, ['type' => 'recitation', 'id' => $current->id, 'title' => $current->title, 'reason' => 'Correct recitation place', 'details' => [$current->school_year.' · '.$current->term.'. Place #'.$position.' earns '.$xp.' XP plus 10 recitation score points.']]);
                 }
                 if ($position === 5) {
                     $current->status = 'completed';
                 }
+            } else {
+                app(XpLedger::class)->change($student->id, 'recitation-penalty:'.$attempt->id, -XpLedger::ASSESSMENT_PENALTY,
+                    ['type' => 'recitation', 'id' => $current->id, 'title' => $current->title, 'reason' => 'Incorrect recitation answer',
+                        'details' => [$current->school_year.' · '.$current->term.'. One submitted answer did not match the accepted answer: 5 XP deduction requested. Recitation score and term allowance are unchanged.']]);
             }
             $current->revision++;
             $current->save();

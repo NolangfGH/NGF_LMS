@@ -24,10 +24,13 @@ class CoursePostTestController extends Controller
             return redirect()->route('student.login');
         }
 
+        $state = $this->exam->state($student);
+        $student->refresh();
+
         return response()->view('course-assessments.post-test', [
             'student' => $student, 'classroom' => $student->classroom,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A'),
-            'state' => $this->exam->state($student), 'courseProgress' => $course->progress($student),
+            'state' => $state, 'courseProgress' => $course->progress($student),
         ], 200, ['Cache-Control' => 'private, no-store', 'Permissions-Policy' => 'display-capture=()']);
     }
 

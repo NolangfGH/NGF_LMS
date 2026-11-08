@@ -23,6 +23,8 @@
     @if($record->completed_at)<p class="mt-4 rounded-xl bg-green-50 p-4 text-xs leading-6 text-primary">Completed {{ $record->completed_at->copy()->timezone(config('learning.timezone'))->format('M j, Y · g:i A') }} (UTC+08:00). Your completion stays saved when you practise again.</p>@endif
     <form method="POST" action="{{ route('student.lesson.checkpoint',$lesson['key']) }}" class="mt-6 space-y-5">
     @csrf
+    <input type="hidden" name="request_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+    <p class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">Each incorrect submitted checkpoint answer deducts 2 XP, including practice retries after completion. Your balance cannot go below zero. Saving a help request does not grade or deduct XP. View the calculation in <a href="{{ route('student.achievements') }}#xp-history" class="font-bold underline">Achievements · XP history</a>.</p>
     @foreach($lesson['checks'] as $index=>$check)
         <fieldset class="rounded-xl border border-black/10 p-4 sm:p-5"><legend class="max-w-full px-2 text-sm font-bold text-primary">{{ $index+1 }}. {{ $check['prompt'] }}</legend><div class="space-y-2">
         @foreach($check['options'] as $optionIndex=>$option)<label class="flex cursor-pointer items-start gap-3 rounded-xl bg-paper p-3 text-sm leading-6 text-muted"><input type="radio" name="answers[{{ $index }}]" value="{{ $optionIndex }}" required @checked((string)old('answers.'.$index,$record->answers[$index] ?? '')===(string)$optionIndex) class="mt-1.5 accent-green-900"><span>{{ $option }}</span></label>@endforeach

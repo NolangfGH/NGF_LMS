@@ -160,9 +160,9 @@ class PlatformFeaturesTest extends TestCase
         $this->get(route('student.lesson.show', 'introduction'))->assertOk();
         $lesson = config('lessons.introduction');
         $answers = array_map(fn ($check) => $check['correct'], $lesson['checks']);
-        $this->post(route('student.lesson.checkpoint', 'introduction'), ['answers' => $answers, 'reflection' => 'An algorithm describes the steps before coding.'])->assertRedirect();
+        $this->post(route('student.lesson.checkpoint', 'introduction'), ['request_key' => (string) Str::uuid(), 'answers' => $answers, 'reflection' => 'An algorithm describes the steps before coding.'])->assertRedirect();
         $this->assertSame(125, $student->fresh()->xp);
-        $this->post(route('student.lesson.checkpoint', 'introduction'), ['answers' => $answers, 'reflection' => 'I checked the sequence again.'])->assertRedirect();
+        $this->post(route('student.lesson.checkpoint', 'introduction'), ['request_key' => (string) Str::uuid(), 'answers' => $answers, 'reflection' => 'I checked the sequence again.'])->assertRedirect();
         $this->assertSame(125, $student->fresh()->xp);
         $this->get(route('student.lesson.show', 'get-started'))->assertOk();
         $this->get(route('student.lesson.show', 'output'))->assertForbidden();

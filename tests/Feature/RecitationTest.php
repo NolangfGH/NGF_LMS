@@ -48,7 +48,7 @@ class RecitationTest extends TestCase
         $this->assertDatabaseCount('learning_rewards', 3);
         $this->assertSame('completed', $round->fresh()->status);
         $this->asStudent($students[0])->postJson(route('student.recitations.submit', $round), ['answer' => 'cout', 'request_key' => Str::uuid()->toString()])->assertConflict();
-        $this->assertSame(100, $students[0]->fresh()->xp);
+        $this->assertSame(95, $students[0]->fresh()->xp);
         $this->assertSame(50, (int) RecitationAward::sum('score'));
         $this->assertSame(6, RecitationAttempt::count());
         $this->withSession(['student_id' => null, 'teacher_id' => $teacher->id])->getJson(route('teacher.recitations.status', $round))->assertOk()->assertJsonCount(5, 'winners')->assertJsonPath('winners.0.answer', 'cout');
@@ -132,7 +132,7 @@ class RecitationTest extends TestCase
         $this->getJson(route('student.recitations.status', $third))->assertOk()->assertJsonPath('term_progress.limit_reached', true)->assertJsonPath('term_progress.remaining', 0);
         $page = $this->get(route('student.recitations.show', $third))->assertOk()->assertSee('Term limit reached')->assertSee('readonly', false)->assertSee('disabled', false);
         $this->get(route('student.recitations'))->assertOk()->assertSee('20 points')->assertSee('Term limit reached');
-        $this->assertSame(120, $student->fresh()->xp);
+        $this->assertSame(115, $student->fresh()->xp);
         $this->assertSame(20, (int) RecitationAward::where('student_id', $student->id)->sum('score'));
         $this->assertDatabaseCount('recitation_drafts', 0);
         $this->assertDatabaseCount('recitation_attempts', 3);

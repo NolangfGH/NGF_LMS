@@ -39,7 +39,7 @@ class StudentRegistrationApproval
             $this->audit($student, $teacher, $prior, $decision, $note);
 
             if ($decision === 'approved') {
-                app(LearningRewards::class)->award($student->id, 'registration:approved', Student::REGISTRATION_XP);
+                app(LearningRewards::class)->award($student->id, 'registration:approved', Student::REGISTRATION_XP, ['type' => 'registration', 'id' => $student->id, 'title' => 'Student registration', 'reason' => 'Registration approved', 'details' => ['Initial 100 XP credited once when the class teacher approved registration.']]);
                 $student->refresh();
                 app(LearningNotifications::class)->registrationApproved($student);
             }

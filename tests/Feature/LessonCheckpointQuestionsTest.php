@@ -8,6 +8,7 @@ use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -123,7 +124,7 @@ class LessonCheckpointQuestionsTest extends TestCase
         $this->withSession(['student_id' => $student->id]);
         $this->get(route('student.lesson.show', 'output'))->assertOk()->assertSee('Latest 3 / 3')->assertSee('Get all 5 questions correct');
         $this->get(route('teacher.lessons.progress'))->assertOk()->assertSee('Latest: 3 / 3');
-        $payload = ['answers' => array_slice($answers, 0, 3), 'reflection' => 'I traced each line in order.'];
+        $payload = ['request_key' => (string) Str::uuid(), 'answers' => array_slice($answers, 0, 3), 'reflection' => 'I traced each line in order.'];
         $this->postJson(route('student.lesson.checkpoint', 'output'), $payload)->assertUnprocessable()->assertJsonValidationErrors(['answers', 'answers.3', 'answers.4']);
         $this->post(route('student.lesson.checkpoint', 'output'), [...$payload, 'answers' => $answers])->assertRedirect();
         $this->assertSame(5, $record->fresh()->latest_score);

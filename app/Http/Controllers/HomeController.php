@@ -28,10 +28,12 @@ use App\Services\QuizAttemptService;
 use App\Services\QuizRewards;
 use App\Services\StaffAccessService;
 use App\Services\StudentSettingsService;
+use App\Services\XpLedger;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -458,7 +460,7 @@ class HomeController extends Controller
         return view('challenges', $data);
     }
 
-    public function studentAchievements()
+    public function studentAchievements(Request $request, XpLedger $ledger): Response|RedirectResponse
     {
         $data = $this->studentPageData();
         if ($data instanceof RedirectResponse) {
@@ -466,7 +468,7 @@ class HomeController extends Controller
         }
         StudentAchievement::where('student_id', $data['student']->id)->whereNull('seen_at')->update(['seen_at' => now()]);
 
-        return view('achievements', $data);
+        return response()->view('achievements', $data + ['xpHistory' => $ledger->history($data['student'], $request), 'xpHistoryRoute' => route('student.achievements')])->header('Cache-Control', 'private, no-store');
     }
 
     public function studentLeaderboard(Request $request)

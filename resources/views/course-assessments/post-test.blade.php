@@ -4,6 +4,7 @@
 <div class="mx-auto max-w-3xl">
     <a href="{{ route('student.assessments.index') }}" class="text-sm font-bold text-primary">← Course assessments</a>
     <h1 class="mb-4 mt-4 text-2xl font-extrabold text-primary sm:text-3xl">C++ Certification Post-Test</h1>
+    <p class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">New attempts: each incorrect or unanswered question deducts 5 XP after the exam is graded. Your balance cannot go below zero. Certification uses your correct score, which is separate from XP. No per-question correctness or answer keys are disclosed in XP history.</p>
     @if($state['current'])
         @include('quiz-current-question', ['examQuestion' => $state['current']])
         @include('quiz-question-timer')

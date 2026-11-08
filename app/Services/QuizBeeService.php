@@ -104,7 +104,7 @@ class QuizBeeService
         foreach ($members as $member) {
             $xp = (int) $answers[$member->quiz_bee_team_id]->xp;
             if ($xp && Student::whereKey($member->student_id)->exists()) {
-                $awarded = app(LearningRewards::class)->award($member->student_id, 'quiz-bee:'.$match->id.':question:'.$run->id, $xp);
+                $awarded = app(LearningRewards::class)->award($member->student_id, 'quiz-bee:'.$match->id.':question:'.$run->id, $xp, ['type' => 'quiz-bee', 'id' => $match->id, 'title' => $match->title, 'reason' => 'Quiz Bee correct team answer', 'details' => ['Your team answered correctly. '.$xp.' XP credited to this member; includes a 5 XP speed bonus when eligible.']]);
                 DB::table('quiz_bee_members')->where('id', $member->id)->increment('xp_awarded', $awarded);
             }
         }
@@ -187,7 +187,7 @@ class QuizBeeService
             ->selectRaw('quiz_bee_team_id, COUNT(*) as total')->groupBy('quiz_bee_team_id')->pluck('total', 'quiz_bee_team_id');
         foreach (DB::table('quiz_bee_members')->where('quiz_bee_match_id', $match->id)->whereNotNull('student_id')->orderBy('student_id')->get() as $member) {
             if ((int) ($correct[$member->quiz_bee_team_id] ?? 0) === $regularTotal && Student::whereKey($member->student_id)->exists()) {
-                $xp = app(LearningRewards::class)->award($member->student_id, 'quiz-bee:'.$match->id.':perfect', 100);
+                $xp = app(LearningRewards::class)->award($member->student_id, 'quiz-bee:'.$match->id.':perfect', 100, ['type' => 'quiz-bee', 'id' => $match->id, 'title' => $match->title, 'reason' => 'Quiz Bee perfect-score bonus', 'details' => ['All regular questions were correct: 100 XP bonus.']]);
                 DB::table('quiz_bee_members')->where('id', $member->id)->increment('xp_awarded', $xp);
             }
             app(LearningNotifications::class)->quizBee($match, 'student', $member->student_id, 'completed', 'Quiz Bee results ready', 'Your match is complete. View your final standing and saved XP.');

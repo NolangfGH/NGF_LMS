@@ -109,7 +109,7 @@ class CoursePostTestTest extends TestCase
         $this->assertDatabaseHas('course_certificates', ['student_id' => $student->id, 'award_type' => 'excellence', 'title' => 'Certificate of Excellence in C++ Average Programmer']);
         $this->assertDatabaseHas('course_post_test_attempts', ['id' => $second->id, 'score' => 45, 'answers' => null, 'questions' => null]);
         $this->postJson(route('student.post-test.request'))->assertConflict();
-        $this->assertSame(100, $student->fresh()->xp);
+        $this->assertSame(45, $student->fresh()->xp);
     }
 
     public function test_expired_questions_finish_the_exam_and_a_second_failure_does_not_allow_a_third_attempt(): void

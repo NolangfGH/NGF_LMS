@@ -211,9 +211,9 @@ class BlogLearningService
             $part->xp_awarded += $points;
             $part->save();
             if ($points > 0) {
-                $student->xp += $points;
-                $student->level = intdiv($student->xp,600) + 1;
-                $student->save();
+                app(XpLedger::class)->change($student->id, 'blog:'.$post->id.':comment:'.$number, $points,
+                    ['type' => 'blog', 'id' => $post->id, 'title' => $post->title, 'reason' => 'Teacher-graded article response',
+                        'details' => ['Your response #'.$number.' was graded '.str_replace('_', ' ', $assessment).'. Awarded '.$points.' XP; maximum 10 XP per article.']]);
             }
         });
     }

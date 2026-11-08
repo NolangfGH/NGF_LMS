@@ -101,6 +101,7 @@ class CoursePostTest
             DB::table('course_post_test_attempts')->where('id', $attempt->id)->update([
                 'started_at' => $startedAt, 'question_started_at' => $startedAt,
                 'question_seconds' => $number === 1 ? self::FIRST_SECONDS : self::FINAL_SECONDS,
+                'wrong_answer_penalty' => XpLedger::ASSESSMENT_PENALTY,
                 'questions' => json_encode($questions, JSON_THROW_ON_ERROR), 'answers' => '[]',
                 'access_code_hash' => null, 'code_expires_at' => null, 'updated_at' => now(),
             ]);
@@ -162,6 +163,12 @@ class CoursePostTest
             $score = $this->grader->grade($this->decode($attempt->questions), $this->decode($attempt->answers))['score'];
             $attempt->finished_at = $now;
             $attempt->score = $score;
+            if ($attempt->wrong_answer_penalty > 0) {
+                $wrong = self::QUESTIONS - $score;
+                app(XpLedger::class)->change($student->id, 'post-test-penalty:'.$attempt->id, -$wrong * $attempt->wrong_answer_penalty,
+                    ['type' => 'post-test', 'id' => $attempt->id, 'title' => 'C++ Post-Test · Attempt '.$attempt->attempt_number, 'reason' => 'Post-test incorrect answers',
+                        'details' => [$wrong.' incorrect or unanswered questions × '.$attempt->wrong_answer_penalty.' XP = '.($wrong * $attempt->wrong_answer_penalty).' XP deduction requested.', 'Only the final total is recorded here. Question content, answer keys and per-question correctness are not disclosed.']]);
+            }
             $update = array_replace($update, ['finished_at' => $now, 'score' => $score, 'questions' => null, 'answers' => null]);
             if ($score >= self::PASS_SCORE) {
                 $this->course->awardExcellence($student);

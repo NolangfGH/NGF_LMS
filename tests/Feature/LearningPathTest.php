@@ -12,6 +12,7 @@ use App\Models\TeacherLessonPlan;
 use App\Services\AchievementService;
 use App\Services\LessonService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class LearningPathTest extends TestCase
@@ -37,7 +38,7 @@ class LearningPathTest extends TestCase
 
     private function answers(string $key = 'output'): array
     {
-        return ['answers' => array_column(config('lessons.'.$key.'.checks'), 'correct'), 'reflection' => 'I traced each statement and would test a different message.', 'confidence' => 'practising'];
+        return ['request_key' => (string) Str::uuid(), 'answers' => array_column(config('lessons.'.$key.'.checks'), 'correct'), 'reflection' => 'I traced each statement and would test a different message.', 'confidence' => 'practising'];
     }
 
     public function test_guests_are_redirected_and_mutations_require_the_correct_role(): void
@@ -97,7 +98,7 @@ class LearningPathTest extends TestCase
         $this->assertSame(5, $record->best_score);
         $this->assertSame($evidence, $record->completion_evidence);
         $this->assertSame($completed, $record->completed_at->toIso8601String());
-        $this->assertSame(125, $student->fresh()->xp);
+        $this->assertSame(107, $student->fresh()->xp);
         $this->assertSame(0, app(AchievementService::class)->sync($student)['metrics']['quizzes_completed']);
         $this->get(route('student.learn'))->assertOk()->assertViewHas('lessonPath', fn ($path) => $path['completed'] === 1);
         $this->get(route('student.progress'))->assertOk()->assertSee('Your lesson learning path');

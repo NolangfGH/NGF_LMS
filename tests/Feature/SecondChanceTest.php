@@ -84,7 +84,7 @@ class SecondChanceTest extends TestCase
         $quiz->update(['closes_at' => now()->addHour()]);
         $this->post(route('student.quiz.start', $quiz))->assertRedirect();
         $this->finishQuiz($quiz, false);
-        $this->assertSame(115, $student->fresh()->xp);
+        $this->assertSame(110, $student->fresh()->xp);
         $this->assertDatabaseCount('quiz_submissions', 1);
         $duplicate = (array) DB::table('quiz_submissions')->first();
         unset($duplicate['id']);
@@ -173,7 +173,7 @@ class SecondChanceTest extends TestCase
         $this->finishQuiz($quiz, false);
         $original = DB::table('quiz_submissions')->first();
         $this->assertSame(1, $original->score);
-        $this->assertSame(115, $student->fresh()->xp);
+        $this->assertSame(110, $student->fresh()->xp);
         $quiz->update(['closes_at' => now()->subMinute()]);
         $excuse = $this->requestExcuse('quiz', $quiz);
         $this->postJson(route('student.quiz.start', $quiz))->assertUnprocessable();
@@ -191,7 +191,7 @@ class SecondChanceTest extends TestCase
         $this->assertDatabaseCount('quiz_attempts', 2);
         $this->assertSame($original->answers, DB::table('quiz_submissions')->where('id', $original->id)->value('answers'));
         (require database_path('migrations/2026_10_29_000024_add_second_chance_requests.php'))->up();
-        $this->assertSame(230, $student->fresh()->xp);
+        $this->assertSame(225, $student->fresh()->xp);
         $this->assertDatabaseHas('quiz_submissions', ['attempt_number' => 2, 'score' => 2, 'xp_credited' => 115]);
         $this->get(route('student.quiz'))->assertOk()->assertSee('+115 XP earned')->assertSee('Saved score: 2 / 2');
         $this->postJson(route('student.quiz.start', $quiz))->assertUnprocessable();
@@ -212,7 +212,7 @@ class SecondChanceTest extends TestCase
         $this->get(route('student.quiz'))->assertOk()->assertSee('Quiz completed');
         $this->assertDatabaseHas('quiz_submissions', ['attempt_number' => 2, 'score' => 0]);
         $this->postJson(route('student.quiz.start', $quiz))->assertUnprocessable();
-        $this->assertSame(100, $student->fresh()->xp);
+        $this->assertSame(90, $student->fresh()->xp);
         $this->assertDatabaseCount('quiz_attempts', 1);
     }
 
@@ -250,8 +250,8 @@ class SecondChanceTest extends TestCase
         $this->assertSame($end->getTimestampMs(), $attempt->expires_at->getTimestampMs());
         $this->travel(60)->seconds();
         $this->get(route('student.quiz'))->assertOk()->assertSee('Quiz completed')->assertSee('final opportunity has expired');
-        $this->postJson(route('student.quiz.question',$quiz),['attempt_id' => $attempt->id, 'question_index' => 0, 'answer' => 'while'])->assertUnprocessable();
-        $this->assertSame(100,$student->fresh()->xp);
-        $this->assertDatabaseHas('quiz_submissions',['attempt_number' => 2, 'score' => 0]);
+        $this->postJson(route('student.quiz.question', $quiz), ['attempt_id' => $attempt->id, 'question_index' => 0, 'answer' => 'while'])->assertUnprocessable();
+        $this->assertSame(90, $student->fresh()->xp);
+        $this->assertDatabaseHas('quiz_submissions', ['attempt_number' => 2, 'score' => 0]);
     }
 }

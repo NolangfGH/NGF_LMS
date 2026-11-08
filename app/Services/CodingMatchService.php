@@ -177,9 +177,8 @@ class CodingMatchService
             }
             $winner = $candidate['submission']->participant;
             $account = Student::whereKey($winner->student_id)->lockForUpdate()->firstOrFail();
-            $account->xp += $current->winner_xp;
-            $account->level = intdiv($account->xp, 600) + 1;
-            $account->save();
+            app(XpLedger::class)->change($account->id, 'coding-match:'.$current->id, $current->winner_xp,
+                ['type' => 'coding-match', 'id' => $current->id, 'title' => $current->title, 'reason' => 'Teacher-confirmed coding match winner', 'details' => ['Winner reward confirmed by the class teacher: '.$current->winner_xp.' XP.']]);
             $current->update(['status' => 'awarded', 'winning_submission_id' => $submissionId, 'awarded_at' => now(), 'award_note' => $note, 'xp_awarded' => $current->winner_xp]);
             foreach ($current->participants as $participant) {
                 $this->notice($current, 'student', $participant->student_id, 'awarded', $participant->id === $winner->id ? 'You won! Your teacher awarded '.$current->winner_xp.' XP.' : 'Your teacher has finalized this challenge. Open the arena for the result.');
