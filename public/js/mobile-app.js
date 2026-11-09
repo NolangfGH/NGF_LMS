@@ -44,6 +44,30 @@
     window.addEventListener('offline', () => { connection.hidden = false; });
     window.addEventListener('online', () => { connection.hidden = true; });
 
+    const canonicalMeta = document.querySelector('meta[name="ngf-canonical-url"]');
+    if (canonicalMeta?.content && window.location.hostname === 'rsmimaropa.com' && !/^\/(quiz|course-assessments|recitations|code-lab|coding-matches)/.test(window.location.pathname)) {
+        try {
+            const canonical = new URL(canonicalMeta.content);
+            const noticeKey = 'ngf-address-notice:' + canonical.origin;
+            let dismissed = false;
+            try { dismissed = window.sessionStorage.getItem(noticeKey) === 'dismissed'; } catch {}
+            if (canonical.protocol === 'https:' && canonical.origin !== window.location.origin && !dismissed) {
+                const notice = document.createElement('aside');
+                notice.className = 'ngf-address-notice';
+                notice.setAttribute('aria-label', 'New platform address');
+                const message = document.createElement('p');
+                message.textContent = 'Our new address is ' + canonical.hostname + '. Your account and saved records are unchanged. Sign in there with your existing credentials.';
+                const link = document.createElement('a');
+                link.href = canonical.origin + '/'; link.textContent = 'Open new address →';
+                const dismiss = document.createElement('button');
+                dismiss.type = 'button'; dismiss.textContent = '×'; dismiss.setAttribute('aria-label', 'Dismiss new address notice');
+                dismiss.addEventListener('click', () => { notice.remove(); try { window.sessionStorage.setItem(noticeKey, 'dismissed'); } catch {} });
+                notice.append(message, link, dismiss);
+                document.body.append(notice);
+            }
+        } catch {}
+    }
+
     if ('serviceWorker' in navigator && window.isSecureContext) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js', {scope: '/', updateViaCache: 'none'}).catch(() => {

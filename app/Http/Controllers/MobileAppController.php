@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MobileAppController extends Controller
 {
-    private const APK_PATH = 'mobile/ngf-codequest-1.0.0.apk';
+    private const APK_PATH = 'mobile/ngf-codequest-1.0.1.apk';
 
     public function index(): Response
     {
@@ -20,6 +20,7 @@ class MobileAppController extends Controller
         $available = $disk->exists(self::APK_PATH);
 
         return response()->view('mobile-app', [
+            'apkVersion' => '1.0.1',
             'apkAvailable' => $available,
             'apkSize' => $available ? round($disk->size(self::APK_PATH) / 1048576, 2) : null,
             'apkChecksum' => $available ? hash_file('sha256', $disk->path(self::APK_PATH)) : null,
@@ -46,10 +47,10 @@ class MobileAppController extends Controller
     {
         abort_unless(Storage::disk('local')->exists(self::APK_PATH), 404, 'The Android download is not available yet. Use website installation in the meantime.');
 
-        return Storage::disk('local')->download(self::APK_PATH, 'NGF-CodeQuest-1.0.0.apk', [
+        return Storage::disk('local')->download(self::APK_PATH, 'NGF-CodeQuest-1.0.1.apk', [
             'Content-Type' => 'application/vnd.android.package-archive',
             'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control' => 'public, max-age=3600',
+            'Cache-Control' => 'public, max-age=0, must-revalidate',
         ]);
     }
 }

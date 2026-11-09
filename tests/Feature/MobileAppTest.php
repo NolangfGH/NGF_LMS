@@ -29,9 +29,9 @@ class MobileAppTest extends TestCase
     {
         Storage::fake('local');
         $this->get(route('mobile.android'))->assertNotFound();
-        Storage::disk('local')->put('mobile/ngf-codequest-1.0.0.apk', 'test-package');
+        Storage::disk('local')->put('mobile/ngf-codequest-1.0.1.apk', 'test-package');
         $this->get(route('mobile.app'))->assertOk()->assertSee('Download Android APK')->assertSee(hash('sha256', 'test-package'))->assertDontSee('APK is being prepared');
-        $this->get(route('mobile.android', ['path' => '.env']))->assertOk()->assertDownload('NGF-CodeQuest-1.0.0.apk')->assertHeader('Content-Type', 'application/vnd.android.package-archive')->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->get(route('mobile.android', ['path' => '.env']))->assertOk()->assertDownload('NGF-CodeQuest-1.0.1.apk')->assertHeader('Content-Type', 'application/vnd.android.package-archive')->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
     public function test_start_uses_the_current_role_without_bypassing_registration_or_session_checks(): void
@@ -56,6 +56,20 @@ class MobileAppTest extends TestCase
         $this->withSession(['teacher_session_version' => 999])->get(route('mobile.start'))->assertRedirect(route('student.login'));
         $parent = ParentAccount::factory()->create();
         $this->withSession(['parent_id' => $parent->id])->get(route('mobile.start'))->assertRedirect(route('parent.dashboard'));
+    }
+
+    public function test_new_host_uses_current_origin_links_and_preserves_sign_in_requirements(): void
+    {
+        Storage::fake('local');
+        config(['app.url' => 'https://ngf-lpcppcq.rsmimaropa.com', 'session.domain' => null, 'session.secure' => true]);
+        $response = $this->get('https://ngf-lpcppcq.rsmimaropa.com/app')->assertOk();
+        $response->assertSee('<meta name="ngf-canonical-url" content="https://ngf-lpcppcq.rsmimaropa.com">', false);
+        $this->assertNull($response->getCookie(config('session.cookie'))->getDomain());
+        $this->assertTrue($response->getCookie(config('session.cookie'))->isSecure());
+        Storage::disk('local')->put('mobile/ngf-codequest-1.0.1.apk', 'new-package');
+        $this->get('https://ngf-lpcppcq.rsmimaropa.com/app')->assertOk()->assertSee('v1.0.1')->assertSee('https://ngf-lpcppcq.rsmimaropa.com/app/android?v=1.0.1', false);
+        $this->get('https://ngf-lpcppcq.rsmimaropa.com/teacher-dashboard')->assertRedirect('https://ngf-lpcppcq.rsmimaropa.com/teacher-login');
+        $this->get('https://ngf-lpcppcq.rsmimaropa.com/student-dashboard')->assertRedirect('https://ngf-lpcppcq.rsmimaropa.com/student-register');
     }
 
     public function test_manifest_and_square_app_icons_define_a_same_origin_standalone_application(): void

@@ -50,22 +50,22 @@ test('activation removes only old caches owned by this app',async()=>{
     await app.run('activate');assert.deepEqual(app.deleted,['ngf-codequest-mobile-v0']);assert.equal(app.claimed(),true);assert.equal(app.stores.has('another-app'),true);
 });
 
-function page({standalone=false,ios=false,secure=true,menu=false}={}) {
+function page({standalone=false,ios=false,secure=true,menu=false,canonical='',host='school.test',pathname='/',session=new Map()}={}) {
     const events={},registered=[],created=[];
     const node=()=>{
         const classes=new Set();
         return {children:[],attributes:{},listeners:{},textContent:'',hidden:false,disabled:false,
             classList:{add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)},
             setAttribute(name,value){this.attributes[name]=value;},removeAttribute(name){delete this.attributes[name];},
-            addEventListener(name,fn){this.listeners[name]=fn;},append(child){this.children.push(child);},prepend(child){this.children.unshift(child);},focus(){document.activeElement=this;},getClientRects(){return [1];}};
+            addEventListener(name,fn){this.listeners[name]=fn;},append(...children){this.children.push(...children);},remove(){this.removed=true;},prepend(child){this.children.unshift(child);},focus(){document.activeElement=this;},getClientRects(){return [1];}};
     };
     const button=node(),hint=node(),body=node(),header=node(),sidebar=node(),sidebarContent=node();sidebar.firstElementChild=sidebarContent;sidebar.children.push(sidebarContent);
     sidebar.querySelectorAll=()=>[sidebarContent.children[0],{...node(),name:'last'}];
     const media={matches:standalone,addEventListener:(name,fn)=>{events.resize=fn;}};
-    const document={body,activeElement:null,querySelectorAll:selector=>selector==='[data-app-install]'?[button]:[hint],querySelector:selector=>menu?(selector.includes('aside')?sidebar:header):null,createElement:tag=>{const value=node();value.tag=tag;created.push(value);return value;},createElementNS:()=>node()};
-    const window={matchMedia:query=>query.includes('min-width')?{matches:false,addEventListener:(name,fn)=>{events.resize=fn;}}:media,isSecureContext:secure,addEventListener:(name,fn)=>{events[name]=fn;}};
+    const document={body,activeElement:null,querySelectorAll:selector=>selector==='[data-app-install]'?[button]:[hint],querySelector:selector=>selector.startsWith('meta[')?(canonical?{content:canonical}:null):(menu?(selector.includes('aside')?sidebar:header):null),createElement:tag=>{const value=node();value.tag=tag;created.push(value);return value;},createElementNS:()=>node()};
+    const window={location:{hostname:host,origin:'https://'+host,pathname},sessionStorage:{getItem:key=>session.get(key),setItem:(key,value)=>session.set(key,value)},matchMedia:query=>query.includes('min-width')?{matches:false,addEventListener:(name,fn)=>{events.resize=fn;}}:media,isSecureContext:secure,addEventListener:(name,fn)=>{events[name]=fn;}};
     const navigator={standalone:false,userAgent:ios?'iPhone Safari':'Chrome',onLine:true,serviceWorker:{register:async(path,options)=>{registered.push({path,options});}}};
-    vm.runInNewContext(fs.readFileSync('public/js/mobile-app.js','utf8'),{document,window,navigator});
+    vm.runInNewContext(fs.readFileSync('public/js/mobile-app.js','utf8'),{document,window,navigator,URL});
     return {events,button,hint,body,header,sidebar,sidebarContent,document,created,registered};
 }
 
@@ -94,4 +94,20 @@ test('mobile menu preserves sidebar structure and supports closing, focus return
     toggle.listeners.click();assert.equal(app.body.classList.contains('ngf-mobile-menu-open'),true);assert.equal(app.sidebar.attributes['aria-modal'],'true');assert.equal(app.document.activeElement,close);
     app.sidebar.listeners.keydown({key:'Escape',preventDefault(){}});assert.equal(app.body.classList.contains('ngf-mobile-menu-open'),false);assert.equal(app.document.activeElement,toggle);
     toggle.listeners.click();app.events.resize({matches:true});assert.equal(app.body.classList.contains('ngf-mobile-menu-open'),false);
+});
+
+test('old address offers a dismissible home link without moving users or copying private paths',()=>{
+    const session=new Map(),options={canonical:'https://ngf-lpcppcq.rsmimaropa.com',host:'rsmimaropa.com',pathname:'/teacher-settings?token=private',session};
+    const app=page(options),notice=app.body.children.find(item=>item.className==='ngf-address-notice');
+    assert.ok(notice);assert.equal(notice.children[1].href,'https://ngf-lpcppcq.rsmimaropa.com/');
+    notice.children[2].listeners.click();assert.equal(notice.removed,true);
+    assert.equal(page(options).body.children.some(item=>item.className==='ngf-address-notice'),false);
+});
+
+test('address notice stays absent on new host, insecure destinations and timed learning activities',()=>{
+    for (const options of [
+        {canonical:'https://ngf-lpcppcq.rsmimaropa.com',host:'ngf-lpcppcq.rsmimaropa.com'},
+        {canonical:'http://ngf-lpcppcq.rsmimaropa.com',host:'rsmimaropa.com'},
+        ...['/quiz/1','/course-assessments/post-test','/recitations/4','/code-lab','/coding-matches/7'].map(pathname=>({canonical:'https://ngf-lpcppcq.rsmimaropa.com',host:'rsmimaropa.com',pathname})),
+    ]) assert.equal(page(options).body.children.some(item=>item.className==='ngf-address-notice'),false);
 });

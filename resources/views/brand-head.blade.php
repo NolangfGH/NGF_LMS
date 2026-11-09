@@ -8,8 +8,9 @@
 <meta name="apple-mobile-web-app-title" content="NGF CodeQuest">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="ngf-mobile-app" content="{{ route('mobile.app') }}">
-<link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=20261109">
-<script src="{{ asset('js/mobile-app.js') }}?v=20261109" defer></script>
+<meta name="ngf-canonical-url" content="{{ rtrim(config('app.url'), '/') }}">
+<link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}?v=20261109-subdomain">
+<script src="{{ asset('js/mobile-app.js') }}?v=20261109-subdomain" defer></script>
 <meta name="theme-color" content="#0b4e00">
 <script src="{{ asset('js/celebrations.js') }}" defer></script>
 <script src="{{ asset('js/portal-ui.js') }}?v=20261107-portal-fixes" defer></script>
