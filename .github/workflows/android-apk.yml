@@ -13,6 +13,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - uses: android-actions/setup-android@v3
       - name: Prepare Android platform
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Compile app without third-party runtime libraries
