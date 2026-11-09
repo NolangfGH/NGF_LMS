@@ -1,0 +1,21 @@
+{
+    "id": "/",
+    "name": "NGF_C++CodeQuest",
+    "short_name": "NGF CodeQuest",
+    "description": "Learn C++ with your classroom: lessons, quizzes, coding practice and saved learning progress.",
+    "lang": "en",
+    "start_url": "/app/start",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f6fbee",
+    "theme_color": "#0b4e00",
+    "prefer_related_applications": false,
+    "icons": [
+        {"src": "/images/branding/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/images/branding/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+    ],
+    "shortcuts": [
+        {"name": "Student sign-in", "url": "/student-login"},
+        {"name": "Parent portal", "url": "/parent-login"}
+    ]
+}

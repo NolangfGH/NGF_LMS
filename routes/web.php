@@ -23,6 +23,7 @@ use App\Http\Controllers\IlawPlanController;
 use App\Http\Controllers\LearningNotificationController;
 use App\Http\Controllers\LessonContentController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\MobileAppController;
 use App\Http\Controllers\ParentPortalController;
 use App\Http\Controllers\QuizBeeController;
 use App\Http\Controllers\QuizSubmissionController;
@@ -40,6 +41,10 @@ use App\Http\Controllers\TeacherStudentController;
 use App\Http\Controllers\TeachingLibraryController;
 use App\Http\Middleware\RequireCoursePretest;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/app', [MobileAppController::class, 'index'])->name('mobile.app');
+Route::get('/app/start', [MobileAppController::class, 'start'])->name('mobile.start');
+Route::get('/app/android', [MobileAppController::class, 'android'])->middleware('throttle:20,1')->name('mobile.android');
 
 Route::get('/teacher-recitations', [RecitationController::class, 'index'])->name('teacher.recitations');
 Route::post('/teacher-recitations', [RecitationController::class, 'store'])->middleware('throttle:match-write')->name('teacher.recitations.store');
