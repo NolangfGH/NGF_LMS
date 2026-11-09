@@ -1,0 +1,27 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare Android platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Compile app without third-party runtime libraries
+        run: bash deploy/android/build.sh
+      - name: Save unsigned APK for local signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: ngf-codequest-android-unsigned
+          path: |
+            storage/app/android-build/NGF-CodeQuest-1.0.0-unsigned.apk
+            storage/app/android-build/apksigner.jar
+          retention-days: 7
