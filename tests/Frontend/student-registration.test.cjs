@@ -22,7 +22,10 @@ function page() {
             focus() {},
         };
     };
-    const nodes = Object.fromEntries(['enrollmentOptions', 'gradeLevel', 'section', 'classCode', 'enrollmentForm', 'accountForm', 'feedback', 'sectionHelp', 'refreshClasses', 'success', 'indicator1', 'indicator2', 'indicator3', 'verifiedClass', 'backButton'].map(id => [id, node()]));
+    const nodes = Object.fromEntries(['schoolOrigin', 'schoolName', 'ictTeacherName', 'ictTeacherContact', 'enrollmentOptions', 'gradeLevel', 'section', 'classCode', 'enrollmentForm', 'accountForm', 'feedback', 'sectionHelp', 'refreshClasses', 'success', 'indicator1', 'indicator2', 'indicator3', 'verifiedClass', 'backButton'].map(id => [id, node()]));
+    nodes.schoolOrigin.value = 'rshs';
+    nodes.schoolName.value = 'RSHS MIMAROPA';
+    for (const field of [nodes.schoolName, nodes.ictTeacherName, nodes.ictTeacherContact]) field.disabled = true;
     nodes.enrollmentOptions.textContent = JSON.stringify(initialOptions);
     nodes.gradeLevel.value = 'Grade 8';
     nodes.classCode.value = 'TEACHER2';
@@ -30,12 +33,12 @@ function page() {
     const verifyButton = node(), accountButton = node();
     nodes.enrollmentForm.querySelector = () => verifyButton;
     nodes.accountForm.querySelector = () => accountButton;
-    const root = {dataset: {optionsUrl: '/student-register/options', verifyUrl: '/student-register/verify-class', registerUrl: '/student-register'}};
+    const root = {dataset: {optionsUrl: '/student-register/options', verifyUrl: '/student-register/verify-class', registerUrl: '/student-register', externalSection: 'SFOS-Student from other school', externalGrades: JSON.stringify(['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'])}};
     const network = {calls: [], redirects: [], ok: true, refreshOk: true, catalog: initialOptions, gate: null};
     class FormData {
         constructor(form) {
             this.values = new Map(Object.entries(form === nodes.enrollmentForm
-                ? {first_name: 'Test', surname: 'Learner', grade_level: nodes.gradeLevel.value, section: nodes.section.value, class_code: nodes.classCode.value}
+                ? {first_name: 'Test', surname: 'Learner', school_origin: nodes.schoolOrigin.value, ...(!nodes.schoolName.disabled ? {school_name: nodes.schoolName.value, ict_teacher_name: nodes.ictTeacherName.value, ict_teacher_contact: nodes.ictTeacherContact.value} : {}), grade_level: nodes.gradeLevel.value, section: nodes.section.value, class_code: nodes.classCode.value}
                 : {nickname: 'TestCoder', student_id: 'TEST001', password: 'Password123', password_confirmation: 'Password123'}));
         }
         get(key) { return this.values.get(key); }
@@ -52,7 +55,7 @@ function page() {
             if (url === root.dataset.optionsUrl) return {ok: network.refreshOk, json: async () => ({enrollment_options: network.catalog})};
             if (network.gate) await network.gate;
             return {ok: network.ok, json: async () => network.ok
-                ? url === root.dataset.verifyUrl ? {classroom: {id: 88, grade: 'Grade 9', section: 'AHB'}} : {redirect: '/student-registration-status'}
+                ? url === root.dataset.verifyUrl ? {classroom: network.classroom || {id: 88, grade: 'Grade 9', section: 'AHB'}} : {redirect: '/student-registration-status'}
                 : {message: 'Code must match the selected grade and section.'}};
         },
     });
@@ -70,6 +73,72 @@ test('each grade displays its own unique sections and changing grades clears the
     assert.deepEqual(nodes.section.options.map(option => option.value), ['', 'AHB', 'LM', 'MC']);
     assert.equal(nodes.section.value, '');
     assert.match(nodes.sectionHelp.textContent, /Grade 9/);
+});
+
+test('Other School enables required contact details and exactly six grades with one SFOS section', () => {
+    const {nodes} = page();
+    nodes.schoolOrigin.value = 'other';
+    nodes.schoolOrigin.onchange();
+    assert.deepEqual(nodes.gradeLevel.options.map(option => option.value), ['', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12']);
+    assert.deepEqual(nodes.section.options.map(option => option.value), ['SFOS-Student from other school']);
+    for (const field of [nodes.schoolName, nodes.ictTeacherName, nodes.ictTeacherContact]) {
+        assert.equal(field.disabled, false);
+        assert.equal(field.required, true);
+    }
+    assert.equal(nodes.schoolName.value, '');
+    assert.equal(nodes.classCode.value, '');
+    nodes.gradeLevel.value = 'Grade 12';
+    nodes.gradeLevel.onchange();
+    assert.equal(nodes.section.value, 'SFOS-Student from other school');
+    assert.equal(nodes.section.disabled, false);
+});
+
+test('switching back to RSHS disables school details, restores real sections and clears the code', () => {
+    const {nodes} = page();
+    nodes.schoolOrigin.value = 'other'; nodes.schoolOrigin.onchange();
+    nodes.schoolName.value = 'Another School'; nodes.ictTeacherName.value = 'ICT Teacher'; nodes.ictTeacherContact.value = 'teacher@example.test';
+    nodes.classCode.value = 'SFOSCODE';
+    nodes.schoolOrigin.value = 'rshs'; nodes.schoolOrigin.onchange();
+    assert.equal(nodes.schoolName.value, 'RSHS MIMAROPA');
+    assert.equal(nodes.classCode.value, '');
+    assert.deepEqual(nodes.section.options.map(option => option.value), ['', 'AM', 'BP', 'DB']);
+    for (const field of [nodes.schoolName, nodes.ictTeacherName, nodes.ictTeacherContact]) {
+        assert.equal(field.disabled, true);
+        assert.equal(field.required, false);
+    }
+    nodes.schoolOrigin.value = 'other'; nodes.schoolOrigin.onchange();
+    assert.equal(nodes.schoolName.value, 'Another School');
+    assert.equal(nodes.ictTeacherContact.value, 'teacher@example.test');
+});
+
+test('external contact details are sent through both steps and catalog refresh keeps SFOS selection', async () => {
+    const app = page(), {nodes, network} = app;
+    nodes.schoolOrigin.value = 'other'; nodes.schoolOrigin.onchange();
+    nodes.gradeLevel.value = 'Grade 11'; nodes.gradeLevel.onchange();
+    nodes.schoolName.value = 'Guest School'; nodes.ictTeacherName.value = 'Guest Teacher'; nodes.ictTeacherContact.value = '+639171234567'; nodes.classCode.value = 'EXTERNAL';
+    network.classroom = {id: 99, grade: 'Grade 11', section: 'SFOS-Student from other school'};
+    await nodes.refreshClasses.onclick();
+    assert.equal(nodes.gradeLevel.value, 'Grade 11');
+    assert.equal(nodes.section.value, network.classroom.section);
+    await app.verify(); await app.register();
+    for (const call of network.calls.filter(call => call.method === 'POST')) {
+        assert.equal(call.body.get('school_origin'), 'other');
+        assert.equal(call.body.get('ict_teacher_contact'), '+639171234567');
+        assert.equal(call.body.get('school_name'), 'Guest School');
+    }
+    assert.deepEqual(network.redirects, ['/student-registration-status']);
+});
+
+test('school details changed during verification cannot open account setup', async () => {
+    const app = page();
+    app.nodes.schoolOrigin.value = 'other'; app.nodes.schoolOrigin.onchange();
+    let release;
+    app.network.gate = new Promise(resolve => { release = resolve; });
+    const pending = app.verify();
+    app.nodes.ictTeacherContact.value = 'changed@example.test';
+    release(); await pending;
+    assert.equal(app.nodes.accountForm.classList.contains('hidden'), true);
+    assert.match(app.nodes.feedback.textContent, /details changed/);
 });
 
 test('the verified code response supplies the classroom ID for final student registration', async () => {

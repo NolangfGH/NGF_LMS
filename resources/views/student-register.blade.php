@@ -12,7 +12,7 @@
 <header class="fixed inset-x-0 top-0 z-40 border-b border-green-900/10 bg-surface/95 shadow-sm backdrop-blur-xl"><div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5">
 @include('brand-logo',['logoHref'=>route('home'),'logoVariant'=>'header'])
 <a href="{{ route('student.login') }}" class="rounded-xl border bg-white px-4 py-3 text-sm font-bold text-primary">Student Sign-In</a></div></header>
-<main class="mx-auto max-w-5xl px-5 pb-8 pt-24" data-student-registration data-options-url="{{ route('student.register.options') }}" data-verify-url="{{ route('student.register.verify') }}" data-register-url="{{ route('student.register.store') }}">
+<main class="mx-auto max-w-5xl px-5 pb-8 pt-24" data-student-registration data-options-url="{{ route('student.register.options') }}" data-verify-url="{{ route('student.register.verify') }}" data-register-url="{{ route('student.register.store') }}" data-external-section="{{ config('student_registration.external_section') }}" data-external-grades="{{ json_encode(config('student_registration.external_grades')) }}">
 <p class="text-xs font-bold uppercase tracking-widest text-secondary">Student onboarding</p><h1 class="my-4 text-3xl font-extrabold text-primary">Join your C++ flight deck</h1>
 <p class="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900"><span aria-hidden="true">★</span> Start your coding journey with {{ \App\Models\Student::REGISTRATION_XP }} welcome XP after your teacher approves your registration.</p>
 <div class="overflow-hidden rounded-3xl bg-white shadow-lg">
@@ -26,16 +26,19 @@
 <div class="grid gap-4 sm:grid-cols-2">
 <label class="block"><span class="mb-2 block text-sm font-bold">First name *</span><input name="first_name" required maxlength="80" autocomplete="given-name" class="w-full rounded-xl border p-3"></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Middle name (optional)</span><input name="middle_name" maxlength="80" autocomplete="additional-name" class="w-full rounded-xl border p-3"></label>
-<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Surname *</span><input name="surname" required maxlength="80" autocomplete="family-name" class="w-full rounded-xl border p-3"></label>
-<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Name of school *</span><input name="school_name" required maxlength="180" autocomplete="organization" placeholder="Your current school" class="w-full rounded-xl border p-3"></label>
-<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Name of ICT teacher *</span><input name="ict_teacher_name" required maxlength="180" placeholder="Your school ICT teacher’s full name" class="w-full rounded-xl border p-3"></label>
+<label class="block"><span class="mb-2 block text-sm font-bold">Surname *</span><input name="surname" required maxlength="80" autocomplete="family-name" class="w-full rounded-xl border p-3"></label>
+<label class="block"><span class="mb-2 block text-sm font-bold">From what school *</span><select id="schoolOrigin" name="school_origin" required class="w-full rounded-xl border bg-white p-3"><option value="rshs">RSHS MIMAROPA</option><option value="other">Other School</option></select></label>
+<label class="block sm:col-span-2"><span class="mb-2 block text-sm font-bold">Name of school *</span><input id="schoolName" name="school_name" disabled maxlength="180" autocomplete="organization" value="{{ config('student_registration.school_name') }}" placeholder="Your current school" class="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"></label>
+<label class="block"><span class="mb-2 block text-sm font-bold">Name of ICT teacher *</span><input id="ictTeacherName" name="ict_teacher_name" disabled maxlength="180" placeholder="From your verified class" class="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"></label>
+<label class="block"><span class="mb-2 block text-sm font-bold">Contact Number or Email of ICT Teacher *</span><input id="ictTeacherContact" name="ict_teacher_contact" disabled maxlength="180" placeholder="e.g. 09171234567 or teacher@school.edu.ph" aria-describedby="schoolDetailsHelp" class="w-full rounded-xl border p-3 disabled:bg-slate-100 disabled:text-slate-500"></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Grade level *</span><select id="gradeLevel" name="grade_level" required class="w-full rounded-xl border bg-white p-3"><option value="">Choose grade level</option>@foreach($gradeLevels as $grade)<option value="{{ $grade }}" @selected($grade===config('student_registration.grade'))>{{ $grade }}</option>@endforeach</select></label>
 <label class="block"><span class="mb-2 block text-sm font-bold">Section *</span><select id="section" name="section" required disabled class="w-full rounded-xl border bg-white p-3"><option value="">Choose grade level first</option></select></label>
 </div>
+<p id="schoolDetailsHelp" class="rounded-xl bg-green-50 p-3 text-xs leading-6 text-secondary" aria-live="polite">RSHS students: your school and ICT teacher are taken from your verified class. Other-school students: provide your school, ICT teacher and their school contact number or email for registration review.</p>
 <p id="sectionHelp" class="text-xs text-slate-500" aria-live="polite">Choose your grade and section. Use that section’s class code.</p>
 <button type="button" id="refreshClasses" class="text-xs font-bold text-primary underline">Refresh class list</button>
 <label class="block"><span class="mb-2 block text-sm font-bold">Class join code *</span><input id="classCode" name="class_code" required maxlength="20" autocomplete="off" class="w-full rounded-xl border p-4 text-center font-mono text-xl uppercase tracking-widest" placeholder="Enter your teacher’s code"></label>
-<p class="text-xs text-slate-500">Students from RS and other schools are welcome. Enter your actual school and ICT teacher; a valid class code and teacher approval are still required.</p>
+<p class="text-xs leading-6 text-slate-500">Other-school students use their grade’s SFOS class code from the platform teacher/admin. A valid matching class code and teacher approval are required before you can sign in. ICT teacher contact details are shown only to your responsible teacher/admin for registration review.</p>
 <button type="submit" class="w-full rounded-xl bg-primary p-4 font-bold text-white">Verify Code & Continue →</button>
 </form>
 <form id="accountForm" class="hidden space-y-5">
@@ -52,5 +55,5 @@
 </div></div></div>
 </main>
 <script type="application/json" id="enrollmentOptions">@json($enrollmentOptions)</script>
-<script src="{{ asset('js/student-registration.js') }}?v=20261104" defer></script>
+<script src="{{ asset('js/student-registration.js') }}?v=20261109" defer></script>
 </body></html>

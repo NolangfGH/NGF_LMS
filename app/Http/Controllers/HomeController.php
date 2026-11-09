@@ -166,7 +166,7 @@ class HomeController extends Controller
     public function studentRegistration()
     {
         $options = $this->studentEnrollmentOptions();
-        $grades = $options->pluck('grade')->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values();
+        $grades = $options->where('section', '!=', config('student_registration.external_section'))->pluck('grade')->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values();
 
         return response()->view('student-register', ['enrollmentOptions' => $options, 'gradeLevels' => $grades])
             ->header('Cache-Control', 'private, no-store');
@@ -190,13 +190,15 @@ class HomeController extends Controller
 
     public function verifyStudentClassCode(Request $request)
     {
-        $request->session()->forget(['student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code']);
+        $request->session()->forget(['student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code', 'verified_school_origin']);
         $data = $request->validate([
+            'school_origin' => ['sometimes', 'required', Rule::in(['rshs', 'other'])],
             'class_code' => ['required', 'string', 'max:20'],
             'classroom_id' => ['required_without:section', 'nullable', 'integer'],
             'section' => ['required_without:classroom_id', 'nullable', 'string', 'max:80'],
             'grade_level' => ['required', 'string', 'max:50'],
         ]);
+        $schoolOrigin = $data['school_origin'] ?? 'rshs';
 
         $submittedCode = strtoupper(preg_replace('/\s+/', '', $request->string('class_code')->toString()));
         try {
@@ -206,6 +208,7 @@ class HomeController extends Controller
         }
 
         if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->grade !== $data['grade_level']
+            || ($classroom->section === config('student_registration.external_section')) !== ($schoolOrigin === 'other')
             || (isset($data['classroom_id']) && $classroom->id !== (int) $data['classroom_id'])
             || (isset($data['section']) && strcasecmp(trim($classroom->section), trim($data['section'])) !== 0)) {
             return response()->json([
@@ -215,6 +218,7 @@ class HomeController extends Controller
 
         session([
             'student_class_verified' => true,
+            'verified_school_origin' => $schoolOrigin,
             'verified_join_code' => $classroom->registrationFingerprint(),
             'classroom_id' => $classroom->id,
             'classroom_name' => $classroom->grade.' · '.$classroom->section,
@@ -286,12 +290,21 @@ class HomeController extends Controller
             return response()->json(['message' => 'Verify a valid class code before creating a student account.'], 422);
         }
 
+        $otherSchool = $request->input('school_origin', 'rshs') === 'other';
         $data = $request->validate([
+            'school_origin' => ['sometimes', 'required', Rule::in(['rshs', 'other'])],
             'first_name' => ['required', 'string', 'max:80'],
             'middle_name' => ['nullable', 'string', 'max:80'],
             'surname' => ['required', 'string', 'max:80'],
-            'school_name' => ['nullable', 'string', 'max:180'],
-            'ict_teacher_name' => ['nullable', 'string', 'max:180'],
+            'school_name' => [Rule::requiredIf($otherSchool), 'nullable', 'string', 'max:180'],
+            'ict_teacher_name' => [Rule::requiredIf($otherSchool), 'nullable', 'string', 'max:180'],
+            'ict_teacher_contact' => ['bail', Rule::requiredIf($otherSchool), 'nullable', 'string', 'max:180', function (string $attribute, mixed $value, \Closure $fail): void {
+                $contact = trim((string) $value);
+                $phone = preg_match('/^\+?[0-9 ()-]+$/', $contact) && preg_match('/^[0-9]{7,15}$/', preg_replace('/\D/', '', $contact));
+                if (! filter_var($contact, FILTER_VALIDATE_EMAIL) && ! $phone) {
+                    $fail('Enter a valid ICT teacher email address or a contact number containing 7–15 digits.');
+                }
+            }],
             'grade_level' => ['required', 'string', 'max:50'],
             'classroom_id' => ['required', 'integer'],
             'nickname' => ['required', 'string', 'min:3', 'max:40'],
@@ -302,7 +315,10 @@ class HomeController extends Controller
 
         $student = DB::transaction(function () use ($data) {
             $classroom = Classroom::whereKey(session('classroom_id'))->lockForUpdate()->first();
-            if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->id !== (int) $data['classroom_id'] || $classroom->grade !== $data['grade_level'] || ! hash_equals($classroom->registrationFingerprint(), (string) session('verified_join_code'))) {
+            $schoolOrigin = $data['school_origin'] ?? 'rshs';
+            if (! $classroom || ! $classroom->acceptsStudentRegistration() || $classroom->id !== (int) $data['classroom_id'] || $classroom->grade !== $data['grade_level'] || ! hash_equals($classroom->registrationFingerprint(), (string) session('verified_join_code'))
+                || $schoolOrigin !== session('verified_school_origin', 'rshs')
+                || ($classroom->section === config('student_registration.external_section')) !== ($schoolOrigin === 'other')) {
                 throw ValidationException::withMessages(['class_code' => 'Registration is closed or the join code has changed. Verify the current code for your selected grade and section.']);
             }
 
@@ -311,8 +327,10 @@ class HomeController extends Controller
                 'first_name' => $data['first_name'],
                 'middle_name' => $data['middle_name'] ?? null,
                 'surname' => $data['surname'],
-                'school_name' => $data['school_name'] ?? null,
-                'ict_teacher_name' => $data['ict_teacher_name'] ?? null,
+                'school_origin' => $schoolOrigin,
+                'school_name' => $schoolOrigin === 'other' ? trim($data['school_name']) : config('student_registration.school_name'),
+                'ict_teacher_name' => $schoolOrigin === 'other' ? trim($data['ict_teacher_name']) : $classroom->teacher?->fullName(),
+                'ict_teacher_contact' => $schoolOrigin === 'other' ? trim($data['ict_teacher_contact']) : null,
                 'grade_level' => $classroom->grade,
                 'section' => $classroom->section ?? $classroom->period,
                 'nickname' => $data['nickname'],
@@ -328,7 +346,7 @@ class HomeController extends Controller
             return $student;
         });
 
-        $request->session()->forget(['student_id', 'student_name', 'student_session_version', 'student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code']);
+        $request->session()->forget(['student_id', 'student_name', 'student_session_version', 'student_class_verified', 'classroom_id', 'classroom_name', 'verified_join_code', 'verified_school_origin']);
         session(['pending_registration_id' => $student->id]);
         $request->session()->regenerate();
 

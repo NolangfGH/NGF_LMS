@@ -17,9 +17,9 @@ class Student extends Model
 
     protected $attributes = ['session_version' => 1, 'roster_revision' => 1, 'leaderboard_visible' => true, 'registration_status' => 'approved', 'registration_revision' => 1];
 
-    protected $fillable = ['school_name', 'ict_teacher_name', 'classroom_id', 'first_name', 'middle_name', 'surname', 'grade_level', 'section', 'nickname', 'student_id', 'password', 'avatar', 'xp', 'streak_days', 'best_streak', 'level', 'badges_count', 'achievement_goal', 'preferences', 'leaderboard_visible'];
+    protected $fillable = ['school_origin', 'school_name', 'ict_teacher_name', 'ict_teacher_contact', 'classroom_id', 'first_name', 'middle_name', 'surname', 'grade_level', 'section', 'nickname', 'student_id', 'password', 'avatar', 'xp', 'streak_days', 'best_streak', 'level', 'badges_count', 'achievement_goal', 'preferences', 'leaderboard_visible'];
 
-    protected $hidden = ['password', 'session_version', 'roster_revision', 'registration_revision', 'registration_reviewed_by', 'registration_review_note'];
+    protected $hidden = ['password', 'ict_teacher_contact', 'session_version', 'roster_revision', 'registration_revision', 'registration_reviewed_by', 'registration_review_note'];
 
     protected static function booted(): void
     {

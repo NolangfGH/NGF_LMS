@@ -83,8 +83,9 @@ class FamilyPortalTest extends TestCase
     public function test_other_school_details_are_saved_without_bypassing_class_approval(): void
     {
         [$teacher, $room] = $this->family();
-        $this->postJson(route('student.register.verify'), ['class_code' => $room->join_code, 'grade_level' => 'Grade 8', 'section' => 'AM'])->assertOk();
-        $this->postJson(route('student.register.store'), ['classroom_id' => $room->id, 'first_name' => 'Guest', 'surname' => 'Learner', 'grade_level' => 'Grade 8', 'school_name' => 'Another High School', 'ict_teacher_name' => 'Sample ICT Teacher', 'nickname' => 'OtherSchoolCoder', 'student_id' => 'EXTERNAL1', 'password' => 'password123', 'password_confirmation' => 'password123'])->assertSuccessful();
+        $room->update(['section' => config('student_registration.external_section')]);
+        $this->postJson(route('student.register.verify'), ['school_origin' => 'other', 'class_code' => $room->join_code, 'grade_level' => 'Grade 8', 'section' => $room->section])->assertOk();
+        $this->postJson(route('student.register.store'), ['school_origin' => 'other', 'classroom_id' => $room->id, 'first_name' => 'Guest', 'surname' => 'Learner', 'grade_level' => 'Grade 8', 'school_name' => 'Another High School', 'ict_teacher_name' => 'Sample ICT Teacher', 'ict_teacher_contact' => 'teacher@example.test', 'nickname' => 'OtherSchoolCoder', 'student_id' => 'EXTERNAL1', 'password' => 'password123', 'password_confirmation' => 'password123'])->assertSuccessful();
         $this->assertDatabaseHas('students', ['student_id' => 'EXTERNAL1', 'school_name' => 'Another High School', 'ict_teacher_name' => 'Sample ICT Teacher', 'registration_status' => 'pending', 'xp' => 0]);
         $this->withSession(['student_id' => null, 'parent_id' => null, 'teacher_id' => $teacher->id])->get(route('teacher.registrations'))->assertOk()->assertSee('Another High School')->assertSee('Sample ICT Teacher');
     }

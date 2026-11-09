@@ -22,14 +22,14 @@ class Classroom extends Model
             ->whereIn('grade', config('teacher_settings.grades'))
             ->whereNotNull('section')->whereRaw("TRIM(section) <> ''")
             ->where(fn (Builder $grades) => $grades->where('grade', '<>', config('student_registration.grade'))
-                ->orWhereIn('section', config('student_registration.sections')));
+                ->orWhereIn('section', [...config('student_registration.sections'), config('student_registration.external_section')]));
     }
 
     public function acceptsStudentRegistration(): bool
     {
         return ! $this->archived_at && $this->enrollment_open && filled($this->section)
             && in_array($this->grade, config('teacher_settings.grades'), true)
-            && ($this->grade !== config('student_registration.grade') || in_array($this->section, config('student_registration.sections'), true));
+            && ($this->grade !== config('student_registration.grade') || in_array($this->section, [...config('student_registration.sections'), config('student_registration.external_section')], true));
     }
 
     public function registrationFingerprint(): string

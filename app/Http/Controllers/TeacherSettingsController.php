@@ -176,10 +176,15 @@ class TeacherSettingsController extends Controller
     public function storeClasses(Request $request)
     {
         $teacher = $this->teacher();
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'grade' => ['required', Rule::in([config('student_registration.grade')])],
+        $externalSection = config('student_registration.external_section');
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'grade' => ['required', Rule::in(config('student_registration.external_grades'))],
             'sections' => ['required', 'array', 'list', 'min:1', 'max:'.count(config('student_registration.sections'))],
-            'sections.*' => ['required', 'string', 'distinct', Rule::in(config('student_registration.sections'))],
+            'sections.*' => ['required', 'string', 'distinct', Rule::in([...config('student_registration.sections'), $externalSection])],
             'period' => ['nullable', 'string', 'max:80'], 'enrollment_open' => ['required', 'boolean']]);
+        if (($data['grade'] !== config('student_registration.grade') && $data['sections'] !== [$externalSection])
+            || (in_array($externalSection, $data['sections'], true) && count($data['sections']) !== 1)) {
+            throw ValidationException::withMessages(['sections' => 'Create the SFOS section separately for the selected grade.']);
+        }
         DB::transaction(function () use ($teacher, $data) {
             TeacherAccount::whereKey($teacher->id)->lockForUpdate()->firstOrFail();
             $existing = Classroom::where('teacher_account_id', $teacher->id)->where('grade', $data['grade'])->whereIn('section', $data['sections'])->pluck('section');

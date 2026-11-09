@@ -10,6 +10,15 @@
     const feedback = document.getElementById('feedback');
     const sectionHelp = document.getElementById('sectionHelp');
     const refreshButton = document.getElementById('refreshClasses');
+    const schoolOrigin = document.getElementById('schoolOrigin');
+    const schoolName = document.getElementById('schoolName');
+    const ictTeacherName = document.getElementById('ictTeacherName');
+    const ictTeacherContact = document.getElementById('ictTeacherContact');
+    const externalSection = root.dataset.externalSection;
+    const externalGrades = JSON.parse(root.dataset.externalGrades);
+    const rshsSchool = schoolName.value;
+    const otherSchoolDetails = {school: '', teacher: '', contact: ''};
+    const isOtherSchool = () => schoolOrigin.value === 'other';
     const collator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
     let verifiedDetails = null;
     let verifying = false;
@@ -37,8 +46,15 @@
 
     function renderSections(selectedSection = '') {
         verifiedDetails = null;
+        if (isOtherSchool()) {
+            sectionSelect.replaceChildren(new Option(externalSection, externalSection));
+            sectionSelect.value = externalSection;
+            sectionSelect.disabled = false;
+            sectionHelp.textContent = 'Use the SFOS class code for your selected grade. Ask the platform teacher/admin for this code; registration still needs approval.';
+            return;
+        }
         const names = new Map();
-        for (const room of enrollmentOptions.filter(room => room.grade === gradeSelect.value)) {
+        for (const room of enrollmentOptions.filter(room => room.grade === gradeSelect.value && room.section !== externalSection)) {
             const name = room.section.trim();
             if (name && !names.has(name.toUpperCase())) names.set(name.toUpperCase(), name);
         }
@@ -55,7 +71,7 @@
     }
 
     function renderGrades(selectedGrade, selectedSection = '') {
-        const grades = [...new Set(enrollmentOptions.map(room => room.grade))].sort(collator.compare);
+        const grades = isOtherSchool() ? externalGrades : [...new Set(enrollmentOptions.filter(room => room.section !== externalSection).map(room => room.grade))].sort(collator.compare);
         gradeSelect.replaceChildren(new Option('Choose grade level', ''));
         grades.forEach(grade => gradeSelect.add(new Option(grade, grade)));
         gradeSelect.value = grades.includes(selectedGrade) ? selectedGrade : '';
@@ -65,7 +81,26 @@
     gradeSelect.onchange = () => renderSections();
     sectionSelect.onchange = () => { verifiedDetails = null; };
     classCode.oninput = () => { verifiedDetails = null; };
-    renderGrades(gradeSelect.value);
+    schoolOrigin.onchange = () => {
+        const other = isOtherSchool();
+        if (!other) {
+            otherSchoolDetails.school = schoolName.value;
+            otherSchoolDetails.teacher = ictTeacherName.value;
+            otherSchoolDetails.contact = ictTeacherContact.value;
+        }
+        schoolName.value = other ? otherSchoolDetails.school : rshsSchool;
+        ictTeacherName.value = other ? otherSchoolDetails.teacher : '';
+        ictTeacherContact.value = other ? otherSchoolDetails.contact : '';
+        for (const field of [schoolName, ictTeacherName, ictTeacherContact]) {
+            field.disabled = !other;
+            field.required = other;
+        }
+        ictTeacherName.placeholder = other ? 'Your school ICT teacher’s full name' : 'From your verified class';
+        classCode.value = '';
+        renderGrades(gradeSelect.value);
+    };
+    if (isOtherSchool()) schoolOrigin.onchange();
+    else renderGrades(gradeSelect.value);
 
     refreshButton.onclick = async () => {
         if (refreshButton.disabled || verifying) return;
@@ -108,7 +143,7 @@
         try {
             const data = new FormData(enrollmentForm);
             const result = await postForm(root.dataset.verifyUrl, data);
-            if (data.get('grade_level') !== gradeSelect.value || data.get('section') !== sectionSelect.value || data.get('class_code') !== classCode.value) {
+            if (JSON.stringify([...data]) !== JSON.stringify([...new FormData(enrollmentForm)])) {
                 throw new Error('Your class details changed. Verify your selected grade, section and code again.');
             }
             verifiedDetails = {...Object.fromEntries(data), classroom_id: result.classroom.id, grade_level: result.classroom.grade, section: result.classroom.section};
