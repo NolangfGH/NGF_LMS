@@ -26,6 +26,6 @@ jobs:
         with:
           name: ngf-codequest-android-unsigned
           path: |
-            storage/app/android-build/NGF-CodeQuest-1.0.0-unsigned.apk
+            storage/app/android-build/NGF-CodeQuest-1.0.1-unsigned.apk
             storage/app/android-build/apksigner.jar
           retention-days: 7

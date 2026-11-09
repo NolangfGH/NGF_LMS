@@ -38,7 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
-    private static final String HOME = "https://rsmimaropa.com/app/start";
+    private static final String HOME = "https://ngf-lpcppcq.rsmimaropa.com/app/start";
     private static final int FILE_PICKER = 100;
     private static final int MEDIA_PERMISSION = 101;
     private static final int DOWNLOAD_PERMISSION = 102;
@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
 
     private boolean trusted(Uri uri) {
         return uri != null && "https".equalsIgnoreCase(uri.getScheme())
-            && "rsmimaropa.com".equalsIgnoreCase(uri.getHost())
+            && ("ngf-lpcppcq.rsmimaropa.com".equalsIgnoreCase(uri.getHost()) || "rsmimaropa.com".equalsIgnoreCase(uri.getHost()))
             && (uri.getPort() == -1 || uri.getPort() == 443) && uri.getUserInfo() == null;
     }
 
@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
-        settings.setUserAgentString(settings.getUserAgentString()+" NGFCodeQuestAndroid/1.0.0");
+        settings.setUserAgentString(settings.getUserAgentString()+" NGFCodeQuestAndroid/1.0.1");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(view,false);
         view.setWebViewClient(new WebViewClient() {

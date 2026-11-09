@@ -13,6 +13,6 @@ javac --release 8 -classpath "$PLATFORM" -d "$OUT/classes" "${SOURCES[@]}"
 mapfile -t CLASSES < <(find "$OUT/classes" -name '*.class')
 "$TOOLS/d8" --release --min-api 26 --lib "$PLATFORM" --output "$OUT/dex" "${CLASSES[@]}"
 (cd "$OUT/dex" && zip -q -j "$OUT/base.apk" classes*.dex)
-"$TOOLS/zipalign" -f -p 4 "$OUT/base.apk" "$OUT/NGF-CodeQuest-1.0.0-unsigned.apk"
+"$TOOLS/zipalign" -f -p 4 "$OUT/base.apk" "$OUT/NGF-CodeQuest-1.0.1-unsigned.apk"
 cp "$TOOLS/lib/apksigner.jar" "$OUT/apksigner.jar"
-sha256sum "$OUT/NGF-CodeQuest-1.0.0-unsigned.apk"
+sha256sum "$OUT/NGF-CodeQuest-1.0.1-unsigned.apk"
