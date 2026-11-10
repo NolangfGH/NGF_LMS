@@ -36,6 +36,10 @@ class IlawPlanTemplate
 
     public static function defaults(array $lesson): array
     {
+        if (($lesson['course'] ?? null) === 'arduino-uno') {
+            return $lesson['ilaw'];
+        }
+
         return [
             'title' => $lesson['title'],
             'learning_area' => 'C++ Programming',

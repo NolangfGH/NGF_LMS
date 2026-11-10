@@ -33,6 +33,7 @@ function environment() {
         Event: class {constructor(type) {this.type = type;}},
         setInterval(callback) {timers.set(++id, callback); return id;}, clearInterval(key) {timers.delete(key);}});
     return {editor, launcher, frame, dialog, messages, find, clipboard,
+        addLauncher(button) {window.fire('ngf:explanation-added', {detail: {querySelectorAll: () => [button]}});},
         open(code = 'int main() { return 0; }') {editor.value = code; launcher.fire('click');},
         receive(code, changes = {}) {window.fire('message', {origin, source: frame.contentWindow, data: {language: 'cpp', files: [{name: 'main.cpp', content: code}]}, ...changes});},
         tick(ms = 500) {clock += ms; for (const callback of [...timers.values()]) callback();},
@@ -56,6 +57,20 @@ test('no external request until click; handoff contains only latest code and use
     assert.equal(app.find('[data-oc-apply]').disabled, false);
     app.find('[data-oc-run]').fire('click');
     assert.deepEqual(app.messages.at(-1), {target: origin, data: {eventType: 'triggerRun'}});
+});
+
+test('new explanation launchers load their current editable code without an automatic external request', () => {
+    const app = environment();
+    const added = element();
+    added.dataset.onecompilerEditor = 'explanation-3-code';
+    app.addLauncher(added);
+    assert.equal(app.frame.src, undefined);
+    app.editor.value = 'int main() { return 9; }';
+    added.fire('click');
+    app.frame.fire('load');
+    assert.equal(app.dialog.open, true);
+    assert.equal(app.messages[0].data.files[0].content, app.editor.value);
+    assert.equal(app.messages[0].target, origin);
 });
 
 test('spoofed origins and other frame windows cannot replace an LMS draft', () => {

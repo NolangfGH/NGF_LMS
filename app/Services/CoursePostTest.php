@@ -22,6 +22,17 @@ class CoursePostTest
 
     public const FINAL_SECONDS = 60;
 
+    private string $courseKey = 'cpp';
+
+    public function forCourse(string $course): self
+    {
+        abort_unless(in_array($course, ['cpp', 'arduino-uno'], true), 404);
+        $exam = clone $this;
+        $exam->courseKey = $course;
+
+        return $exam;
+    }
+
     public function __construct(private CourseAssessments $course, private QuizGrader $grader) {}
 
     public function state(Student $student): array
@@ -36,7 +47,7 @@ class CoursePostTest
             $result = $active ? null : $this->attempts($current)->whereNotNull('finished_at')->orderByDesc('attempt_number')->first(['score']);
 
             return [
-                'ready' => $this->course->canTakePostTest($current),
+                'ready' => $this->course->canTakePostTest($current, $this->courseKey),
                 'next_attempt' => $this->nextAttempt($attempt),
                 'requested' => $attempt && ! $attempt->started_at,
                 'code_ready' => $attempt && ! $attempt->started_at && $this->validGrant($current, $attempt),
@@ -53,7 +64,7 @@ class CoursePostTest
             $attempt = $this->latest($current);
             $number = $this->availableAttempt($current, $attempt);
             $id = $attempt && ! $attempt->started_at ? $attempt->id : DB::table('course_post_test_attempts')->insertGetId([
-                'student_id' => $current->id, 'attempt_number' => $number, 'created_at' => now(), 'updated_at' => now(),
+                'student_id' => $current->id, 'course' => $this->courseKey, 'attempt_number' => $number, 'created_at' => now(), 'updated_at' => now(),
             ]);
             $notifications->postTestCodeRequested($current, $id);
         }, 3);
@@ -62,7 +73,7 @@ class CoursePostTest
     public function issueCode(TeacherAccount $teacher, int $requestId): string
     {
         return DB::transaction(function () use ($teacher, $requestId): string {
-            $studentId = DB::table('course_post_test_attempts')->where('id', $requestId)->value('student_id');
+            $studentId = DB::table('course_post_test_attempts')->where('id', $requestId)->where('course', $this->courseKey)->value('student_id');
             abort_unless($studentId, 404);
             $student = $this->lockStudent($studentId);
             abort_unless($student->classroom->teacher_account_id === $teacher->id, 404);
@@ -91,7 +102,7 @@ class CoursePostTest
             if (! $attempt || $attempt->started_at || ! $this->validGrant($current, $attempt) || ! Hash::check(strtoupper($code), $attempt->access_code_hash)) {
                 throw ValidationException::withMessages(['code' => 'Enter the current code issued by your teacher for this attempt.']);
             }
-            $questions = collect($this->course->questions(CourseAssessments::POST))->shuffle()->map(function (array $question): array {
+            $questions = collect($this->course->questions($this->courseKey === 'arduino-uno' ? CourseAssessments::ARDUINO_POST : CourseAssessments::POST))->shuffle()->map(function (array $question): array {
                 shuffle($question['options']);
 
                 return $question;
@@ -166,12 +177,12 @@ class CoursePostTest
             if ($attempt->wrong_answer_penalty > 0) {
                 $wrong = self::QUESTIONS - $score;
                 app(XpLedger::class)->change($student->id, 'post-test-penalty:'.$attempt->id, -$wrong * $attempt->wrong_answer_penalty,
-                    ['type' => 'post-test', 'id' => $attempt->id, 'title' => 'C++ Post-Test · Attempt '.$attempt->attempt_number, 'reason' => 'Post-test incorrect answers',
+                    ['type' => 'post-test', 'id' => $attempt->id, 'title' => ($this->courseKey === 'arduino-uno' ? 'Arduino Uno' : 'C++').' Post-Test · Attempt '.$attempt->attempt_number, 'reason' => 'Post-test incorrect answers',
                         'details' => [$wrong.' incorrect or unanswered questions × '.$attempt->wrong_answer_penalty.' XP = '.($wrong * $attempt->wrong_answer_penalty).' XP deduction requested.', 'Only the final total is recorded here. Question content, answer keys and per-question correctness are not disclosed.']]);
             }
             $update = array_replace($update, ['finished_at' => $now, 'score' => $score, 'questions' => null, 'answers' => null]);
             if ($score >= self::PASS_SCORE) {
-                $this->course->awardExcellence($student);
+                $this->course->awardExcellence($student, $this->courseKey);
             }
         }
         DB::table('course_post_test_attempts')->where('id', $attempt->id)->update($update);
@@ -198,7 +209,7 @@ class CoursePostTest
 
     private function availableAttempt(Student $student, ?stdClass $attempt): int
     {
-        abort_unless($this->course->canTakePostTest($student), 403, 'Complete the pre-test and all core checkpoints first.');
+        abort_unless($this->course->canTakePostTest($student, $this->courseKey), 403, 'Complete this course’s pre-test and all core checkpoints first.');
         $number = $this->nextAttempt($attempt);
         abort_unless($number, 409, 'Your exam attempt is active or you have finished your opportunities.');
 
@@ -224,7 +235,7 @@ class CoursePostTest
 
     private function attempts(Student $student): Builder
     {
-        return DB::table('course_post_test_attempts')->where('student_id', $student->id);
+        return DB::table('course_post_test_attempts')->where('student_id', $student->id)->where('course', $this->courseKey);
     }
 
     private function latest(Student $student): ?stdClass

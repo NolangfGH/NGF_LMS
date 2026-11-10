@@ -22,8 +22,9 @@ class LearningNotifications
 {
     public function postTestCodeRequested(Student $student, int $requestId): void
     {
+        $course = DB::table('course_post_test_attempts')->where('id', $requestId)->value('course') === 'arduino-uno' ? 'Arduino Uno' : 'C++';
         $this->send('teacher', $student->classroom?->teacher_account_id, 'quizzes', 'post-test-code:'.$requestId,
-            'Post-test code requested', $student->nickname.' is ready for the C++ certification exam. Open Post-test codes to issue a personal code.',
+            'Post-test code requested', $student->nickname.' is ready for the '.$course.' certification exam. Open Post-test codes to issue a personal code.',
             'post_test_code', $requestId);
     }
 

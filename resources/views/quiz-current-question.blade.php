@@ -8,9 +8,9 @@
     $untimed = !$certification && $attempt->untimed;
     $deadline = $certification ? $examQuestion['deadline'] : $attempt->questionDeadline()->getTimestampMs();
     $total = $certification ? \App\Services\CoursePostTest::QUESTIONS : count($attempt->questions);
-    $answerUrl = $certification ? route('student.post-test.question') : route('student.quiz.question', $quiz);
-    $draftUrl = $certification ? route('student.post-test.draft') : route('student.quiz.draft', $quiz);
-    $refreshUrl = $certification ? route('student.post-test.show') : route('student.quiz');
+    $answerUrl = $certification ? route('student.post-test.question', $courseQuery ?? []) : route('student.quiz.question', $quiz);
+    $draftUrl = $certification ? route('student.post-test.draft', $courseQuery ?? []) : route('student.quiz.draft', $quiz);
+    $refreshUrl = $certification ? route('student.post-test.show', $courseQuery ?? []) : route('student.quiz');
     $watermark = strtoupper(substr(hash_hmac('sha256', ($certification ? 'post-test:' : 'quiz:').$attemptId, (string) config('app.key')), 0, 10));
 @endphp
 <form method="POST" action="{{ $answerUrl }}" class="question-quiz min-w-0 space-y-4" data-untimed="{{ $untimed ? 'true':'false' }}" data-seconds="{{ $seconds }}" data-draft-url="{{ $draftUrl }}" data-deadline="{{ $deadline }}" data-index="{{ $index }}" data-server-time="{{ now()->getTimestampMs() }}">

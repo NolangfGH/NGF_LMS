@@ -24,7 +24,7 @@ class CourseAssessmentController extends Controller
         }
 
         return $this->studentView('course-assessments.index', $student, $this->assessments->results($student), [
-            'certificate' => $this->assessments->certificate($student),
+            'certificate' => $this->assessments->certificate($student, CourseAssessments::selectedCourse()),
         ]);
     }
 
@@ -64,10 +64,10 @@ class CourseAssessmentController extends Controller
         if (! $student) {
             return redirect()->route('student.login');
         }
-        $certificate = $this->assessments->certificate($student);
+        $certificate = $this->assessments->certificate($student, CourseAssessments::selectedCourse());
         abort_unless($certificate, 404);
 
-        return response()->view('course-assessments.certificate', ['certificate' => $certificate, 'backRoute' => route('student.assessments.index')])
+        return response()->view('course-assessments.certificate', ['certificate' => $certificate, 'backRoute' => route('student.assessments.index', CourseAssessments::courseQuery())])
             ->header('Cache-Control', 'private, no-store');
     }
 
@@ -77,7 +77,7 @@ class CourseAssessmentController extends Controller
 
         return response()->view('course-assessments.edit-certificate', [
             'pageTitle' => 'Course certificate', 'teacher' => $teacher, 'student' => $learner,
-            'certificate' => $this->assessments->certificate($learner), 'courseProgress' => $this->assessments->progress($learner),
+            'certificate' => $this->assessments->certificate($learner, CourseAssessments::selectedCourse()), 'courseProgress' => $this->assessments->progress($learner, CourseAssessments::selectedCourse()), 'courseQuery' => CourseAssessments::courseQuery(),
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -93,32 +93,34 @@ class CourseAssessmentController extends Controller
             abort_unless($current->classroom?->teacher_account_id === $teacher->id && ! $current->classroom->archived_at, 403);
 
             return DB::table('course_certificates')->where('student_id', $current->id)->where('teacher_account_id', $teacher->id)
-                ->where('id', $data['certificate_id'])->where('revision', $data['revision'])->update([
+                ->where('course', CourseAssessments::selectedCourse())->where('id', $data['certificate_id'])->where('revision', $data['revision'])->update([
                     'title' => $data['title'], 'message' => $data['message'], 'revision' => (int) $data['revision'] + 1,
                 ]);
         }, 3);
         abort_unless($updated === 1, 409, 'This certificate is unavailable for editing or was already updated. Reload the page.');
 
-        return redirect()->route('teacher.certificates.edit', $student)->with('lesson_notice', 'Certificate wording updated.');
+        return redirect()->route('teacher.certificates.edit', [$student] + CourseAssessments::courseQuery())->with('lesson_notice', 'Certificate wording updated.');
     }
 
     public function teacherCertificate(int $student): Response
     {
         [, $learner] = $this->teacherAndStudent($student);
-        $certificate = $this->assessments->certificate($learner);
+        $certificate = $this->assessments->certificate($learner, CourseAssessments::selectedCourse());
         abort_unless($certificate, 404);
 
-        return response()->view('course-assessments.certificate', ['certificate' => $certificate, 'backRoute' => route('teacher.certificates.edit', $student)])
+        return response()->view('course-assessments.certificate', ['certificate' => $certificate, 'backRoute' => route('teacher.certificates.edit', [$student] + CourseAssessments::courseQuery())])
             ->header('Cache-Control', 'private, no-store');
     }
 
     private function studentView(string $view, Student $student, Collection $results, array $data = []): Response
     {
+        $courseKey = ($data['assessment'] ?? null) === CourseAssessments::ARDUINO_PRE ? 'arduino-uno' : CourseAssessments::selectedCourse();
+
         return response()->view($view, $data + [
             'student' => $student, 'classroom' => $student->classroom,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A'),
-            'pretest' => $results->get(CourseAssessments::PRE),
-            'reasoning' => $results->get(CourseAssessments::REASONING), 'courseProgress' => $this->assessments->progress($student),
+            'courseKey' => $courseKey, 'courseQuery' => CourseAssessments::courseQuery($courseKey), 'courseTitle' => $courseKey === 'arduino-uno' ? 'Arduino Uno' : 'C++', 'pretest' => $results->get($courseKey === 'arduino-uno' ? CourseAssessments::ARDUINO_PRE : CourseAssessments::PRE),
+            'reasoning' => $results->get(CourseAssessments::REASONING), 'courseProgress' => $this->assessments->progress($student, $courseKey),
         ])->header('Cache-Control', 'private, no-store');
     }
 

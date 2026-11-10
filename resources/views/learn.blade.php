@@ -1,16 +1,19 @@
-@extends('layouts.student', ['pageTitle' => 'Learn C++', 'active' => 'learn'])
-@section('content')@include('quest-map')
+@extends('layouts.student', ['pageTitle' => $lessonPath['title'], 'active' => 'learn'])
+@section('content')
+@php($arduinoCourse = $lessonPath['course'] === 'arduino-uno')
+<nav aria-label="Learning course" class="mb-5 flex flex-wrap gap-3"><a href="{{ route('student.learn') }}" class="rounded-xl border bg-white px-4 py-3 font-bold text-primary">C++ Programming</a><a href="{{ route('student.learn',['course'=>'arduino-uno']) }}" class="rounded-xl border bg-white px-4 py-3 font-bold text-primary">Grade 9 · Arduino Uno Robotics</a></nav>
+@include('quest-map')
 <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
-    <div><p class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Explore · understand · build</p><h1 class="mt-2 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Your C++ learning path</h1><p class="mt-3 max-w-2xl text-sm leading-6 text-muted">Small steps, real programs. Read an example, check your understanding, then build your own solution in Code Lab.</p></div>
-    <a href="{{ route('student.assessments.index') }}" class="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold text-primary">Pre-test, post-test &amp; certificate →</a>
+    <div><p class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Explore · understand · build</p><h1 class="mt-2 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">{{ $arduinoCourse ? 'Your Arduino Uno learning path' : 'Your C++ learning path' }}</h1><p class="mt-3 max-w-2xl text-sm leading-6 text-muted">Small steps, real programs. Read an example, check your understanding, then build your own solution in Code Lab.</p></div>
+    <a href="{{ route('student.assessments.index', $arduinoCourse ? ['course'=>'arduino-uno'] : []) }}" class="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold text-primary">Pre-test, post-test &amp; certificate →</a>
 </div>
 <section class="mb-6 grid gap-5 lg:grid-cols-[1.35fr_1fr]">
     <article class="rounded-2xl bg-primary p-6 text-white shadow-card sm:p-8">
         @if($lessonPath['pretest_required'])
             <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest">Your first step</span>
-            <h2 class="mt-5 text-2xl font-extrabold">Take the C++ pre-test</h2>
+            <h2 class="mt-5 text-2xl font-extrabold">Take the {{ $arduinoCourse ? 'Arduino Uno' : 'C++' }} pre-test</h2>
             <p class="mt-3 text-sm leading-6 text-green-100">Submit the pre-test to unlock Introduction and the rest of the lesson path. Your score shows your starting point.</p>
-            <a href="{{ route('student.assessments.show', 'pre-test') }}" class="mt-6 inline-flex rounded-xl bg-secondary-soft px-5 py-3 text-sm font-bold text-primary">Open pre-test →</a>
+            <a href="{{ route('student.assessments.show', $arduinoCourse ? 'arduino-pre-test' : 'pre-test') }}" class="mt-6 inline-flex rounded-xl bg-secondary-soft px-5 py-3 text-sm font-bold text-primary">Open pre-test →</a>
         @elseif($lessonPath['next'])
             <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest">Your next step</span><h2 class="mt-5 text-2xl font-extrabold">{{ $lessonPath['next']['title'] }}</h2><p class="mt-3 text-sm leading-6 text-green-100">{{ $lessonPath['next']['objective'] }}</p>
             <a href="{{ route('student.lesson.show',$lessonPath['next']['key']) }}#section-{{ $lessonPath['next']['progress']?->last_section ?? 0 }}" class="mt-6 inline-flex rounded-xl bg-secondary-soft px-5 py-3 text-sm font-bold text-primary">{{ $lessonPath['next']['status']==='in_progress' ? 'Continue lesson' : 'Start learning' }} →</a>
@@ -27,11 +30,11 @@
     <label class="min-w-48 flex-1 text-xs font-bold text-primary">Search lessons<input id="lesson-search" type="search" maxlength="100" placeholder="Try loops, input or variables" class="mt-2 w-full rounded-xl border border-black/10 bg-white p-3 text-sm"></label>
     <label class="text-xs font-bold text-primary">Progress<select id="lesson-status" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All progress</option><option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="completed">Checkpoint complete</option></select></label>
     <label class="text-xs font-bold text-primary">Source<select id="lesson-source" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All lessons</option><option value="assigned">Teacher assigned</option><option value="self">Self study</option></select></label>
-    <label class="text-xs font-bold text-primary">School Term<select id="lesson-term" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All terms</option><option value="Term1">Term 1 · Foundations</option><option value="Term2">Term 2 · Decisions & collections</option><option value="Term3">Term 3 · Data & functions</option></select></label>
+    <label class="text-xs font-bold text-primary">School Term<select id="lesson-term" class="mt-2 block rounded-xl border border-black/10 bg-white p-3 text-sm"><option value="all">All terms</option><option value="Term1">Term 1 · Foundations</option><option value="Term2">{{ $arduinoCourse ? 'Term 2 · Sensors & actuators' : 'Term 2 · Decisions & collections' }}</option><option value="Term3">{{ $arduinoCourse ? 'Term 3 · Integration & robotics' : 'Term 3 · Data & functions' }}</option></select></label>
     <button type="button" id="lesson-clear" class="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-bold text-primary">Clear</button>
 </section>
 <p id="lesson-result-count" class="mb-4 text-xs font-bold text-secondary" aria-live="polite">{{ $lessonPath['total'] }} lessons available</p>
-<section class="grid gap-5 xl:grid-cols-2" aria-label="C++ lessons">
+<section class="grid gap-5 xl:grid-cols-2" aria-label="{{ $lessonPath['title'] }} lessons">
 @foreach($lessonPath['cards'] as $lesson)
     <article data-lesson-card data-title="{{ $lesson['title'].' '.$lesson['topic'].' '.$lesson['objective'].' '.implode(' ', $lesson['subtopics'] ?? []) }}" data-term="{{ $lesson['term'] ?? '' }}" data-status="{{ $lesson['status'] }}" data-source="{{ $lesson['plan'] ? 'assigned' : 'self' }}" class="flex flex-col rounded-2xl border border-black/5 bg-white p-6 shadow-card">
         <div class="flex items-start justify-between gap-3"><div class="flex items-center gap-3"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl {{ $lesson['status']==='completed' ? 'bg-primary text-white' : 'bg-paper text-secondary' }}"><span class="material-symbols-outlined">{{ $lesson['status']==='completed' ? 'check' : $lesson['icon'] }}</span></span><span class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Lesson {{ $loop->iteration }} · {{ $lesson['minutes'] }} min read</span></div><span class="rounded-full bg-paper px-2.5 py-1 text-[10px] font-bold text-secondary">{{ $lesson['plan'] ? 'Teacher assigned' : 'Self study' }}</span></div>

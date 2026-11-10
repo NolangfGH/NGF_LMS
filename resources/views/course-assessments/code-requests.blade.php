@@ -1,7 +1,8 @@
 @extends('layouts.teacher-learning')
 
 @section('content')
-<p class="text-xs font-bold uppercase tracking-widest text-secondary">C++ Certification</p>
+<nav class="mb-5 flex gap-3"><a href="{{ route('teacher.post-test.index') }}" class="font-bold underline">C++ codes</a><a href="{{ route('teacher.post-test.index',['course'=>'arduino-uno']) }}" class="font-bold underline">Arduino codes</a></nav>
+<p class="text-xs font-bold uppercase tracking-widest text-secondary">{{ $courseTitle }} Certification</p>
 <h1 class="mt-2 text-3xl font-extrabold text-primary">Post-test codes</h1>
 <p class="mt-2 max-w-3xl text-sm leading-6">Generate a personal code when a student in your class is ready. Share it privately with that student. A code expires after 24 hours or when the student starts the exam. Generating a new code replaces the old one.</p>
 <div class="mt-6 grid gap-4 lg:grid-cols-2">
@@ -15,7 +16,7 @@
             @elseif((int) $request->code_issued_by === $teacher->id && $request->code_expires_at)
                 <p class="mt-3 text-xs font-bold text-secondary">{{ now()->lt(\Illuminate\Support\Carbon::parse($request->code_expires_at)) ? 'Code issued' : 'Code expired' }}</p>
             @endif
-            <form method="POST" action="{{ route('teacher.post-test.issue', $request->id) }}" class="mt-4">
+            <form method="POST" action="{{ route('teacher.post-test.issue', [$request->id] + $courseQuery) }}" class="mt-4">
                 @csrf
                 <button class="rounded-xl border border-green-200 px-4 py-3 text-sm font-bold text-primary">{{ $request->code_expires_at ? 'Generate replacement code' : 'Generate post-test code' }}</button>
             </form>

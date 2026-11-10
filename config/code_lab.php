@@ -12,6 +12,7 @@ foreach ($topics as $key => $lesson) {
 return [
     'assignment_starter' => "#include <iostream>\n\nint main() {\n    // Write your solution to the assignment here.\n    return 0;\n}\n",
     'activities' => [
+        ...(require __DIR__.'/arduino_curriculum.php')['practice'],
         ...$challengeActivities,
         ...array_combine(
             array_map(static fn (string $key): string => 'cpp-'.$key, array_keys(require __DIR__.'/cpp_activity_templates.php')),

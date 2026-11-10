@@ -18,7 +18,7 @@ class LessonController extends Controller
 {
     private function unlocked(Student $student, string $key, LessonService $service): void
     {
-        $card = $service->path($student)['cards']->firstWhere('key', $key);
+        $card = $service->path($student, $service->lesson($key)['course'] ?? 'cpp')['cards']->firstWhere('key', $key);
         abort_unless($card, 404);
         abort_if($card['locked'], 403, 'Complete the preceding lesson checkpoints to unlock this mission.');
     }
@@ -29,7 +29,7 @@ class LessonController extends Controller
         if (! $student) {
             return redirect()->route('student.login');
         }
-        $next = $service->path($student)['next'];
+        $next = $service->path($student, request('course') === 'arduino-uno' ? 'arduino-uno' : 'cpp')['next'];
 
         return redirect()->route('student.lesson.show', $next['key'] ?? array_key_first($service->catalog()));
     }
@@ -49,7 +49,7 @@ class LessonController extends Controller
 
             return $record;
         });
-        $path = $service->path($student);
+        $path = $service->path($student, $definition['course'] ?? 'cpp');
         $card = $path['cards']->firstWhere('key', $lesson);
         $position = $path['cards']->search(fn ($item) => $item['key'] === $lesson);
 

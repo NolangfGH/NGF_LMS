@@ -6,6 +6,7 @@ use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Models\TeacherLessonPlan;
+use App\Services\CourseAssessments;
 use App\Services\LessonService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class TeacherLessonController extends Controller
 
         return response()->view('teacher-lessons', [
             'teacher' => $teacher, 'rooms' => $teacher->classrooms()->withCount('students')->orderBy('grade')->orderBy('section')->get(),
-            'catalog' => $service->catalog(),
+            'catalog' => $service->catalog(null),
             'plans' => TeacherLessonPlan::with('classroom')->where('teacher_account_id', $teacher->id)
                 ->whereHas('classroom', fn ($query) => $query->where('teacher_account_id', $teacher->id))->latest()->get(),
         ])->header('Cache-Control', 'private, no-store');
@@ -53,7 +54,7 @@ class TeacherLessonController extends Controller
     {
         $teacher = $this->teacher();
         $data = $request->validate([
-            'lesson_key' => ['required', Rule::in(array_keys($service->catalog()))],
+            'lesson_key' => ['required', Rule::in(array_keys($service->catalog(null)))],
             'classroom_ids' => ['required', 'array', 'min:1'],
             'classroom_ids.*' => ['required', 'integer', 'distinct', Rule::exists('classrooms', 'id')->where('teacher_account_id', $teacher->id)],
         ]);
@@ -96,7 +97,9 @@ class TeacherLessonController extends Controller
         }
         $teacher = $this->teacher();
         $rooms = $teacher->classrooms()->orderBy('grade')->orderBy('section')->get();
-        $filter = $request->validate(['classroom' => ['nullable', 'integer'], 'lesson' => ['nullable', Rule::in(array_keys($service->catalog()))], 'search' => ['nullable', 'string', 'max:100']]);
+        $course = CourseAssessments::selectedCourse();
+        $catalog = $service->catalog($course);
+        $filter = $request->validate(['classroom' => ['nullable', 'integer'], 'lesson' => ['nullable', Rule::in(array_keys($catalog))], 'search' => ['nullable', 'string', 'max:100']]);
         $selected = ! empty($filter['classroom']) ? (int) $filter['classroom'] : null;
         abort_if($selected && ! $rooms->contains('id', $selected), 403);
         $lessonKey = $filter['lesson'] ?? null;
@@ -107,9 +110,9 @@ class TeacherLessonController extends Controller
         }
         $students = $students->orderBy('nickname')->orderBy('id')->paginate(25)->withQueryString();
         $records = LessonProgress::whereIn('student_id', $students->getCollection()->pluck('id'))
-            ->whereIn('lesson_key', array_keys($service->catalog()))->when($lessonKey, fn ($query) => $query->where('lesson_key', $lessonKey))->orderByDesc('last_opened_at')->get()->groupBy('student_id');
+            ->whereIn('lesson_key', array_keys($catalog))->when($lessonKey, fn ($query) => $query->where('lesson_key', $lessonKey))->orderByDesc('last_opened_at')->get()->groupBy('student_id');
 
-        return response()->view('teacher-lesson-progress', compact('teacher', 'rooms', 'selected', 'lessonKey', 'search', 'students', 'records') + ['catalog' => $service->catalog()])->header('Cache-Control', 'private, no-store');
+        return response()->view('teacher-lesson-progress', compact('teacher', 'rooms', 'selected', 'lessonKey', 'search', 'students', 'records') + ['catalog' => $catalog, 'course' => $course])->header('Cache-Control', 'private, no-store');
     }
 
     public function feedback(Request $request, LessonProgress $progress)
@@ -119,6 +122,7 @@ class TeacherLessonController extends Controller
         $data = $request->validate(['teacher_feedback' => ['required', 'string', 'min:5', 'max:3000']]);
         $progress->update([...$data, 'feedback_by_teacher_id' => $teacher->id, 'feedback_at' => now()]);
 
-        return redirect()->route('teacher.lessons.progress',['classroom' => $progress->student->classroom_id, 'lesson' => $progress->lesson_key])->with('lesson_notice','Feedback saved. The student can read it in this lesson.');
+        return redirect()->route('teacher.lessons.progress', ['classroom' => $progress->student->classroom_id, 'lesson' => $progress->lesson_key]
+            + CourseAssessments::courseQuery(isset(config('arduino_curriculum.lessons')[$progress->lesson_key]) ? 'arduino-uno' : 'cpp'))->with('lesson_notice', 'Feedback saved. The student can read it in this lesson.');
     }
 }

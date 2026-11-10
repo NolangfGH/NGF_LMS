@@ -24,15 +24,16 @@ class TeachingLibraryController extends Controller
         }
         abort_if($teacher->isPrincipal(), 403);
 
-        $data = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'term' => ['nullable', Rule::in(['Term1', 'Term2', 'Term3'])]]);
+        $data = $request->validate(['course' => ['nullable', Rule::in(['cpp', 'arduino-uno'])], 'q' => ['nullable', 'string', 'max:100'], 'term' => ['nullable', Rule::in(['Term1', 'Term2', 'Term3'])]]);
+        $course = $data['course'] ?? 'cpp';
         $query = mb_strtolower(trim($data['q'] ?? ''));
-        $catalog = array_filter($library->catalog(), static fn (array $lesson): bool => (empty($data['term']) || $lesson['term'] === $data['term'])
+        $catalog = array_filter($library->catalog($course), static fn (array $lesson): bool => (empty($data['term']) || $lesson['term'] === $data['term'])
             && ($query === '' || str_contains(mb_strtolower($lesson['title'].' '.$lesson['topic'].' '.implode(' ', $lesson['subtopics'])), $query)));
 
         return view('teaching-library.index', [
             'pageTitle' => 'Ready-made Library', 'teacher' => $teacher, 'catalog' => $catalog,
-            'topicCount' => count($library->catalog()),
-            'termExams' => array_filter($library->termExams(), fn (array $exam): bool => empty($data['term']) || $exam['term'] === $data['term']),
+            'topicCount' => count($library->catalog($course)), 'course' => $course,
+            'termExams' => array_filter($library->termExams($course), fn (array $exam): bool => empty($data['term']) || $exam['term'] === $data['term']),
         ]);
     }
 
@@ -97,8 +98,8 @@ class TeachingLibraryController extends Controller
 
     private function template(ReadyMadeActivities $library, string $key, string $kind): array
     {
-        if ($kind === 'quiz' && preg_match('/^term[123]-/', $key)) {
-            $exam = $library->termExams()[$key] ?? null;
+        if ($kind === 'quiz' && preg_match('/^(?:arduino-)?term[123]-/', $key)) {
+            $exam = $library->termExams(str_starts_with($key, 'arduino-') ? 'arduino-uno' : 'cpp')[$key] ?? null;
             abort_unless($exam, 404);
 
             return $exam;

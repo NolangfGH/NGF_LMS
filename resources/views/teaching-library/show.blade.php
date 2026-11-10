@@ -1,6 +1,7 @@
 @extends('layouts.teacher-learning')
 @section('content')
-<a href="{{ route('teacher.library') }}" class="text-sm font-bold text-primary">← Ready-made library</a>
+@php($arduinoCourse = ($lesson['course'] ?? 'cpp') === 'arduino-uno')
+<a href="{{ route('teacher.library', $arduinoCourse ? ['course'=>'arduino-uno'] : []) }}" class="text-sm font-bold text-primary">← Ready-made library</a>
 <div class="mt-5 flex flex-wrap items-start justify-between gap-4">
     <div><p class="text-xs font-bold uppercase tracking-widest text-secondary">{{ $lesson['topic'] }} · Review {{ $kind }}</p><h1 class="mt-3 text-3xl font-extrabold text-primary">{{ $activity['title'] }}</h1></div>
     <span class="rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-primary">Teacher preview · Not assigned</span>
@@ -44,11 +45,11 @@
         <h2 class="text-lg font-bold text-primary">Student task</h2><p class="mt-4 whitespace-pre-line text-sm leading-7">{{ $activity['objective'] }}</p>
         <div class="mt-5 grid gap-4 sm:grid-cols-2"><div><h3 class="text-sm font-bold text-primary">Sample input</h3><pre class="mt-2 overflow-x-auto rounded-xl bg-paper p-4 font-mono text-sm">{{ $activity['sample_input'] === '' ? '(No input)' : $activity['sample_input'] }}</pre></div><div><h3 class="text-sm font-bold text-primary">Assignment Sample Output</h3><pre class="mt-2 overflow-x-auto rounded-xl bg-[#102418] p-4 font-mono text-sm text-green-100">{{ $activity['sample_output'] }}</pre></div></div>
         <h3 class="mt-6 font-bold text-primary">Progressive hints</h3><ol class="mt-3 list-inside list-decimal space-y-2 text-sm">@foreach($activity['hints'] as $hint)<li>{{ $hint }}</li>@endforeach</ol>
-        <details class="mt-6"><summary class="cursor-pointer text-sm font-bold text-primary">Review starter main.cpp</summary><pre class="mt-3 overflow-x-auto rounded-xl bg-[#102418] p-4 text-xs leading-6 text-green-100">{{ $activity['starter_code'] }}</pre></details>
+        <details class="mt-6"><summary class="cursor-pointer text-sm font-bold text-primary">{{ $arduinoCourse ? 'Review starter sketch.ino' : 'Review starter main.cpp' }}</summary><pre class="mt-3 overflow-x-auto rounded-xl bg-[#102418] p-4 text-xs leading-6 text-green-100">{{ $activity['starter_code'] }}</pre></details>
     </article>
-    <article class="rounded-2xl border border-green-100 bg-white p-6"><h2 class="font-bold text-primary">Input/output test cases</h2><p class="mt-2 text-xs leading-6">The first example is visible to students. Other tests stay hidden. Automatic runs require your configured isolated compiler; the teacher makes the final rubric review. Tests check output, so also review whether the student used the required C++ concept.</p>
+    @if($arduinoCourse)<p class="rounded-2xl border border-amber-200 bg-white p-5 text-sm leading-7">Arduino hardware activity: use an inspected circuit with Arduino IDE or a compatible simulator. CodeQuest saves sketches and teacher feedback. Console input/output tests do not evaluate electrical wiring, motion or sensor accuracy.</p>@else<article class="rounded-2xl border border-green-100 bg-white p-6"><h2 class="font-bold text-primary">Input/output test cases</h2><p class="mt-2 text-xs leading-6">The first example is visible to students. Other tests stay hidden. Automatic runs require your configured isolated compiler; the teacher makes the final rubric review. Tests check output, so also review whether the student used the required C++ concept.</p>
         @foreach($activity['test_cases'] as $case)<div class="mt-4 rounded-xl border border-green-100 p-4"><p class="text-xs font-bold text-secondary">Test {{ $loop->iteration }} · {{ $case['hidden'] ? 'Hidden' : 'Visible sample' }}</p><div class="mt-3 grid gap-4 sm:grid-cols-2"><div><b class="text-xs">Input</b><pre class="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{{ $case['input'] === '' ? '(No input)' : $case['input'] }}</pre></div><div><b class="text-xs">Expected output</b><pre class="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{{ $case['output'] }}</pre></div></div></div>@endforeach
-    </article>
+    </article>@endif
 @endif
 </div>
 <aside class="rounded-2xl border border-green-200 bg-white p-6 shadow-card xl:sticky xl:top-20">

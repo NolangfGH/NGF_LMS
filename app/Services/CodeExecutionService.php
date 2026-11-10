@@ -12,11 +12,19 @@ class CodeExecutionService
 {
     public function cases(CodeWorkspace $workspace): array
     {
+        if ($workspace->isArduino()) {
+            return [];
+        }
+
         return $workspace->assignment?->test_cases ?? config('compiler_tests.'.str_replace('practice:', '', $workspace->activity_key), []);
     }
 
     public function begin(CodeWorkspace $workspace, array $data): CodeRun
     {
+        if ($workspace->isArduino()) {
+            throw ValidationException::withMessages(['compiler' => 'This Arduino activity requires Arduino IDE or a compatible board simulator. Save your .ino sketch and submit your observations for teacher review; the C++ console compiler cannot test hardware.']);
+        }
+
         if (! app(Judge0Client::class)->configured()) {
             throw ValidationException::withMessages(['compiler' => 'Your school compiler has not been connected yet. Saving and teacher review remain available.']);
         }

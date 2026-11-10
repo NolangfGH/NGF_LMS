@@ -65,7 +65,7 @@
         run.disabled = false;
         status.textContent = 'Your code is loaded. Choose Run C++. External runs do not submit work, check hidden tests, or award XP.';
     });
-    launchers.forEach(button => button.addEventListener('click', () => {
+    const bindLauncher = button => button.addEventListener('click', () => {
         const editor = document.getElementById(button.dataset.onecompilerEditor);
         if (!editor) return;
         session = {editor, launcher: button, sentCode: readCode(editor), receivedCode: null, confirmed: false};
@@ -76,7 +76,9 @@
         dialog.showModal();
         frame.src = origin + '/embed/cpp?listenToEvents=true&codeChangeEvent=true&hideLanguageSelection=true&hideNew=true&hideNewFileOption=true&hideTitle=true';
         waitForEditor();
-    }));
+    });
+    launchers.forEach(bindLauncher);
+    window.addEventListener('ngf:explanation-added', event => { event.detail.querySelectorAll('[data-onecompiler-editor]').forEach(bindLauncher); });
     find('[data-oc-reload]').addEventListener('click', loadDraft);
     run.addEventListener('click', () => {
         if (session?.confirmed) frame.contentWindow.postMessage({eventType: 'triggerRun'}, origin);

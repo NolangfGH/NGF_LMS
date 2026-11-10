@@ -17,11 +17,17 @@ class CourseAssessments
 
     public const POST = 'post-test';
 
+    public const ARDUINO_PRE = 'arduino-pre-test';
+
+    public const ARDUINO_POST = 'arduino-post-test';
+
     public const REASONING = 'reasoning';
 
     public const TITLES = [
         self::PRE => 'C++ Pre-Test',
         self::POST => 'C++ Post-Test',
+        self::ARDUINO_PRE => 'Arduino Uno Pre-Test',
+        self::ARDUINO_POST => 'Arduino Uno Post-Test',
         self::REASONING => 'Grade 8 Reasoning Challenge',
     ];
 
@@ -35,24 +41,46 @@ class CourseAssessments
         return DB::table('course_assessment_results')->where('student_id', $student->id)->get()->keyBy('assessment');
     }
 
-    public function progress(Student $student): array
+    public static function selectedCourse(): string
     {
-        $keys = array_keys(config('lessons'));
+        return request()->query('course') === 'arduino-uno' ? 'arduino-uno' : 'cpp';
+    }
+
+    public static function courseQuery(?string $course = null): array
+    {
+        return ($course ?? self::selectedCourse()) === 'arduino-uno' ? ['course' => 'arduino-uno'] : [];
+    }
+
+    public function progress(Student $student, string $course = 'cpp'): array
+    {
+        $keys = array_keys(config($course === 'arduino-uno' ? 'arduino_curriculum.lessons' : 'lessons'));
         $completed = LessonProgress::where('student_id', $student->id)->whereIn('lesson_key', $keys)->whereNotNull('completed_at')->count();
 
         return ['completed' => $completed, 'total' => count($keys)];
     }
 
-    public function canTakePostTest(Student $student): bool
+    public function canTakePostTest(Student $student, string $course = 'cpp'): bool
     {
-        $progress = $this->progress($student);
+        $progress = $this->progress($student, $course);
 
-        return $progress['total'] > 0 && $progress['completed'] === $progress['total'] && $this->hasCompleted($student, self::PRE);
+        return $progress['total'] > 0 && $progress['completed'] === $progress['total'] && $this->hasCompleted($student, $course === 'arduino-uno' ? self::ARDUINO_PRE : self::PRE);
     }
 
     /** @return list<array{skill: string, type: string, prompt: string, options: list<string>, correct: list<string>}> */
     public function questions(string $assessment): array
     {
+        if (in_array($assessment, [self::ARDUINO_PRE, self::ARDUINO_POST], true)) {
+            $questions = [];
+            $offset = $assessment === self::ARDUINO_PRE ? 0 : 2;
+            foreach (app(ReadyMadeActivities::class)->catalog('arduino-uno') as $lesson) {
+                foreach (array_slice($lesson['quiz']['questions'], $offset, 2) as $question) {
+                    $questions[] = Arr::only($question, ['type', 'prompt', 'options', 'correct']) + ['skill' => $lesson['term'].' · '.$lesson['topic']];
+                }
+            }
+
+            return $questions;
+        }
+
         $questions = [];
         foreach (config('course_assessments.'.$assessment, []) as $skill => $bank) {
             foreach (explode("\n", trim($bank)) as $row) {
@@ -95,7 +123,7 @@ class CourseAssessments
 
     public function submit(Student $student, string $assessment, array $questions, array $answers, QuizGrader $grader): void
     {
-        abort_if($assessment === self::POST, 403);
+        abort_if(in_array($assessment, [self::POST, self::ARDUINO_POST], true), 403);
         DB::transaction(function () use ($student, $assessment, $questions, $answers, $grader): void {
             $current = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
             abort_unless($current->classroom && ! $current->classroom->archived_at, 403);
@@ -120,21 +148,21 @@ class CourseAssessments
         }, 3);
     }
 
-    public function certificate(Student $student): ?stdClass
+    public function certificate(Student $student, string $course = 'cpp'): ?stdClass
     {
-        return DB::table('course_certificates')->where('student_id', $student->id)->orderByDesc('award_type')->first();
+        return DB::table('course_certificates')->where('student_id', $student->id)->where('course', $course)->orderByDesc('award_type')->first();
     }
 
-    public function awardExcellence(Student $student): void
+    public function awardExcellence(Student $student, string $course = 'cpp'): void
     {
         $teacher = $student->classroom->teacher;
         $recipient = trim(implode(' ', array_filter([$student->first_name, $student->middle_name, $student->surname])));
         DB::table('course_certificates')->insert([
-            'student_id' => $student->id, 'teacher_account_id' => $teacher?->id, 'award_type' => 'excellence',
+            'student_id' => $student->id, 'teacher_account_id' => $teacher?->id, 'award_type' => 'excellence', 'course' => $course,
             'certificate_code' => (string) Str::ulid(), 'recipient' => $recipient ?: $student->nickname,
             'school' => $teacher?->school ?: 'NGF_C++CodeQuest', 'issuer' => $teacher?->fullName() ?: 'NGF_C++CodeQuest',
-            'title' => 'Certificate of Excellence in C++ Average Programmer',
-            'message' => 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.',
+            'title' => $course === 'arduino-uno' ? 'Certificate of Excellence in Arduino Uno Robotics' : 'Certificate of Excellence in C++ Average Programmer',
+            'message' => $course === 'arduino-uno' ? 'Awarded for completing the Grade 9 Arduino Uno Robotics course and passing the timed 50-question certification exam with at least 45 correct answers. Practical skills remain subject to teacher review.' : 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.',
             'issued_at' => now(),
         ]);
     }

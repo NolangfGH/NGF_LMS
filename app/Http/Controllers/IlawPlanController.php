@@ -124,7 +124,7 @@ class IlawPlanController extends Controller
         $plan = $this->ownedPlan($teacher, $key)->first();
         $content = $plan ? json_decode($plan->content, true, flags: JSON_THROW_ON_ERROR) : null;
         $lesson = LessonContent::where('teacher_account_id', $teacher->id)->where('lesson_key', $key)->first()?->definition
-            ?? app(LessonService::class)->catalogForTeacher($teacher->id)[$key] ?? null;
+            ?? app(LessonService::class)->catalogForTeacher($teacher->id, null)[$key] ?? null;
         abort_unless($lesson || $plan, 404);
 
         return [

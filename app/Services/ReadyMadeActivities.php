@@ -5,11 +5,12 @@ namespace App\Services;
 class ReadyMadeActivities
 {
     /** @return array<string, array<string, mixed>> */
-    public function catalog(): array
+    public function catalog(string $course = 'cpp'): array
     {
         $catalog = [];
-        foreach (config('lessons') as $key => $lesson) {
-            $template = config('ready_made_activities.'.$key);
+        $arduino = $course === 'arduino-uno';
+        foreach (config($arduino ? 'arduino_curriculum.lessons' : 'lessons') as $key => $lesson) {
+            $template = config(($arduino ? 'arduino_curriculum.activities.' : 'ready_made_activities.').$key);
             if ($template === null) {
                 continue;
             }
@@ -20,9 +21,9 @@ class ReadyMadeActivities
                 'options' => $question['options'],
                 'correct' => [$question['options'][$question['correct']]],
                 'explanation' => $question['why'],
-            ], [...$lesson['checks'], ...$template['questions']]);
+            ], $arduino ? $template['questions'] : [...$lesson['checks'], ...$template['questions']]);
             $catalog[$key] = [
-                'key' => $key, 'title' => $lesson['title'], 'topic' => $lesson['topic'],
+                'key' => $key, 'title' => $lesson['title'], 'topic' => $lesson['topic'], 'course' => $course,
                 'objective' => $lesson['objective'], 'term' => $template['term'],
                 'subtopics' => $lesson['subtopics'] ?? [], 'reference_url' => $lesson['reference_url'] ?? null,
                 'quiz' => [
@@ -42,14 +43,14 @@ class ReadyMadeActivities
                     'csta_standard' => null,
                 ];
             }
-            $article = config('ready_made_articles.'.$key);
+            $article = config(($arduino ? 'arduino_curriculum.articles.' : 'ready_made_articles.').$key);
             if ($article !== null) {
                 $parts = ['Learning goal', $lesson['objective'], $article['introduction']];
                 foreach ($lesson['sections'] as $section) {
                     $parts[] = $section['title']."\n".$section['text'];
                 }
-                $parts[] = "C++ example\n".$lesson['code'];
-                $parts[] = "Expected output\n".$lesson['output'];
+                $parts[] = ($arduino ? "Arduino sketch (.ino)\n" : "C++ example\n").$lesson['code'];
+                $parts[] = ($arduino ? "Expected behavior / output\n" : "Expected output\n").$lesson['output'];
                 $parts[] = "Your private response\n".implode("\n\n", array_map(static fn (string $prompt, int $index): string => ($index + 1).'. '.$prompt, $article['prompts'], array_keys($article['prompts'])));
                 $parts[] = 'Explain your reasoning in your own words. You may attach a code screenshot or record a voice response. Your comments and teacher replies stay private between you and your teacher.';
                 $catalog[$key]['article'] = [
@@ -67,15 +68,40 @@ class ReadyMadeActivities
     /** @return array<string, mixed> */
     public function lesson(string $key): array
     {
-        $catalog = $this->catalog();
+        $catalog = $this->catalog(config('arduino_curriculum.lessons.'.$key) ? 'arduino-uno' : 'cpp');
         abort_unless(isset($catalog[$key]), 404);
 
         return $catalog[$key];
     }
 
     /** @return array<string, array<string, mixed>> */
-    public function termExams(): array
+    public function termExams(string $course = 'cpp'): array
     {
+        if ($course === 'arduino-uno') {
+            $exams = [];
+            $catalog = $this->catalog($course);
+            foreach (['Term1', 'Term2', 'Term3'] as $term) {
+                $lessons = array_filter($catalog, static fn (array $lesson): bool => $lesson['term'] === $term);
+                $questions = [];
+                for ($position = 0; $position < 10; $position++) {
+                    foreach ($lessons as $lesson) {
+                        $questions[] = $lesson['quiz']['questions'][$position];
+                    }
+                }
+                foreach (['summative-1' => 'Summative Test 1', 'summative-2' => 'Summative Test 2', 'term-exam' => 'Term Exam'] as $index => $label) {
+                    $key = 'arduino-'.strtolower($term).'-'.$index;
+                    $set = array_splice($questions, 0, 25);
+                    $title = 'Arduino · '.str_replace('Term', 'Term ', $term).' · '.$label;
+                    $exams[$key] = ['key' => $key, 'title' => $title, 'topic' => $label, 'term' => $term,
+                        'course' => $course, 'assessment' => true, 'subtopics' => array_column($lessons, 'topic'),
+                        'quiz' => ['title' => $title, 'instructions' => 'Answer 25 multiple-choice questions about the Arduino lessons in this term. Trace each circuit or sketch carefully. Your teacher reviews this editable draft before publishing.',
+                            'questions' => $set, 'xp' => 0, 'time_limit' => 25, 'untimed' => false, 'question_seconds' => 60]];
+                }
+            }
+
+            return $exams;
+        }
+
         $rounds = [];
         $topics = [];
         foreach (config('lessons') as $key => $lesson) {

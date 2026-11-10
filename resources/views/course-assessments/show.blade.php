@@ -1,7 +1,7 @@
 @extends('layouts.student', ['pageTitle' => $title, 'active' => 'assessments'])
 
 @section('content')
-<a href="{{ route('student.assessments.index') }}" class="text-sm font-bold text-primary">← Course assessments</a>
+<a href="{{ route('student.assessments.index', $courseQuery) }}" class="text-sm font-bold text-primary">← Course assessments</a>
 <h1 class="mb-3 mt-4 text-3xl font-extrabold text-primary">{{ $title }}</h1>
 @if($assessment === 'reasoning')
     <p class="mb-5 max-w-3xl text-sm leading-6">This 50-question Grade 8 practice exercise reports your performance on these items. The skill breakdown is for classroom practice and personal reflection.</p>
@@ -10,9 +10,9 @@
     <div class="rounded-2xl border border-green-100 bg-white p-6 shadow-card">
         <p class="text-xs font-bold uppercase text-secondary">Saved result · {{ \Illuminate\Support\Carbon::parse($result->completed_at)->timezone(config('learning.timezone'))->format('M j, Y') }}</p>
         <h2 class="mt-2 text-3xl font-extrabold text-primary">{{ $result->score }} / {{ $result->total_questions }} correct</h2>
-        @if($assessment === 'pre-test')
-            <p class="mt-3 text-sm">Your pre-test is complete. You can now open the C++ lessons.</p>
-            <a href="{{ route('student.learn') }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Open the learning path →</a>
+        @if(in_array($assessment, ['pre-test','arduino-pre-test'], true))
+            <p class="mt-3 text-sm">Your pre-test is complete. You can now open the {{ $courseTitle }} lessons.</p>
+            <a href="{{ route('student.learn', $courseQuery) }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Open the learning path →</a>
         @else
             <p class="mt-3 text-sm font-bold text-primary">{{ \App\Services\CourseAssessments::practiceBand($result->score, $result->total_questions) }}</p>
             <p class="mt-2 text-sm leading-6">Practise the areas with the fewest correct answers first. For each area and the overall result, 90–100% suggests a stretch task, 70–89% is secure, 40–69% is developing, and below 40% suggests starting with guided examples.</p>

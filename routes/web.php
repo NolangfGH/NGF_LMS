@@ -266,8 +266,8 @@ Route::prefix('lesson')->name('student.lesson')->controller(LessonController::cl
 Route::prefix('course-assessments')->name('student.assessments.')->controller(CourseAssessmentController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('/certificate', 'studentCertificate')->name('certificate');
-    Route::get('/{assessment}', 'show')->where('assessment', 'pre-test|reasoning')->name('show');
-    Route::post('/{assessment}', 'submit')->where('assessment', 'pre-test|reasoning')->middleware('throttle:match-write')->name('submit');
+    Route::get('/{assessment}', 'show')->where('assessment', 'pre-test|reasoning|arduino-pre-test')->name('show');
+    Route::post('/{assessment}', 'submit')->where('assessment', 'pre-test|reasoning|arduino-pre-test')->middleware('throttle:match-write')->name('submit');
 });
 Route::prefix('course-assessments/post-test')->name('student.post-test.')->controller(CoursePostTestController::class)->group(function () {
     Route::get('/', 'show')->name('show');

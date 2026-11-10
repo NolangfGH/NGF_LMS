@@ -84,7 +84,7 @@ editor.addEventListener('keydown',event=>{
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();saveDraft().catch(error=>showLabError(error.message));}
 });
 document.getElementById('saveCode').onclick=()=>saveDraft().catch(error=>showLabError(error.message));
-document.getElementById('downloadCode').onclick=()=>{const url=URL.createObjectURL(new Blob([editor.value],{type:'text/plain;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='main.cpp';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+document.getElementById('downloadCode').onclick=()=>{const url=URL.createObjectURL(new Blob([editor.value],{type:'text/plain;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=labInitial.filename||'main.cpp';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 document.getElementById('resetCode').onclick=()=>{if(timeExpired||accessClosed)return;if(!confirm('Replace this draft with the starter code? Download your current code first if you want a copy.'))return;editor.value=labInitial.starter;updateEditor();editor.dispatchEvent(new CustomEvent('codequest:editor-change'));scheduleSave();};
 const initialActivityUrl=document.getElementById('activityChooser').value;
 document.getElementById('activityChooser').onchange=event=>{if(dirty && !confirm('This draft has unsaved changes. Switch activities anyway?')){event.target.value=initialActivityUrl;return;}dirty=false;location.href=event.target.value;};
@@ -104,7 +104,7 @@ document.getElementById('checkCode').onclick=()=>{
     const notes=[];const stack=[];const pairs={')':'(',']':'[','}':'{'};let unbalanced=false;
     for(const char of masked){if('([{'.includes(char))stack.push(char);else if(')]}'.includes(char)&&stack.pop()!==pairs[char])unbalanced=true;}
     notes.push(unbalanced||stack.length?'Review brackets: an opening or closing bracket may be missing.':'Bracket pairs appear balanced.');
-    notes.push(/\bint\s+main\s*\(/.test(masked)?'A main function was found.':'Add an int main() function as your program entry point.');
+    if(labInitial.environment==='arduino-uno'){notes.push(/\bvoid\s+setup\s*\(/.test(masked)&&/\bvoid\s+loop\s*\(/.test(masked)?'Arduino setup and loop functions found.':'Provide void setup() and void loop() for this Arduino sketch.');notes.push('Verify board selection, safe pin modes, common ground and component ratings. Test on inspected hardware or a compatible simulator; these hints do not prove circuit safety.');}else{notes.push(/\bint\s+main\s*\(/.test(masked)?'A main function was found.':'Add an int main() function as your program entry point.');}
     if(/\b(?:cout|cin)\b/.test(masked)&&!/#\s*include\s*<iostream>/.test(masked))notes.push('Console input/output usually needs #include <iostream>.');
     if(/\b(?:cout|cin)\b/.test(masked)&&!/std\s*::/.test(masked)&&!/using\s+namespace\s+std\s*;/.test(masked))notes.push('Use std::cout / std::cin, or check your namespace declaration.');
     if(/\bcout\s*>>/.test(masked))notes.push('Use cout << to display output. The >> operator is for reading input with cin.');
