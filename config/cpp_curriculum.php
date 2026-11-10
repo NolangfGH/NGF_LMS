@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\LessonCodeNotes;
+
 return (static function (): array {
     $legacy = require __DIR__.'/legacy_lessons.php';
     $section = static fn (string $title, string $text): array => compact('title', 'text');
@@ -295,6 +297,7 @@ return (static function (): array {
     ];
     $ordered = [];
     foreach ($topics as $key => [$topic, $term, $subtopics]) {
+        $lessons[$key]['code'] = LessonCodeNotes::annotate($lessons[$key]['code'], require __DIR__.'/lesson_code_notes.php');
         $ordered[$key] = [...$lessons[$key], 'title' => 'C++ '.$topic, 'topic' => $topic, 'term' => $term, 'subtopics' => $subtopics,
             'practice' => $legacy[$key]['practice'] ?? 'cpp-'.$key, 'version' => 2,
             'reference_url' => 'https://www.w3schools.com/cpp/default.asp'];

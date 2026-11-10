@@ -37,6 +37,7 @@
                 <a href="{{ route('school.admin') }}"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>School administration</a>
             @endif
             <div class="app-profile-menu__system">
+                <a href="{{ route('system.guide') }}"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span>User guide</a>
                 <a href="{{ route('mobile.app') }}"><span class="material-symbols-outlined" aria-hidden="true">install_mobile</span>Get the mobile app</a>
                 @if(!$profileIsStudent && !$profileAccount->isPrincipal())<a href="{{ route('teacher.parents') }}"><span class="material-symbols-outlined" aria-hidden="true">family_restroom</span>Parent access requests</a>@endif
 @if(!$profileIsStudent && $profileAccount->isSchoolAdmin())<a href="{{ route('school.audit') }}"><span class="material-symbols-outlined" aria-hidden="true">history</span>Audit trail reports</a><a href="{{ route('school.donations') }}"><span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span>Donation settings</a>@endif

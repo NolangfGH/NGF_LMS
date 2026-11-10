@@ -77,7 +77,7 @@ class LessonReadinessTest extends TestCase
         $this->completed($student, CourseAssessments::ARDUINO_PRE);
         $this->get(route('student.lesson.show', 'arduino-robotics'))->assertOk();
         $this->assertDatabaseCount('course_assessment_results', 3);
-        $this->assertSame(100, $student->fresh()->xp);
+        $this->assertSame(350, $student->fresh()->xp);
     }
 
     public function test_existing_zero_score_reasoning_results_count_without_resetting_saved_progress(): void

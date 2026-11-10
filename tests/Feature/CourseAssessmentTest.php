@@ -41,7 +41,7 @@ class CourseAssessmentTest extends TestCase
         $this->post($submit, ['answers' => $this->answers(CourseAssessments::PRE)])->assertRedirect($pretest);
         $this->assertDatabaseHas('course_assessment_results', ['student_id' => $student->id, 'assessment' => CourseAssessments::PRE, 'score' => 0]);
         $this->assertDatabaseCount('course_assessment_results', 2);
-        $this->assertSame(100, $student->fresh()->xp);
+        $this->assertSame(0, $student->fresh()->xp);
     }
 
     public function test_legacy_completion_certificate_stays_private_printable_and_editable_by_its_teacher(): void
@@ -102,7 +102,7 @@ class CourseAssessmentTest extends TestCase
         $this->assertSame('Start with guided examples', CourseAssessments::practiceBand(3, 10));
         $this->assertSame('Developing with practice', CourseAssessments::practiceBand(4, 10));
         $this->assertSame('Secure on these items', CourseAssessments::practiceBand(7, 10));
-        $this->assertSame(100, $student->fresh()->xp);
+        $this->assertSame(342, $student->fresh()->xp);
         $this->get(route('student.lesson.show', 'introduction'))->assertRedirect(route('student.assessments.show', CourseAssessments::PRE));
         $this->withSession(['student_id' => $peer->id])->get($reasoning)->assertOk()->assertDontSee('49 / 50 correct');
     }

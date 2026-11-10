@@ -73,9 +73,13 @@ Route::post('/parent-logout', [ParentPortalController::class, 'logout'])->name('
 Route::get('/parent-access-requests', [ParentPortalController::class, 'requests'])->name('teacher.parents');
 Route::post('/parent-access-requests/{link}/review', [ParentPortalController::class, 'review'])->whereNumber('link')->middleware('throttle:30,1')->name('teacher.parents.review');
 Route::get('/donations', [DonationController::class, 'index'])->name('donations');
+Route::post('/donations/receipts', [DonationController::class, 'receipt'])->middleware('throttle:5,1')->name('donations.receipt');
 Route::get('/donations/qr', [DonationController::class, 'image'])->name('donations.qr');
 Route::get('/school-admin/donations', [DonationController::class, 'settings'])->name('school.donations');
 Route::put('/school-admin/donations', [DonationController::class, 'save'])->middleware('throttle:10,1')->name('school.donations.save');
+Route::get('/school-admin/donations/receipts/{receipt}/image', [DonationController::class, 'receiptImage'])->whereNumber('receipt')->name('school.donations.receipt.image');
+Route::put('/school-admin/donations/receipts/{receipt}', [DonationController::class, 'reviewReceipt'])->whereNumber('receipt')->middleware('throttle:20,1')->name('school.donations.receipt.review');
+Route::view('/user-guide', 'user-guide', ['pageTitle' => 'User guide'])->name('system.guide');
 Route::get('/school-admin/audit-trail', [AuditReportController::class, 'index'])->name('school.audit');
 Route::get('/school-admin/audit-trail/export', [AuditReportController::class, 'index'])->middleware('throttle:10,1')->name('school.audit.export');
 

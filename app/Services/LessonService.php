@@ -46,7 +46,7 @@ class LessonService
             }
         }
 
-        return array_filter($catalog, $inCourse);
+        return array_map(LessonCodeNotes::definition(...), array_filter($catalog, $inCourse));
     }
 
     public function lesson(string $key): array

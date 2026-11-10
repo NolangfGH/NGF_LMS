@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\LessonCodeNotes;
+
 return (static function (): array {
     $reference = 'https://docs.arduino.cc/hardware/uno-rev3/';
     $bank = require __DIR__.'/arduino_questions.php';
@@ -310,6 +312,7 @@ return (static function (): array {
     $lessons = $activities = $articles = $practice = [];
     $starter = "void setup() {\n  Serial.begin(9600);\n  // Configure the checked input and output pins here.\n}\n\nvoid loop() {\n  // Implement your own solution and test each required case.\n}\n";
     foreach ($topics as $slug => $topic) {
+        $topic['code'] = LessonCodeNotes::annotate($topic['code'], require __DIR__.'/lesson_code_notes.php');
         $number = count($lessons) + 1;
         $key = 'arduino-'.$slug;
         $term = $number <= 9 ? 'Term1' : ($number <= 17 ? 'Term2' : 'Term3');

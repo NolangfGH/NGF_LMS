@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LessonContent;
 use App\Models\Student;
 use App\Models\TeacherAccount;
+use App\Services\LessonCodeNotes;
 use App\Services\LessonService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,9 @@ class LessonContentController extends Controller
         $content = LessonContent::where('teacher_account_id', $teacher->id)->where('lesson_key', $key)->first();
         $definition = $content?->definition ?? app(LessonService::class)->catalogForTeacher($teacher->id, null)[$key] ?? null;
         abort_unless($key === 'new' || $definition, 404);
+        if ($definition) {
+            $definition = LessonCodeNotes::definition($definition);
+        }
         if ($definition && isset(config('arduino_curriculum.lessons')[$key])) {
             $definition += ['course' => 'arduino-uno'];
         }

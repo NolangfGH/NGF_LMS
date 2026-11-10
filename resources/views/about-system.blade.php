@@ -25,6 +25,7 @@
             @else
                 <a href="{{ route('home') }}">← Home</a>
             @endif
+            <a href="{{ route('system.guide') }}">User guide</a>
             <a href="#feedback" class="rounded-xl border border-green-200 px-3 py-2">Give feedback</a>
         </nav>
     </div>

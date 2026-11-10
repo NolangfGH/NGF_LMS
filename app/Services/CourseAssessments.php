@@ -23,6 +23,10 @@ class CourseAssessments
 
     public const REASONING = 'reasoning';
 
+    public const STARTING_CORRECT_XP = 5;
+
+    public const STARTING_WRONG_XP = 3;
+
     public const TITLES = [
         self::PRE => 'C++ Pre-Test',
         self::POST => 'C++ Post-Test',
@@ -152,10 +156,24 @@ class CourseAssessments
             }
 
             $completedAt = now();
-            DB::table('course_assessment_results')->insert([
+            $resultId = DB::table('course_assessment_results')->insertGetId([
                 'student_id' => $current->id, 'assessment' => $assessment, 'score' => $grade['score'],
                 'total_questions' => $grade['total_questions'], 'skill_scores' => json_encode($skills, JSON_THROW_ON_ERROR), 'completed_at' => $completedAt,
             ]);
+            $ledger = app(XpLedger::class);
+            foreach ([true, false] as $isCorrect) {
+                $numbers = array_keys(array_filter($details, static fn (array $result): bool => $result['correct'] === $isCorrect));
+                if ($numbers === []) {
+                    continue;
+                }
+                $points = count($numbers) * ($isCorrect ? self::STARTING_CORRECT_XP : -self::STARTING_WRONG_XP);
+                $ledger->change($current->id, 'starting-assessment:'.$assessment.':'.($isCorrect ? 'correct' : 'wrong'), $points,
+                    ['type' => 'course_assessment', 'id' => $resultId, 'title' => self::TITLES[$assessment],
+                        'reason' => $isCorrect ? 'Correct starting-assessment answers' : 'Incorrect starting-assessment answers',
+                        'details' => [count($numbers).($isCorrect ? ' correct × 5 XP = +' : ' incorrect × 3 XP = −').abs($points).' XP.',
+                            'Question numbers: '.implode(', ', array_map(static fn (int $index): int => $index + 1, $numbers)).'.',
+                            'Applied once on first submission. XP does not change your assessment score or completion requirement.']]);
+            }
         }, 3);
     }
 
