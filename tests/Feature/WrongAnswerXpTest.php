@@ -9,7 +9,6 @@ use App\Models\RecitationRound;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Models\TeacherQuiz;
-use App\Services\CourseAssessments;
 use App\Services\CoursePostTest;
 use App\Services\LearningNotifications;
 use App\Services\QuizAttemptService;
@@ -29,7 +28,7 @@ class WrongAnswerXpTest extends TestCase
         $teacher = TeacherAccount::create(['first_name' => 'XP', 'last_name' => 'Teacher', 'email' => 'penalties@example.test', 'school' => 'School', 'password' => 'Password123']);
         $room = Classroom::create(['teacher_account_id' => $teacher->id, 'name' => 'C++', 'grade' => 'Grade 8', 'section' => 'AM', 'join_code' => 'XPTEST']);
         $student = Student::create(['classroom_id' => $room->id, 'first_name' => 'Test', 'nickname' => 'PenaltyCoder', 'student_id' => 'PENALTY01', 'password' => 'Password123', 'xp' => 100]);
-        DB::table('course_assessment_results')->insert(['student_id' => $student->id, 'assessment' => CourseAssessments::PRE, 'score' => 0, 'total_questions' => 50, 'skill_scores' => '{}', 'completed_at' => now()]);
+        $this->recordCompletedLessonPrerequisites($student);
         $this->withSession(['student_id' => $student->id, 'student_session_version' => 1, 'student_class_verified' => true]);
 
         return [$teacher, $room, $student];

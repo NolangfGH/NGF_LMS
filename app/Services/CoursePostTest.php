@@ -209,7 +209,7 @@ class CoursePostTest
 
     private function availableAttempt(Student $student, ?stdClass $attempt): int
     {
-        abort_unless($this->course->canTakePostTest($student, $this->courseKey), 403, 'Complete this course’s pre-test and all core checkpoints first.');
+        abort_unless($this->course->canTakePostTest($student, $this->courseKey), 403, 'Complete the Student Reasoning Challenge, this course’s pre-test and all core checkpoints first.');
         $number = $this->nextAttempt($attempt);
         abort_unless($number, 409, 'Your exam attempt is active or you have finished your opportunities.');
 

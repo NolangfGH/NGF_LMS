@@ -4,18 +4,20 @@
 <a href="{{ route('student.assessments.index', $courseQuery) }}" class="text-sm font-bold text-primary">← Course assessments</a>
 <h1 class="mb-3 mt-4 text-3xl font-extrabold text-primary">{{ $title }}</h1>
 @if($assessment === 'reasoning')
-    <p class="mb-5 max-w-3xl text-sm leading-6">This 50-question Grade 8 practice exercise reports your performance on these items. The skill breakdown is for classroom practice and personal reflection.</p>
+    <p class="mb-5 max-w-3xl text-sm leading-6">This 50-question student reasoning exercise is required once before starting either course. Completion at any score counts. It reports your performance on these items. The skill breakdown is for classroom practice and personal reflection.</p>
 @endif
 @if($result)
     <div class="rounded-2xl border border-green-100 bg-white p-6 shadow-card">
         <p class="text-xs font-bold uppercase text-secondary">Saved result · {{ \Illuminate\Support\Carbon::parse($result->completed_at)->timezone(config('learning.timezone'))->format('M j, Y') }}</p>
         <h2 class="mt-2 text-3xl font-extrabold text-primary">{{ $result->score }} / {{ $result->total_questions }} correct</h2>
         @if(in_array($assessment, ['pre-test','arduino-pre-test'], true))
-            <p class="mt-3 text-sm">Your pre-test is complete. You can now open the {{ $courseTitle }} lessons.</p>
-            <a href="{{ route('student.learn', $courseQuery) }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Open the learning path →</a>
+            <p class="mt-3 text-sm">Your pre-test is complete. {{ $reasoning ? 'You can now open the '.$courseTitle.' lessons.' : 'Complete the Student Reasoning Challenge to unlock lessons.' }}</p>
+            <a href="{{ $reasoning ? route('student.learn', $courseQuery) : route('student.assessments.show', ['reasoning'] + $courseQuery) }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">{{ $reasoning ? 'Open the learning path' : 'Complete reasoning challenge' }} →</a>
         @else
             <p class="mt-3 text-sm font-bold text-primary">{{ \App\Services\CourseAssessments::practiceBand($result->score, $result->total_questions) }}</p>
             <p class="mt-2 text-sm leading-6">Practise the areas with the fewest correct answers first. For each area and the overall result, 90–100% suggests a stretch task, 70–89% is secure, 40–69% is developing, and below 40% suggests starting with guided examples.</p>
+            <p class="mt-4 text-sm font-bold text-primary">Starting requirement complete for both C++ Programming and Arduino Uno Robotics.</p>
+            <a href="{{ $pretest ? route('student.learn', $courseQuery) : route('student.assessments.show', [$courseKey === 'arduino-uno' ? 'arduino-pre-test' : 'pre-test']) }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">{{ $pretest ? 'Open learning path' : 'Continue to course pre-test' }} →</a>
         @endif
     </div>
     <h2 class="mb-4 mt-7 text-xl font-extrabold text-primary">{{ $assessment === 'reasoning' ? 'Skill breakdown' : 'Results by term' }}</h2>
@@ -37,7 +39,7 @@
     @if($errors->any())
         <div role="alert" class="mb-5 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-800">Review the highlighted questions, then submit again.</div>
     @endif
-    <form method="POST" action="{{ route('student.assessments.submit', $assessment) }}" class="space-y-4">
+    <form method="POST" action="{{ route('student.assessments.submit', [$assessment] + $courseQuery) }}" class="space-y-4">
         @csrf
         @foreach($questions as $index => $question)
             @if($loop->first || $question['skill'] !== $questions[$index - 1]['skill'])

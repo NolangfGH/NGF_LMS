@@ -22,7 +22,7 @@
         @if(!$state['ready'])
             <section class="rounded-2xl border border-green-100 bg-white p-5">
                 <h2 class="text-lg font-extrabold text-primary">Post-test locked</h2>
-                <p class="mt-2 text-sm leading-6">Submit the pre-test and finish all {{ $courseProgress['total'] }} core checkpoints. You have completed {{ $courseProgress['completed'] }}.</p>
+                <p class="mt-2 text-sm leading-6">Complete the Student Reasoning Challenge and course pre-test, then finish all {{ $courseProgress['total'] }} core checkpoints. You have completed {{ $courseProgress['completed'] }}.</p>
                 <a href="{{ route('student.learn', $courseQuery) }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Open learning path →</a>
             </section>
         @elseif($state['next_attempt'])

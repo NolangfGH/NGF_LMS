@@ -156,7 +156,7 @@ class CoursePostTestTest extends TestCase
 
     private function finishCourse(Student $student): void
     {
-        $this->recordCompletedPretest($student);
+        $this->recordCompletedLessonPrerequisites($student);
         foreach (array_keys(config('lessons')) as $key) {
             LessonProgress::create(['student_id' => $student->id, 'lesson_key' => $key, 'started_at' => now(), 'last_opened_at' => now(), 'completed_at' => now()]);
         }

@@ -36,6 +36,7 @@ class ArduinoCurriculumTest extends TestCase
 
     private function finishPretest(Student $student): void
     {
+        DB::table('course_assessment_results')->insert(['student_id' => $student->id, 'assessment' => CourseAssessments::REASONING, 'score' => 0, 'total_questions' => 50, 'skill_scores' => '{}', 'completed_at' => now()]);
         DB::table('course_assessment_results')->insert(['student_id' => $student->id, 'assessment' => CourseAssessments::ARDUINO_PRE, 'score' => 0, 'total_questions' => 50, 'skill_scores' => '{}', 'completed_at' => now()]);
     }
 
@@ -101,7 +102,7 @@ class ArduinoCurriculumTest extends TestCase
     {
         [$teacher,$room] = $this->classroom();
         $this->withSession(['teacher_id' => $teacher->id]);
-        $this->get(route('teacher.library', ['course' => 'arduino-uno']))->assertOk()->assertSee('Grade 9 Arduino lessons')->assertSee('Arduino · Term 3 · Term Exam');
+        $this->get(route('teacher.library', ['course' => 'arduino-uno']))->assertOk()->assertSee('Arduino Uno Robotics lessons')->assertSee('Arduino · Term 3 · Term Exam');
         if ($preview = getenv('ARDUINO_PREVIEW')) {
             file_put_contents($preview.'/library.html', $this->get(route('teacher.library', ['course' => 'arduino-uno']))->getContent());
             file_put_contents($preview.'/editor.html', $this->get(route('teacher.content.edit', 'output'))->getContent());
@@ -132,7 +133,8 @@ class ArduinoCurriculumTest extends TestCase
     {
         [,, $student] = $this->classroom();
         $this->withSession(['student_id' => $student->id, 'student_class_verified' => true]);
-        $this->get(route('student.lesson.show', 'arduino-robotics'))->assertRedirect(route('student.assessments.show', CourseAssessments::ARDUINO_PRE));
+        $this->get(route('student.lesson.show', 'arduino-robotics'))->assertRedirect(route('student.assessments.show', ['reasoning', 'course' => 'arduino-uno']));
+        DB::table('course_assessment_results')->insert(['student_id' => $student->id, 'assessment' => CourseAssessments::REASONING, 'score' => 0, 'total_questions' => 50, 'skill_scores' => '{}', 'completed_at' => now()]);
         $questions = app(CourseAssessments::class)->questions(CourseAssessments::ARDUINO_PRE);
         $this->get(route('student.assessments.show', CourseAssessments::ARDUINO_PRE))->assertOk()->assertSee('50 questions');
         $this->post(route('student.assessments.submit', CourseAssessments::ARDUINO_PRE), ['answers' => array_map(fn ($q) => $q['correct'][0], $questions)])->assertRedirect();
@@ -203,7 +205,7 @@ class ArduinoCurriculumTest extends TestCase
         $this->post(route('teacher.content.save', 'output'), $definition + ['revision' => 0, 'status' => 'published'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('One', LessonContent::sole()->definition['sections'][0]['output']);
         $this->get(route('teacher.content.edit', 'output'))->assertOk()->assertSee('sections[0][code]', false)->assertSee('explanation-1-code')->assertSee('Add explanation');
-        $this->recordCompletedPretest($student);
+        $this->recordCompletedLessonPrerequisites($student);
         $this->withSession(['teacher_id' => null, 'student_id' => $student->id, 'student_class_verified' => true])->get(route('student.lesson.show', 'output'))->assertOk()->assertSee('lesson-section-0-code')->assertSee('lesson-section-1-code')->assertSee('One')->assertSee('Two');
     }
 

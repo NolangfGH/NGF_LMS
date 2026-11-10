@@ -18,6 +18,7 @@ class CourseAssessmentTest extends TestCase
     public function test_pretest_is_required_on_the_reader_and_direct_writes_until_every_answer_is_submitted(): void
     {
         [$teacher, $student] = $this->classroom();
+        DB::table('course_assessment_results')->insert(['student_id' => $student->id, 'assessment' => CourseAssessments::REASONING, 'score' => 0, 'total_questions' => 50, 'skill_scores' => '{}', 'completed_at' => now()]);
         $pretest = route('student.assessments.show', CourseAssessments::PRE);
         $intro = route('student.lesson.show', 'introduction');
         $this->get($pretest)->assertRedirect(route('student.login'));
@@ -31,7 +32,7 @@ class CourseAssessmentTest extends TestCase
         $this->get($pretest)->assertOk()->assertSee('Answer all 50 questions')->assertViewHas('questions', fn (array $items): bool => ! isset($items[0]['correct']));
         $submit = route('student.assessments.submit', CourseAssessments::PRE);
         $this->postJson($submit, ['answers' => ['made up choice']])->assertUnprocessable();
-        $this->assertDatabaseEmpty('course_assessment_results');
+        $this->assertDatabaseCount('course_assessment_results', 1);
         $questions = app(CourseAssessments::class)->questions(CourseAssessments::PRE);
         $wrong = array_map(fn (array $question): string => array_values(array_diff($question['options'], $question['correct']))[0], $questions);
         $this->post($submit, ['answers' => $wrong])->assertRedirect($pretest);
@@ -39,7 +40,7 @@ class CourseAssessmentTest extends TestCase
         $this->get($intro)->assertOk();
         $this->post($submit, ['answers' => $this->answers(CourseAssessments::PRE)])->assertRedirect($pretest);
         $this->assertDatabaseHas('course_assessment_results', ['student_id' => $student->id, 'assessment' => CourseAssessments::PRE, 'score' => 0]);
-        $this->assertDatabaseCount('course_assessment_results', 1);
+        $this->assertDatabaseCount('course_assessment_results', 2);
         $this->assertSame(100, $student->fresh()->xp);
     }
 

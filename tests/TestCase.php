@@ -9,11 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 abstract class TestCase extends BaseTestCase
 {
-    protected function recordCompletedPretest(Student ...$students): void
+    protected function recordCompletedLessonPrerequisites(Student ...$students): void
     {
-        DB::table('course_assessment_results')->insert(array_map(static fn (Student $student): array => [
-            'student_id' => $student->id, 'assessment' => CourseAssessments::PRE, 'score' => 0,
-            'total_questions' => 25, 'skill_scores' => '{}', 'completed_at' => now(),
-        ], $students));
+        $rows = [];
+        foreach ($students as $student) {
+            foreach ([CourseAssessments::REASONING, CourseAssessments::PRE] as $assessment) {
+                $rows[] = ['student_id' => $student->id, 'assessment' => $assessment, 'score' => 0,
+                    'total_questions' => 50, 'skill_scores' => '{}', 'completed_at' => now()];
+            }
+        }
+        DB::table('course_assessment_results')->insert($rows);
     }
 }

@@ -28,12 +28,23 @@ class CourseAssessments
         self::POST => 'C++ Post-Test',
         self::ARDUINO_PRE => 'Arduino Uno Pre-Test',
         self::ARDUINO_POST => 'Arduino Uno Post-Test',
-        self::REASONING => 'Grade 8 Reasoning Challenge',
+        self::REASONING => 'Student Reasoning Challenge',
     ];
 
     public function hasCompleted(Student $student, string $assessment): bool
     {
         return DB::table('course_assessment_results')->where('student_id', $student->id)->where('assessment', $assessment)->exists();
+    }
+
+    public function nextLessonAssessment(Student $student, string $course = 'cpp'): ?string
+    {
+        foreach ([self::REASONING, $course === 'arduino-uno' ? self::ARDUINO_PRE : self::PRE] as $assessment) {
+            if (! $this->hasCompleted($student, $assessment)) {
+                return $assessment;
+            }
+        }
+
+        return null;
     }
 
     public function results(Student $student): Collection
@@ -63,7 +74,7 @@ class CourseAssessments
     {
         $progress = $this->progress($student, $course);
 
-        return $progress['total'] > 0 && $progress['completed'] === $progress['total'] && $this->hasCompleted($student, $course === 'arduino-uno' ? self::ARDUINO_PRE : self::PRE);
+        return $progress['total'] > 0 && $progress['completed'] === $progress['total'] && $this->nextLessonAssessment($student, $course) === null;
     }
 
     /** @return list<array{skill: string, type: string, prompt: string, options: list<string>, correct: list<string>}> */
@@ -162,7 +173,7 @@ class CourseAssessments
             'certificate_code' => (string) Str::ulid(), 'recipient' => $recipient ?: $student->nickname,
             'school' => $teacher?->school ?: 'NGF_C++CodeQuest', 'issuer' => $teacher?->fullName() ?: 'NGF_C++CodeQuest',
             'title' => $course === 'arduino-uno' ? 'Certificate of Excellence in Arduino Uno Robotics' : 'Certificate of Excellence in C++ Average Programmer',
-            'message' => $course === 'arduino-uno' ? 'Awarded for completing the Grade 9 Arduino Uno Robotics course and passing the timed 50-question certification exam with at least 45 correct answers. Practical skills remain subject to teacher review.' : 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.',
+            'message' => $course === 'arduino-uno' ? 'Awarded for completing the Arduino Uno Robotics course and passing the timed 50-question certification exam with at least 45 correct answers. Practical skills remain subject to teacher review.' : 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.',
             'issued_at' => now(),
         ]);
     }

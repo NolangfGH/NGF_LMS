@@ -49,13 +49,13 @@ class CourseAssessmentController extends Controller
         $student = Student::with('classroom')->find(session('student_id'));
         abort_unless($student, 401);
         if ($this->assessments->hasCompleted($student, $assessment)) {
-            return redirect()->route('student.assessments.show', $assessment);
+            return redirect()->route('student.assessments.show', [$assessment] + CourseAssessments::courseQuery());
         }
         $questions = $this->assessments->questions($assessment);
         $data = $request->validate($this->assessments->answerRules($questions));
         $this->assessments->submit($student, $assessment, $questions, $data['answers'], $grader);
 
-        return redirect()->route('student.assessments.show', $assessment);
+        return redirect()->route('student.assessments.show', [$assessment] + CourseAssessments::courseQuery());
     }
 
     public function studentCertificate(): Response|RedirectResponse

@@ -6,6 +6,7 @@ use App\Models\LessonContent;
 use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Services\AchievementService;
+use App\Services\CourseAssessments;
 use App\Services\LearningRewards;
 use App\Services\LessonService;
 use App\Services\XpLedger;
@@ -31,7 +32,7 @@ class LessonController extends Controller
         }
         $next = $service->path($student, request('course') === 'arduino-uno' ? 'arduino-uno' : 'cpp')['next'];
 
-        return redirect()->route('student.lesson.show', $next['key'] ?? array_key_first($service->catalog()));
+        return redirect()->route('student.lesson.show', $next['key'] ?? array_key_first($service->catalog(CourseAssessments::selectedCourse())));
     }
 
     public function show(string $lesson, LessonService $service)

@@ -371,5 +371,5 @@ return (static function (): array {
             'sample_output' => $topic['assignment'][2], 'hint' => implode(' ', $activities[$key]['assignment']['hints']), 'code' => $starter, 'environment' => 'arduino-uno'];
     }
 
-    return ['title' => 'Grade 9 Arduino Uno Robotics', 'reference_url' => $reference, 'lessons' => $lessons, 'activities' => $activities, 'articles' => $articles, 'practice' => $practice];
+    return ['title' => 'Arduino Uno Robotics', 'reference_url' => $reference, 'lessons' => $lessons, 'activities' => $activities, 'articles' => $articles, 'practice' => $practice];
 })();

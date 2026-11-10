@@ -67,10 +67,11 @@ class LessonService
         $cards = [];
         $catalog = $this->catalogForTeacher($student->classroom?->teacher_account_id, $course);
         $pretestRequired = ! app(CourseAssessments::class)->hasCompleted($student, $course === 'arduino-uno' ? CourseAssessments::ARDUINO_PRE : CourseAssessments::PRE);
+        $reasoningRequired = ! app(CourseAssessments::class)->hasCompleted($student, CourseAssessments::REASONING);
         $previousComplete = true;
         foreach ($catalog as $key => $lesson) {
             $record = $progress->get($key);
-            $locked = $pretestRequired || ((bool) $student->classroom?->sequential_learning && ! $previousComplete && ! $record?->completed_at);
+            $locked = $reasoningRequired || $pretestRequired || ((bool) $student->classroom?->sequential_learning && ! $previousComplete && ! $record?->completed_at);
             $cards[] = ['key' => $key, ...$lesson, 'locked' => $locked, 'progress' => $record, 'plan' => $plans->get($key), 'status' => $record?->completed_at ? 'completed' : ($record ? 'in_progress' : 'not_started'), 'practice_progress' => app(ChallengeService::class)->describe($workspaces->get('practice:'.$lesson['practice']))];
             $previousComplete = $previousComplete && (bool) $record?->completed_at;
         }
@@ -80,6 +81,6 @@ class LessonService
             ?? $available->filter(fn ($item) => $item['status'] !== 'completed' && $item['plan'])->first()
             ?? $available->firstWhere('status', 'not_started');
 
-        return ['course' => $course, 'title' => $course === 'arduino-uno' ? config('arduino_curriculum.title') : 'C++ Programming', 'cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count(), 'pretest_required' => $pretestRequired];
+        return ['course' => $course, 'title' => $course === 'arduino-uno' ? config('arduino_curriculum.title') : 'C++ Programming', 'cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count(), 'pretest_required' => $pretestRequired, 'reasoning_required' => $reasoningRequired];
     }
 }

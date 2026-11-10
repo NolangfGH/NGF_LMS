@@ -110,6 +110,6 @@ class LessonContentController extends Controller
             : $student && $content->status === 'published' && (int) $student->classroom?->teacher_account_id === (int) $content->teacher_account_id;
         abort_unless($allowed && $content->image_path && Storage::disk('local')->exists($content->image_path), 404);
 
-        return response()->file(Storage::disk('local')->path($content->image_path), ['Content-Type' => $content->image_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
+        return response()->file(Storage::disk('local')->path($content->image_path), ['Content-Type' => $content->image_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'])->setPrivate();
     }
 }

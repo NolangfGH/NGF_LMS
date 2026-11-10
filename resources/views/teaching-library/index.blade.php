@@ -1,7 +1,7 @@
 @extends('layouts.teacher-learning')
 @section('content')
 @php($arduinoCourse = $course === 'arduino-uno')
-<nav aria-label="Library course" class="mb-6 flex flex-wrap gap-3"><a class="rounded-xl border border-green-200 bg-white px-4 py-3 font-bold text-primary" href="{{ route('teacher.library') }}">C++ Programming</a><a class="rounded-xl border border-green-200 bg-white px-4 py-3 font-bold text-primary" href="{{ route('teacher.library', ['course'=>'arduino-uno']) }}">Grade 9 · Arduino Uno Robotics</a></nav>
+@include('course-navigation', ['courseNavigationRoute' => 'teacher.library', 'selectedCourse' => $course, 'courseNavigationLabel' => 'Library course'])
 <div class="flex flex-wrap items-start justify-between gap-5">
     <div class="max-w-2xl">
         <p class="text-xs font-bold uppercase tracking-widest text-secondary">Plan · personalize · teach</p>
@@ -11,7 +11,7 @@
     <a href="{{ route('teacher.lessons') }}" class="rounded-xl border border-green-200 bg-white px-5 py-3 text-sm font-bold text-primary">Open Lesson Studio →</a>
 </div>
 <div class="my-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    @foreach([[$topicCount, $arduinoCourse ? 'Grade 9 Arduino lessons' : 'C++ lesson topics'], [$topicCount * 10, 'Multiple-choice questions'], [$topicCount * 2, 'Coding assignments & challenges'], [$topicCount, 'Editable blog articles']] as [$number, $label])
+    @foreach([[$topicCount, $arduinoCourse ? 'Arduino Uno Robotics lessons' : 'C++ lesson topics'], [$topicCount * 10, 'Multiple-choice questions'], [$topicCount * 2, 'Coding assignments & challenges'], [$topicCount, 'Editable blog articles']] as [$number, $label])
         <div class="rounded-2xl border border-green-100 bg-white p-5 shadow-card"><b class="text-3xl text-primary">{{ $number }}</b><p class="mt-2 text-sm">{{ $label }}</p></div>
     @endforeach
 </div>
@@ -41,7 +41,7 @@
 <div class="grid gap-5 xl:grid-cols-2">
 @forelse($catalog as $key => $lesson)
     <article class="flex flex-col rounded-2xl border border-green-100 bg-white p-6 shadow-card">
-        <div class="flex items-center justify-between gap-3"><span class="rounded-full bg-paper px-3 py-1 text-xs font-bold text-secondary">{{ $lesson['term'] }} · {{ $arduinoCourse ? 'Grade 9 Arduino Uno' : 'C++ learning path' }}</span><span class="font-mono text-xs text-secondary">10 quiz questions · 4 editable activities</span></div>
+        <div class="flex items-center justify-between gap-3"><span class="rounded-full bg-paper px-3 py-1 text-xs font-bold text-secondary">{{ $lesson['term'] }} · {{ $arduinoCourse ? 'Arduino Uno Robotics' : 'C++ learning path' }}</span><span class="font-mono text-xs text-secondary">10 quiz questions · 4 editable activities</span></div>
         <h2 class="mt-4 text-xl font-extrabold text-primary">{{ $lesson['topic'] }}</h2>
         <p class="mt-1 text-xs font-bold text-secondary">{{ $lesson['title'] }}</p>
         <p class="my-4 text-sm leading-6">{{ $lesson['objective'] }}</p>

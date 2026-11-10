@@ -81,7 +81,7 @@ class CppCurriculumTest extends TestCase
     public function test_retired_topics_remain_accessible_for_existing_work_without_reappearing_as_new_defaults(): void
     {
         extract($this->classroom());
-        $this->recordCompletedPretest($student);
+        $this->recordCompletedLessonPrerequisites($student);
         $evidence = ['version' => 2, 'score' => 5, 'total' => 5, 'answers' => array_column(config('legacy_lessons.debugging.checks'), 'correct')];
         $record = LessonProgress::create(['student_id' => $student->id, 'lesson_key' => 'debugging', 'started_at' => now(), 'last_opened_at' => now(), 'completed_at' => now(), 'attempts' => 1, 'best_score' => 5, 'latest_score' => 5, 'answers' => $evidence['answers'], 'completion_evidence' => $evidence]);
         $service = app(LessonService::class);
@@ -98,7 +98,7 @@ class CppCurriculumTest extends TestCase
     public function test_teacher_overrides_are_preserved_and_new_practice_tests_remain_private(): void
     {
         extract($this->classroom());
-        $this->recordCompletedPretest($student);
+        $this->recordCompletedLessonPrerequisites($student);
         $definition = config('lessons.pointers');
         $definition['title'] = 'My teacher pointer lesson';
         unset($definition['term'], $definition['subtopics'], $definition['reference_url']);
