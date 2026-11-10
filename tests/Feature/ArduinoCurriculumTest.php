@@ -9,6 +9,7 @@ use App\Models\LessonContent;
 use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherAccount;
+use App\Models\TeacherAssignment;
 use App\Models\TeacherQuiz;
 use App\Services\CourseAssessments;
 use App\Services\CoursePostTest;
@@ -113,6 +114,8 @@ class ArduinoCurriculumTest extends TestCase
             $this->post(route('teacher.library.store', [$key, $kind]), ['classroom_ids' => [$room->id], 'school_term' => 'Term2'])->assertRedirect()->assertSessionHasNoErrors();
         }
         $this->assertDatabaseHas('teacher_assignments', ['unit' => 'Arduino UNO R3', 'status' => 'draft']);
+        $assignment = TeacherAssignment::where('kind', 'assignment')->firstOrFail();
+        $this->get(route('teacher.assignments', ['edit' => $assignment->id]))->assertOk()->assertSee('Starter sketch.ino')->assertDontSee('data-onecompiler-editor="assignment-starter-editor"', false);
         $this->assertCount(10, TeacherQuiz::firstOrFail()->questions);
         $this->assertSame('draft', BlogPost::firstOrFail()->status);
         foreach (app(ReadyMadeActivities::class)->termExams('arduino-uno') as $exam) {
