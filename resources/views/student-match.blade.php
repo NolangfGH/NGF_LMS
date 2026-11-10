@@ -1,5 +1,6 @@
 @extends('layouts.student',['pageTitle'=>'Coding Challenge','active'=>'challenges'])
 @section('content')
+@include('assessment-activity', ['assessmentKind'=>'coding_match','assessmentId'=>$match->id])
 <noscript><p class="mb-5 rounded-xl bg-amber-50 p-4">Enable JavaScript to accept invitations, see the shared timer, and save or submit code in the live arena.</p></noscript>
 <a href="{{ route('student.challenges') }}" class="text-sm font-bold text-secondary underline">← My challenges</a>
 <div class="mt-4 flex flex-wrap justify-between gap-4"><div><p class="font-mono text-xs font-bold uppercase text-secondary">Two-coder arena</p><h1 class="mt-2 text-3xl font-extrabold text-primary">{{ $match->title }}</h1></div><span class="h-fit rounded-full bg-green-100 px-4 py-2 text-sm font-bold text-primary">{{ $match->award_title }} · {{ $match->winner_xp }} XP</span></div>

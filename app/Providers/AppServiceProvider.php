@@ -33,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
         Student::observe(XpEventObserver::class);
         RateLimiter::for('compiler-run', fn (Request $request) => Limit::perMinute(6)->by('compiler:'.$request->session()->get('student_id', $request->ip())));
         RateLimiter::for('recitation-submit', fn (Request $request) => Limit::perMinute(12)->by('recitation:'.$request->session()->get('student_id', $request->ip())));
+        RateLimiter::for('assessment-read', fn (Request $request): Limit => Limit::perMinute(60)->by('assessment-read:'.($request->session()->get('student_id') ?? $request->ip())));
+        RateLimiter::for('assessment-write', fn (Request $request): Limit => Limit::perMinute(90)->by('assessment-write:'.($request->session()->get('student_id') ?? $request->ip())));
         RateLimiter::for('attendance-photo', fn (Request $request) => Limit::perMinute(6)->by('attendance-photo:'.$request->session()->get('student_id', $request->ip())));
         foreach ([BlogPost::class, BlogComment::class, BlogResponse::class, LabSubmission::class, LessonProgress::class, Student::class] as $model) {
             $model::observe(LearningActivityObserver::class);

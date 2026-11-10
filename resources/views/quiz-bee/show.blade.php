@@ -1,5 +1,6 @@
 @extends($teacherRole ? 'layouts.teacher-learning' : 'layouts.student',['pageTitle'=>'Live Quiz Bee','active'=>'challenges'])
 @section('content')
+@unless($teacherRole)@include('assessment-activity', ['assessmentKind'=>'quiz_bee','assessmentId'=>$bee->id])@endunless
 <link rel="stylesheet" href="{{ asset('css/quiz-bee.css') }}?v=2">
 <div class="bee-shell" data-bee-arena data-csrf="{{ csrf_token() }}" data-status-url="{{ route(($teacherRole ? 'teacher' : 'student').'.quiz-bee.status',$bee) }}" data-action-url="{{ route(($teacherRole ? 'teacher' : 'student').'.quiz-bee.action',$bee) }}" data-role="{{ $teacherRole ? 'teacher' : 'student' }}">
 <a class="bee-link" href="{{ route(($teacherRole ? 'teacher' : 'student').'.quiz-bee.index') }}">← Quiz Bee Arena</a><div class="bee-heading"><div><p class="bee-eyebrow">{{ ucfirst($bee->category) }} · Easy / Average / Difficult</p><h1>{{ $bee->title }}</h1><p data-bee-phase>{{ ucfirst($bee->status) }}</p></div><span class="bee-pill">One minute per question</span></div>

@@ -1,5 +1,6 @@
 @extends('layouts.student', ['pageTitle'=>'Code Lab','active'=>'lab'])
 @section('content')
+@if(($labActivity['assignment'] ?? null)?->kind === 'challenge')@include('assessment-activity', ['assessmentKind'=>'challenge_lab','assessmentId'=>$workspace->id])@endif
 @if($workspace->second_chance_request_id)
 <p role="status" class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-primary">Teacher-approved second and final opportunity. Save and submit your solution before your new timer or deadline ends.</p>
 @endif

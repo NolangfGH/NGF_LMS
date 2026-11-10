@@ -3,6 +3,7 @@
 use App\Http\Controllers\AboutSystemController;
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AiLabReviewController;
+use App\Http\Controllers\AssessmentActivityController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendancePhotoController;
 use App\Http\Controllers\AuditReportController;
@@ -82,6 +83,10 @@ Route::put('/school-admin/donations/receipts/{receipt}', [DonationController::cl
 Route::view('/user-guide', 'user-guide', ['pageTitle' => 'User guide'])->name('system.guide');
 Route::get('/school-admin/audit-trail', [AuditReportController::class, 'index'])->name('school.audit');
 Route::get('/school-admin/audit-trail/export', [AuditReportController::class, 'index'])->middleware('throttle:10,1')->name('school.audit.export');
+Route::get('/teacher-assessment-activity', [AuditReportController::class, 'index'])->name('teacher.assessment-activity');
+Route::get('/teacher-assessment-activity/export', [AuditReportController::class, 'index'])->middleware('throttle:10,1')->name('teacher.assessment-activity.export');
+Route::get('/assessment-activity/status', [AssessmentActivityController::class, 'status'])->middleware('throttle:assessment-read')->name('student.assessment-activity.status');
+Route::post('/assessment-activity', [AssessmentActivityController::class, 'store'])->middleware('throttle:assessment-write')->name('student.assessment-activity.store');
 
 Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
 Route::get('/staff-registration-status/check', [StaffRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('staff.registration.check');

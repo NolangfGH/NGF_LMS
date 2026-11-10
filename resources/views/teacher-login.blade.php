@@ -45,7 +45,8 @@
                 <div><div class="mb-2 flex items-center justify-between gap-3"><label for="password" class="text-sm font-bold">Password</label><a href="{{ route('staff.password.request') }}" class="text-xs font-semibold text-primary hover:underline">Forgot username or password?</a></div>
                     <div class="relative"><input id="password" name="password" type="password" required autocomplete="current-password" data-clear-on-entry placeholder="Password" class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-14 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-100"><button id="toggle-password" type="button" aria-label="Show password" class="absolute right-3 top-3 text-xs font-bold text-secondary">Show</button></div>
                 </div>
-                <button id="submit" type="submit" class="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white shadow-[0_4px_0_#022100] hover:bg-green-800 disabled:opacity-60">Sign In to Classroom Workspace →</button>
+                @include('login-location')
+<button id="submit" type="submit" class="w-full rounded-xl bg-primary py-3.5 text-sm font-extrabold text-white shadow-[0_4px_0_#022100] hover:bg-green-800 disabled:opacity-60">Sign In to Classroom Workspace →</button>
             </form>
             <p class="mt-6 text-xs leading-6 text-slate-500">Use the school email you registered with. Only valid teacher/admin credentials can open the workspace.</p>
         </div></section>
@@ -75,7 +76,7 @@ document.getElementById('teacher-login-form').onsubmit = async event => {
         const response = await fetch('{{ route('teacher.login.store') }}', {
             method: 'POST',
             headers: {Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content},
-            body: JSON.stringify({identifier: document.getElementById('email').value.trim(), password: document.getElementById('password').value})
+            body: JSON.stringify({identifier: document.getElementById('email').value.trim(), password: document.getElementById('password').value, ...window.ngfLoginLocationFields?.(event.target)})
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'The teacher credentials are incorrect.');

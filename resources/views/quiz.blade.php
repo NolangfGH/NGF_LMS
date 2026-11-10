@@ -39,6 +39,7 @@
 @include('quiz-current-question')
 @elseif($open && $attempt)
 @php($questions = $attempt->questions)
+@include('assessment-activity', ['assessmentKind'=>'quiz','assessmentId'=>$attempt->id])
 <form method="POST" action="{{ route('student.quiz.submit', $quiz) }}" class="timed-quiz space-y-5" data-draft-url="{{ route('student.quiz.draft', $quiz) }}" data-deadline="{{ $attempt->expires_at->getTimestampMs() }}" data-started="{{ $attempt->started_at->getTimestampMs() }}" data-count="{{ count($questions) }}">
 @csrf
 <div class="sticky top-16 z-10 rounded-xl border border-green-200 bg-white p-4 shadow-sm"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-primary">Time remaining</span><span class="timer-text font-mono text-xl font-bold text-primary" role="timer">Loading…</span></div><div class="mt-3 h-3 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Time remaining" aria-valuemin="0" aria-valuemax="100"><div class="timer-bar h-full rounded-full bg-green-700 transition-all duration-700" style="width:100%"></div></div><p class="save-status mt-2 text-xs text-secondary" role="status">Answers save automatically. Refreshing will not restart the timer.</p></div>

@@ -13,6 +13,7 @@
     $refreshUrl = $certification ? route('student.post-test.show', $courseQuery ?? []) : route('student.quiz');
     $watermark = strtoupper(substr(hash_hmac('sha256', ($certification ? 'post-test:' : 'quiz:').$attemptId, (string) config('app.key')), 0, 10));
 @endphp
+@include('assessment-activity', ['assessmentKind' => $certification ? 'post_test' : 'quiz', 'assessmentId' => $attemptId])
 <form method="POST" action="{{ $answerUrl }}" class="question-quiz min-w-0 space-y-4" data-untimed="{{ $untimed ? 'true':'false' }}" data-seconds="{{ $seconds }}" data-draft-url="{{ $draftUrl }}" data-deadline="{{ $deadline }}" data-index="{{ $index }}" data-server-time="{{ now()->getTimestampMs() }}">
 @csrf<input type="hidden" name="question_index" value="{{ $index }}"><input type="hidden" name="attempt_id" value="{{ $attemptId }}">
 <div class="sticky top-16 z-10 rounded-2xl border border-green-200 bg-green-50 p-3 sm:p-5">

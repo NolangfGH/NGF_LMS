@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\AuditEvent;
+use App\Services\AuditTrail;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -25,7 +25,8 @@ class RecordAuditTrail
         if (! $tracked) {
             return $next($request);
         }
-        $actor = $this->actor($request);
+        $trail = app(AuditTrail::class);
+        $actor = $trail->snapshot($request);
         $status = 500;
         try {
             $response = $next($request);
@@ -37,7 +38,7 @@ class RecordAuditTrail
             throw $error;
         } finally {
             try {
-                if (Schema::hasTable('audit_events')) {
+                if (Schema::hasTable('audit_events') && ! $request->attributes->get('audit_event_recorded')) {
                     $targets = [];
                     foreach ($request->route()->parameters() as $key => $target) {
                         $id = $target instanceof Model ? $target->getKey() : $target;
@@ -45,25 +46,12 @@ class RecordAuditTrail
                             $targets[$key] = (int) $id;
                         }
                     }
-                    $current = $this->actor($request);
                     $validationFailed = in_array('errors', $request->session()->get('_flash.new', []), true);
-                    AuditEvent::create(['actor_type' => $actor['actor_type'] === 'guest' ? $current['actor_type'] : $actor['actor_type'], 'actor_id' => $actor['actor_id'] ?? $current['actor_id'], 'action' => $action, 'method' => $request->method(), 'status' => $status, 'outcome' => $status >= 500 ? 'error' : (($status >= 400 || $validationFailed) ? 'rejected' : 'success'), 'targets' => $targets]);
+                    $trail->record($request, $actor, $action, $status, $status >= 500 ? 'error' : (($status >= 400 || $validationFailed) ? 'rejected' : 'success'), $targets);
                 }
             } catch (Throwable) {
                 logger()->warning('An audit event could not be stored.');
             }
         }
-    }
-
-    /** @return array{actor_type: string, actor_id: ?int} */
-    private function actor(Request $request): array
-    {
-        foreach (['teacher', 'student', 'parent'] as $type) {
-            if ($id = $request->session()->get($type.'_id')) {
-                return ['actor_type' => $type, 'actor_id' => (int) $id];
-            }
-        }
-
-        return ['actor_type' => 'guest', 'actor_id' => null];
     }
 }
