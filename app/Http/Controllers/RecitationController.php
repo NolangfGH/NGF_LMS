@@ -54,14 +54,7 @@ class RecitationController extends Controller
         if (isset($data['school_year']) && (int) substr($data['school_year'], 5) !== (int) substr($data['school_year'], 0, 4) + 1) {
             throw ValidationException::withMessages(['school_year' => 'Use consecutive school years, such as 2026-2027.']);
         }
-        $answers = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/u', $data['accepted_answers'])), fn ($answer) => $answer !== '')));
-        if (count($answers) < 1 || count($answers) > 20) {
-            throw ValidationException::withMessages(['accepted_answers' => 'Provide one to twenty accepted answers, one per line.']);
-        }
-        if (collect($answers)->contains(fn (string $answer): bool => mb_strlen($answer) > 5000)) {
-            throw ValidationException::withMessages(['accepted_answers' => 'Each accepted answer must fit the student editor’s 5,000-character limit.']);
-        }
-        $data['accepted_answers'] = $answers;
+        $data['accepted_answers'] = app(RecitationService::class)->acceptedAnswers($data['accepted_answers']);
         $data['teacher_account_id'] = $teacher->id;
 
         return $data;

@@ -33,6 +33,12 @@ class ReadyMadeActivities
                     'xp' => 0, 'time_limit' => 10, 'untimed' => false, 'question_seconds' => 60,
                 ],
             ];
+            $catalog[$key]['recitation'] = array_map(static fn (array $question, int $index): array => [
+                'title' => $lesson['topic'].' · Recitation '.($index + 1),
+                'question' => $question['question'],
+                'accepted_answers' => implode("\n", $question['accepted_answers']),
+                'case_sensitive' => $question['case_sensitive'],
+            ], $recitations = config('ready_made_recitations.'.$key, []), array_keys($recitations));
             foreach (['assignment', 'challenge'] as $kind) {
                 $catalog[$key][$kind] = $template[$kind] + [
                     'kind' => $kind,

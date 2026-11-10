@@ -125,8 +125,8 @@ Route::post('/teacher-classes/{classroom}/archive', [SchoolAdminController::clas
 
 Route::get('/teacher-content', [LessonContentController::class, 'index'])->name('teacher.content');
 Route::get('/teaching-library', [TeachingLibraryController::class, 'index'])->name('teacher.library');
-Route::get('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'show'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge|article')->name('teacher.library.show');
-Route::post('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'store'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge|article')->middleware('throttle:20,1')->name('teacher.library.store');
+Route::get('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'show'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge|article|recitation')->name('teacher.library.show');
+Route::post('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'store'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge|article|recitation')->middleware('throttle:20,1')->name('teacher.library.store');
 Route::get('/teacher-content/{key}/edit', [LessonContentController::class, 'edit'])->where('key', '[a-z0-9-]+')->name('teacher.content.edit');
 Route::post('/teacher-content/{key}', [LessonContentController::class, 'save'])->where('key', '[a-z0-9-]+')->name('teacher.content.save');
 Route::get('/teacher-content/{content}/image', [LessonContentController::class, 'image'])->whereNumber('content')->name('teacher.content.image');

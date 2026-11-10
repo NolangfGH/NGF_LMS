@@ -12,10 +12,25 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class RecitationService
 {
     public const TERM_LIMIT = 2;
+
+    /** @return list<string> */
+    public function acceptedAnswers(string $text, string $field = 'accepted_answers'): array
+    {
+        $answers = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/u', $text)), static fn (string $answer): bool => $answer !== '')));
+        if (count($answers) < 1 || count($answers) > 20) {
+            throw ValidationException::withMessages([$field => 'Provide one to twenty accepted answers, one per line.']);
+        }
+        if (collect($answers)->contains(static fn (string $answer): bool => mb_strlen($answer) > 5000)) {
+            throw ValidationException::withMessages([$field => 'Each accepted answer must fit the student editor’s 5,000-character limit.']);
+        }
+
+        return $answers;
+    }
 
     private function awardsForTerm(RecitationRound $round): Builder
     {

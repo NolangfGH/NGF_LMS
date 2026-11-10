@@ -13,6 +13,7 @@ return [
         'Complete the selected course’s 50-question pre-test. Any completed score unlocks that course’s starting requirement. The C++ and Arduino pre-tests are separate.',
         'Open Learn, read each explanation and worked example, then answer all lesson checkpoint questions. Follow any sequence selected by your teacher. Locked lessons explain which requirement is missing.',
         'Comments beginning with “Explain:” describe each source line in the supplied worked programs. Comments help you trace the program; they do not change what it does. Teachers can edit worked examples in Lesson Studio.',
+        'Choose Listen to this lesson to hear the title, goal and explanations. Play, pause or reset the reading, change voice or speed, and choose a passage. Word-by-word mode highlights the word being spoken; Natural sentences uses voice timing and switches modes if timing is unavailable. Enable Follow the reading for automatic scrolling. Your browser needs an available speech voice; no microphone is required.',
     ]],
     ['id' => 'code-lab', 'title' => 'Write, test and submit code', 'roles' => ['student', 'teacher'], 'summary' => 'Saved drafts, sample output, compiler options and teacher review.', 'steps' => [
         'Open an assignment or lesson practice in Code Lab. Read the task, sample output, safety notes and any allotted time before writing your own solution.',
@@ -45,6 +46,7 @@ return [
     ]],
     ['id' => 'recitations-challenges', 'title' => 'Join recitation and challenge matches', 'roles' => ['student', 'teacher'], 'summary' => 'Fair participation, live answers, coding matches and Quiz Bee.', 'steps' => [
         'In Recitation, answer the teacher’s live question. Accepted answers are checked by the system and ordered by server receipt. Only the first five correct students earn a 10-point recitation score each.',
+        'Teachers can use Teaching Library → Review 5 recitation questions on any C++ or Arduino topic. Edit the questions and accepted answers, choose sections and a term, and save private drafts. Open a saved round in Recitation Studio only when the class is ready.',
         'The first, second and third correct students receive 10, 5 and 3 additional XP respectively; fourth and fifth receive the recitation score only. Each student can earn two correct recitations, or 20 recitation points, per term before further answering is blocked for that term.',
         'For a two-student coding match, accept the invitation, read the sample output and timer, and work in your own editor. The teacher sees live saved code and verifies the winner’s solution.',
         'Quiz Bee supports individual entries or teams of up to five, with up to 40 entries. The team captain answers for the group; members share the team’s XP. Follow the easy, average, difficult and tie-breaker rounds controlled by the teacher.',

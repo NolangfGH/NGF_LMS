@@ -6,12 +6,12 @@
     <div class="max-w-2xl">
         <p class="text-xs font-bold uppercase tracking-widest text-secondary">Plan · personalize · teach</p>
         <h1 class="mt-3 text-3xl font-extrabold text-primary">Ready-made teaching library</h1>
-        <p class="mt-3 text-sm leading-7">{{ $arduinoCourse ? 'Explore 25 Grade 9 lessons from robotics foundations to a tested classroom capstone.' : 'Follow the C++ topic path from Introduction to Function Parameters.' }} Every topic has a 10-question quiz, assignment, challenge and article. Review a pack, create your editable draft, then publish to your classes.</p>
+        <p class="mt-3 text-sm leading-7">{{ $arduinoCourse ? 'Explore 25 Grade 9 lessons from robotics foundations to a tested classroom capstone.' : 'Follow the C++ topic path from Introduction to Function Parameters.' }} Every topic has a 10-question quiz, assignment, challenge, article and five editable recitation questions. Review a pack, create your editable draft, then publish to your classes.</p>
     </div>
     <a href="{{ route('teacher.lessons') }}" class="rounded-xl border border-green-200 bg-white px-5 py-3 text-sm font-bold text-primary">Open Lesson Studio →</a>
 </div>
-<div class="my-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    @foreach([[$topicCount, $arduinoCourse ? 'Arduino Uno Robotics lessons' : 'C++ lesson topics'], [$topicCount * 10, 'Multiple-choice questions'], [$topicCount * 2, 'Coding assignments & challenges'], [$topicCount, 'Editable blog articles']] as [$number, $label])
+<div class="my-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    @foreach([[$topicCount, $arduinoCourse ? 'Arduino Uno Robotics lessons' : 'C++ lesson topics'], [$topicCount * 10, 'Multiple-choice questions'], [$topicCount * 2, 'Coding assignments & challenges'], [$topicCount, 'Editable blog articles'], [$topicCount * 5, 'Ready-made recitation questions']] as [$number, $label])
         <div class="rounded-2xl border border-green-100 bg-white p-5 shadow-card"><b class="text-3xl text-primary">{{ $number }}</b><p class="mt-2 text-sm">{{ $label }}</p></div>
     @endforeach
 </div>
@@ -41,14 +41,14 @@
 <div class="grid gap-5 xl:grid-cols-2">
 @forelse($catalog as $key => $lesson)
     <article class="flex flex-col rounded-2xl border border-green-100 bg-white p-6 shadow-card">
-        <div class="flex items-center justify-between gap-3"><span class="rounded-full bg-paper px-3 py-1 text-xs font-bold text-secondary">{{ $lesson['term'] }} · {{ $arduinoCourse ? 'Arduino Uno Robotics' : 'C++ learning path' }}</span><span class="font-mono text-xs text-secondary">10 quiz questions · 4 editable activities</span></div>
+        <div class="flex items-center justify-between gap-3"><span class="rounded-full bg-paper px-3 py-1 text-xs font-bold text-secondary">{{ $lesson['term'] }} · {{ $arduinoCourse ? 'Arduino Uno Robotics' : 'C++ learning path' }}</span><span class="font-mono text-xs text-secondary">10 quiz questions · 5 activity packs</span></div>
         <h2 class="mt-4 text-xl font-extrabold text-primary">{{ $lesson['topic'] }}</h2>
         <p class="mt-1 text-xs font-bold text-secondary">{{ $lesson['title'] }}</p>
         <p class="my-4 text-sm leading-6">{{ $lesson['objective'] }}</p>
         <details class="mb-5 rounded-xl bg-paper p-3 text-xs leading-6"><summary class="cursor-pointer font-bold text-primary">{{ count($lesson['subtopics']) }} subtopics in this lesson</summary><ul class="mt-2 list-inside list-disc">@foreach($lesson['subtopics'] as $subtopic)<li>{{ $subtopic }}</li>@endforeach</ul></details>
         <div class="mt-auto flex flex-wrap gap-2">
             <a href="{{ route('teacher.ilaw.edit', $key) }}" class="rounded-xl border border-green-200 bg-paper px-3 py-3 text-xs font-bold text-primary hover:bg-green-100">Edit ILAW lesson plan →</a>
-            @foreach(['quiz' => 'Review 10-question quiz', 'assignment' => 'Review assignment', 'challenge' => 'Review challenge', 'article' => 'Review blog/article'] as $kind => $label)
+            @foreach(['quiz' => 'Review 10-question quiz', 'assignment' => 'Review assignment', 'challenge' => 'Review challenge', 'article' => 'Review blog/article', 'recitation' => 'Review 5 recitation questions'] as $kind => $label)
                 <a href="{{ route('teacher.library.show', [$key, $kind]) }}" class="rounded-xl border border-green-200 px-3 py-3 text-xs font-bold text-primary hover:bg-paper">{{ $label }} →</a>
             @endforeach
         </div>
