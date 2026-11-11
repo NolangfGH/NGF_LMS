@@ -154,10 +154,11 @@ class CodingMatchesTest extends TestCase
         $this->asTeacher($this->other)->get(route('teacher.matches.show', $match))->assertNotFound();
         $this->getJson(route('teacher.matches.status', $match))->assertNotFound();
         $this->asTeacher()->getJson(route('teacher.matches.status', $match))->assertOk()->assertJsonPath('participants.0.code', $alphaCode)->assertJsonPath('participants.1.code', $betaCode);
-        $this->get(route('teacher.matches.show', $match))->assertOk()->assertSee('Live main.cpp')->assertSee('Final winner award');
+        $this->get(route('teacher.matches.show', $match))->assertOk()->assertSee('Live main.cpp')->assertSee('Final winner award')
+            ->assertSee('data-onecompiler-editor="match-live-code-'.$match->participants->first()->id.'"', false);
     }
 
-    public function test_saved_revisions_are_optimistic_and_submissions_are_immutable_and_idempotent(): void
+    public function test_final_submission_is_immutable_idempotent_and_locks_later_revisions(): void
     {
         $match = $this->invite();
         $this->begin($match);
@@ -167,9 +168,11 @@ class CodingMatchesTest extends TestCase
         $this->postJson(route('student.matches.submit', $match), ['revision' => 1])->assertOk()->assertJsonPath('id', $submission->id);
         $this->assertDatabaseCount('coding_match_submissions', 1);
         $this->putJson(route('student.matches.save', $match), ['revision' => 0, 'code' => 'stale overwrite'])->assertConflict();
-        $this->putJson(route('student.matches.save', $match), ['revision' => 1, 'code' => 'int main(){return 1;}'])->assertOk()->assertJsonPath('revision', 2);
+        $this->putJson(route('student.matches.save', $match), ['revision' => 1, 'code' => 'int main(){return 1;}'])->assertConflict();
         $this->assertSame($code, $submission->fresh()->code);
-        $this->postJson(route('student.matches.submit', $match), ['revision' => 1])->assertConflict();
+        $this->postJson(route('student.matches.submit', $match), ['revision' => 2])->assertConflict();
+        $this->assertDatabaseCount('coding_match_submissions', 1);
+        $this->getJson(route('student.assessment-activity.status', ['kind' => 'coding_match', 'id' => $match->id]))->assertOk()->assertJsonPath('active', false);
         $this->assertTrue($submission->on_time);
         $this->assertSame(100, $this->alpha->fresh()->xp);
     }

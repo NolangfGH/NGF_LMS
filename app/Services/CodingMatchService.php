@@ -89,6 +89,7 @@ class CodingMatchService
             $this->assertWritable($current);
             $participant = $current->participants()->where('student_id', $student->id)->lockForUpdate()->firstOrFail();
             abort_unless($participant->response === 'accepted', 403);
+            abort_if($participant->submissions()->exists(), 409, 'Your final code has already been submitted for this match.');
             abort_if($participant->draft_revision !== $revision, 409, 'A newer draft exists. Download your current code before reloading to avoid overwriting another tab.');
             if ($participant->draft_code !== $code) {
                 $participant->update(['draft_code' => $code, 'draft_revision' => $revision + 1, 'draft_saved_at' => now()]);
@@ -105,12 +106,18 @@ class CodingMatchService
             $this->assertWritable($current);
             $participant = $current->participants()->where('student_id', $student->id)->lockForUpdate()->firstOrFail();
             abort_unless($participant->response === 'accepted', 403);
+            $previous = $participant->submissions()->latest('id')->first();
+            if ($previous) {
+                abort_if($previous->revision !== $revision, 409, 'Your final code has already been submitted for this match.');
+
+                return $previous;
+            }
             abort_if($participant->draft_revision !== $revision, 409, 'Save your newest draft before submitting.');
             if (trim($participant->draft_code) === '') {
                 throw ValidationException::withMessages(['code' => 'Write your C++ solution before submitting.']);
             }
-            $submission = CodingMatchSubmission::firstOrCreate(['participant_id' => $participant->id, 'revision' => $revision], [
-                'code' => $participant->draft_code, 'submitted_at' => now(), 'on_time' => now()->lt($current->deadline_at),
+            $submission = $participant->submissions()->create([
+                'revision' => $revision, 'code' => $participant->draft_code, 'submitted_at' => now(), 'on_time' => now()->lt($current->deadline_at),
             ]);
             $this->notice($current, 'teacher', $current->teacher_account_id, 'submission:'.$submission->id, $participant->student_name.' submitted revision '.$revision.' for verification.');
 

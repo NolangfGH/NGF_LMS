@@ -157,7 +157,7 @@ class CodingMatchController extends Controller
         $data = $request->validate(['revision' => ['required', 'integer', 'min:0']]);
         $record = $service->submit($match, $student, $data['revision']);
 
-        return response()->json(['id' => $record->id, 'message' => 'Saved revision submitted for teacher verification.']);
+        return response()->json(['id' => $record->id, 'message' => 'Final code submitted. Your teacher can now verify it.']);
     }
 
     public function review(Request $request, CodingMatch $match, CodingMatchSubmission $submission, CodingMatchService $service)

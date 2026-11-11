@@ -27,12 +27,22 @@
         const card=node('article',null,'rounded-xl border border-green-200 bg-paper p-4');
         const summary=node('p',null,'text-sm font-bold text-primary');card.append(summary);
         const details=node('details');details.append(node('summary','View immutable submitted code','mt-3 cursor-pointer text-xs font-bold'));
-        details.append(node('pre',submission.code,'mt-3 max-h-80 overflow-auto rounded-xl bg-[#102518] p-4 font-mono text-xs leading-6 text-green-100'));
+        const code = node('pre', submission.code, 'mt-3 max-h-80 overflow-auto rounded-xl bg-[#102518] p-4 font-mono text-xs leading-6 text-green-100');
+        code.id = 'match-submitted-code-' + submission.id;
+        code.tabIndex = 0;
+        const compiler = node('button', 'Open in OneCompiler ↗', 'onecompiler-open');
+        compiler.type = 'button';
+        compiler.dataset.onecompilerEditor = code.id;
+        compiler.dataset.onecompilerReview = 'true';
+        compiler.dataset.onecompilerExpected = 'match-expected-output';
+        const launcher = node('div', null, 'onecompiler-launcher');
+        launcher.append(compiler, node('p', 'Opens this C++ code in the external OneCompiler editor for testing.', 'onecompiler-note'));
+        details.append(code, launcher);
         const download=node('a','Download .cpp for testing','mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
         const form=node('form');form.method='POST';form.action=config.reviewUrl.replace('/submissions/0/','/submissions/'+submission.id+'/');
         const csrf=node('input');csrf.type='hidden';csrf.name='_token';csrf.value=config.csrf;form.append(csrf);
         const verdict=field(form,'Teacher verification *','verdict','select');
-        for(const [value,text] of [['revise','Needs revision'],['correct','Correct — tested and verified']]) {const option=node('option',text);option.value=value;verdict.append(option);}
+        for(const [value,text] of [['revise','Needs improvement'],['correct','Correct — tested and verified']]) {const option=node('option',text);option.value=value;verdict.append(option);}
         verdict.value=submission.verdict==='correct' ? 'correct' : 'revise';
         const observed=field(form,'Observed output from your test (required for correct)','observed_output');observed.maxLength=10000;observed.rows=3;observed.value=submission.observed_output || '';observed.spellcheck=false;
         const feedback=field(form,'Actionable feedback *','feedback');feedback.required=true;feedback.minLength=5;feedback.maxLength=3000;feedback.rows=3;feedback.value=submission.feedback || '';

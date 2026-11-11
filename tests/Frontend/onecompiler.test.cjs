@@ -24,7 +24,8 @@ function environment() {
     dialog.showModal = () => {dialog.open = true;};
     dialog.close = () => {dialog.open = false; dialog.fire('close');};
     frame.contentWindow = {postMessage(data, target) {messages.push({data: JSON.parse(JSON.stringify(data)), target});}};
-    const document = {querySelectorAll: () => [launcher], getElementById: () => editor,
+    const example = element('PRE');
+    const document = {...element(), querySelectorAll: () => [launcher], getElementById: id => id === 'expected' ? example : editor,
         createElement: () => dialog, body: {append() {}}};
     let clock = 0, id = 0;
     class Clock extends Date {static now() {return clock;}}
@@ -32,9 +33,9 @@ function environment() {
     vm.runInNewContext(source, {document, window, navigator: {clipboard}, Date: Clock,
         Event: class {constructor(type) {this.type = type;}},
         setInterval(callback) {timers.set(++id, callback); return id;}, clearInterval(key) {timers.delete(key);}});
-    return {editor, launcher, frame, dialog, messages, find, clipboard,
-        addLauncher(button) {window.fire('ngf:explanation-added', {detail: {querySelectorAll: () => [button]}});},
-        open(code = 'int main() { return 0; }') {editor.value = code; launcher.fire('click');},
+    const click = button => document.fire('click', {target: {closest: () => button}});
+    return {editor, launcher, frame, dialog, messages, find, clipboard, example, click,
+        open(code = 'int main() { return 0; }') {editor.value = code; click(launcher);},
         receive(code, changes = {}) {window.fire('message', {origin, source: frame.contentWindow, data: {language: 'cpp', files: [{name: 'main.cpp', content: code}]}, ...changes});},
         tick(ms = 500) {clock += ms; for (const callback of [...timers.values()]) callback();},
         timers,
@@ -63,14 +64,38 @@ test('new explanation launchers load their current editable code without an auto
     const app = environment();
     const added = element();
     added.dataset.onecompilerEditor = 'explanation-3-code';
-    app.addLauncher(added);
     assert.equal(app.frame.src, undefined);
     app.editor.value = 'int main() { return 9; }';
-    added.fire('click');
+    app.click(added);
     app.frame.fire('load');
     assert.equal(app.dialog.open, true);
     assert.equal(app.messages[0].data.files[0].content, app.editor.value);
     assert.equal(app.messages[0].target, origin);
+});
+
+test('review launches a captured revision, shows expected output locally and never imports edits', async () => {
+    const app = environment();
+    const button = element();
+    button.dataset = {onecompilerEditor: 'live-code', onecompilerReview: 'true', onecompilerExpected: 'expected'};
+    app.editor.tagName = 'PRE';
+    delete app.editor.value;
+    app.editor.textContent = 'int main() { return 2; }\r\n';
+    app.example.textContent = 'Expected output only in LMS';
+    app.click(button);
+    app.frame.fire('load');
+    app.receive('int main() { return 2; }\n');
+    assert.equal(app.find('[data-oc-run]').disabled, false);
+    assert.equal(app.find('[data-oc-apply]').hidden, true);
+    assert.equal(app.find('[data-oc-expected-code]').textContent, app.example.textContent);
+    assert.equal(JSON.stringify(app.messages).includes(app.example.textContent), false);
+    app.receive('edited code');
+    app.editor.textContent = 'newer autosaved code';
+    app.find('[data-oc-apply]').fire('click');
+    assert.equal(app.editor.textContent, 'newer autosaved code');
+    app.find('[data-oc-reload]').fire('click');
+    assert.equal(app.messages.at(-1).data.files[0].content, 'int main() { return 2; }\r\n');
+    await app.find('[data-oc-copy]').fire('click');
+    assert.equal(app.clipboard.copied, 'int main() { return 2; }\r\n');
 });
 
 test('spoofed origins and other frame windows cannot replace an LMS draft', () => {

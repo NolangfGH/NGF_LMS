@@ -52,6 +52,7 @@ class AssessmentActivity
             $participant = CodingMatchParticipant::where('coding_match_id', $id)->where('student_id', $student->id)->firstOrFail();
 
             return ['active' => $participant->response === 'accepted' && in_array(app(CodingMatchService::class)->phase($match), ['active', 'overtime'], true)
+                && ! $participant->submissions()->exists()
                 && app(CodingMatchService::class)->rosterValid($match), 'title' => $match->title];
         }
         abort_unless($kind === 'challenge_lab', 404);

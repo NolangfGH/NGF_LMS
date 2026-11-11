@@ -14,5 +14,5 @@
 <meta name="theme-color" content="#0b4e00">
 <script src="{{ asset('js/celebrations.js') }}" defer></script>
 <script src="{{ asset('js/portal-ui.js') }}?v=20261107-portal-fixes" defer></script>
-<link rel="stylesheet" href="{{ asset('css/onecompiler.css') }}?v=20261107-compiler1">
-<script src="{{ asset('js/onecompiler.js') }}?v=20261110-explanations" defer></script>
+<link rel="stylesheet" href="{{ asset('css/onecompiler.css') }}?v=review-2">
+<script src="{{ asset('js/onecompiler.js') }}?v=review-2" defer></script>

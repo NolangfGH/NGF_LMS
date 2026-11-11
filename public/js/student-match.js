@@ -4,14 +4,16 @@
     const get=id=>document.getElementById(id), editor=get('match-code'), status=get('match-save-status');
     let state=config.snapshot, offset=state.server_now-Date.now(), mine=state.participants.find(p=>p.mine);
     let revision=mine.revision, savedCode=mine.code, saving=null, timer=null, conflict=false, actionBusy=false, polling=false, sessionExpired=false;
+    let submitted=mine.submissions.length>0;
     const message=value=>{get('match-action-message').textContent=value;};
     function tick() {
         const clock=window.CodingMatchClock.render(state,Date.now()+offset);
-        const writable=clock.writable && !conflict && !actionBusy;
+        const canEdit=clock.writable && !conflict && !submitted;
+        const writable=canEdit && !actionBusy;
         editor.readOnly=!writable;
         get('match-save').disabled=!writable;
         get('match-submit').disabled=!writable;
-        return clock.writable;
+        return canEdit;
     }
     async function request(url,method,data) {
         const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),15000);
@@ -44,6 +46,14 @@
     }
     function render() {
         mine=state.participants.find(p=>p.mine);
+        if (mine.submissions.length) {
+            submitted=true;
+            clearTimeout(timer);
+            get('match-submit').textContent='Final code submitted';
+            status.textContent=editor.value===savedCode
+                ? `Final submission received · Revision ${mine.submissions[0].revision}`
+                : 'Final submission received. Download your local code if you need a copy.';
+        }
         if (state.my_xp!==null && state.my_xp!==undefined) document.querySelectorAll('[data-student-xp]').forEach(node=>node.textContent=`${Number(state.my_xp).toLocaleString()} XP · Level ${state.my_level}`);
         get('match-invitation').hidden=!(state.phase==='inviting' && mine.response==='invited' && state.roster_valid);
         get('match-people').replaceChildren(...state.participants.map(p=>{
@@ -56,12 +66,12 @@
             target.dataset.version=fingerprint;
             const rows=mine.submissions.map(s=>{
                 const row=document.createElement('article');row.className='rounded-xl border border-green-100 bg-paper p-4';
-                const title=document.createElement('b');title.textContent=`Revision ${s.revision} · ${s.on_time ? 'On time' : 'Overtime'} · ${s.verdict==='pending' ? 'Awaiting verification' : (s.verdict==='correct' ? 'Teacher-verified correct' : 'Revise and try again')}`;
+                const title=document.createElement('b');title.textContent=`Revision ${s.revision} · ${s.on_time ? 'On time' : 'Overtime'} · ${s.verdict==='pending' ? 'Awaiting verification' : (s.verdict==='correct' ? 'Teacher-verified correct' : 'Needs improvement')}`;
                 const time=document.createElement('p');time.className='mt-2 text-xs text-secondary';time.textContent=`Submitted ${new Date(s.submitted_at).toLocaleString()}`;
                 const feedback=document.createElement('p');feedback.className='mt-3 whitespace-pre-wrap text-sm';feedback.textContent=s.feedback || 'Your teacher will check this submitted version.';
                 row.append(title,time,feedback);return row;
             });
-            if (!rows.length) {const empty=document.createElement('p');empty.textContent='No submitted versions yet.';rows.push(empty);}
+            if (!rows.length) {const empty=document.createElement('p');empty.textContent='No submission yet.';rows.push(empty);}
             target.replaceChildren(...rows);
         }
         tick();
@@ -73,7 +83,7 @@
             const next=await request(config.statusUrl,'GET');
             state=next;offset=state.server_now-Date.now();
             const remote=state.participants.find(p=>p.mine);
-            if (!saving && remote.revision!==revision) {
+            if (!submitted && !remote.submissions.length && !saving && remote.revision!==revision) {
                 conflict=true;status.textContent='Another tab saved a newer revision. Download your code before reloading. Editing paused.';
             }
             render(); get('match-connection').textContent=`Live · last synced ${new Date().toLocaleTimeString()}`;
@@ -81,6 +91,7 @@
         finally {polling=false;}
     }
     editor.addEventListener('input',()=>{
+        if (submitted) return;
         status.textContent='Unsaved changes…';clearTimeout(timer);
         timer=setTimeout(()=>flush().catch(error=>message(error.message)),750);
     });
@@ -93,9 +104,23 @@
     get('match-save').addEventListener('click',()=>flush().then(()=>message('Draft saved. Submit it when ready for verification.')).catch(error=>message(error.message)));
     get('match-submit').addEventListener('click',async()=>{
         if (actionBusy || !tick()) return;
+        if (!window.confirm('Submit your final code? Each coder can submit once. Your workspace will lock after submission.')) return;
         actionBusy=true;tick();
-        try {await flush(); const result=await request(config.submitUrl,'POST',{revision});message(result.message);await poll();}
-        catch(error) {message(error.message);} finally {actionBusy=false;tick();}
+        try {
+            await flush();
+            const result=await request(config.submitUrl,'POST',{revision});
+            submitted=true;
+            get('match-submit').textContent='Final code submitted';
+            status.textContent=`Final submission received · Revision ${revision}`;
+            message(result.message);
+            await poll();
+        } catch(error) {
+            message(error.message);
+            await poll();
+        } finally {
+            actionBusy=false;
+            tick();
+        }
     });
     for (const [id,decision] of [['match-accept','accepted'],['match-decline','declined']]) get(id).addEventListener('click',async()=>{
         get('match-accept').disabled=true;get('match-decline').disabled=true;

@@ -24,7 +24,7 @@
         <section class="flex flex-col justify-between bg-green-50 p-7 md:p-10">
             <div><p class="mb-7 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold text-secondary shadow-sm">System Admin / Teacher workspace</p>
                 <h1 class="text-3xl font-extrabold leading-tight tracking-tight text-primary md:text-4xl">Empowering the next generation of coders.</h1>
-                <p class="mt-5 text-sm leading-7 text-slate-600">Manage your C++ classes, review student work, and guide each learner’s progress.</p>
+                <p class="mt-5 text-sm leading-7 text-slate-600">Manage your C++ @ Arduino classes, review student work, and guide each learner’s progress.</p>
                 <div class="mt-7 rounded-2xl bg-gradient-to-br from-green-100 via-white to-emerald-100 p-6 text-center">
                     <img src="{{ asset('images/branding/nf-codequest-tab-icon.png') }}" alt="NGF CodeQuest logo" width="1100" height="1430" class="mx-auto h-40 w-32 object-contain" decoding="async">
                     <p class="mt-4 text-xs font-bold text-secondary">Build · Measure · Inspire</p>
@@ -35,7 +35,7 @@
         <section class="p-7 md:p-10"><div class="mx-auto max-w-md">
             <p class="mono text-[10px] font-bold uppercase tracking-[.2em] text-secondary">Teacher/Admin Authentication</p>
             <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-primary">Welcome back, teacher</h2>
-            <p class="mt-3 text-sm leading-6 text-slate-500">Manage your class, create assignments, and monitor student C++ progress.</p>
+            <p class="mt-3 text-sm leading-6 text-slate-500">Manage your class, create assignments, and monitor student C++ @ Arduino progress.</p>
             <p class="mono mb-6 mt-8 text-xs font-bold text-secondary">system admin/teacher credentials</p>
             <div id="feedback" role="alert" class="mb-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
             <form id="teacher-login-form" class="space-y-5">
@@ -52,7 +52,7 @@
         </div></section>
     </div>
 </main>
-<footer class="border-t border-green-900/10 bg-white px-5 py-5 text-center text-xs text-slate-500">© {{ now('Asia/Singapore')->year }} NGF_CodeQuest C++ student privacy safeguards</footer>
+<footer class="border-t border-green-900/10 bg-white px-5 py-5 text-center text-xs text-slate-500">© {{ now('Asia/Singapore')->year }} NGF_C++CodeQuest student privacy safeguards</footer>
 <script>
 const feedback = document.getElementById('feedback');
 function showFeedback(message, error = false) {

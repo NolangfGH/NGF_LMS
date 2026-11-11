@@ -34,6 +34,7 @@ function environment(role='student',initial=snapshot()) {
         querySelector(selector) {return panels.get(Number(selector.match(/"(\d+)"/)?.[1]));},
     };
     const window=element();
+    window.confirm=()=>true;
     const config={role,snapshot:structuredClone(initial),statusUrl:'/status',saveUrl:'/save',submitUrl:'/submit',respondUrl:'/respond',reviewUrl:'/teacher/1/submissions/0/review',csrf:'test-token'};
     window.codingMatchConfig=config;
     const network={state:structuredClone(initial),handler:null};
@@ -93,7 +94,7 @@ test('typing while saving serializes revisions and never overwrites the current 
     assert.equal(editor.value,'second draft');assert.match(app.get('match-save-status').textContent,/Saved revision 2/);
 });
 
-test('submit first saves the current code and submits the returned revision',async()=>{
+test('final submission first saves the current code and locks the editor even before polling catches up',async()=>{
     const app=environment();await settle();
     const editor=app.get('match-code');editor.value='ready to submit';editor.fire('input');
     await app.get('match-submit').fire('click');
@@ -101,6 +102,23 @@ test('submit first saves the current code and submits the returned revision',asy
     assert.deepEqual(writes.map(r=>r.url),['/save','/submit']);
     assert.equal(writes[1].body.revision,1);assert.equal(editor.value,'ready to submit');
     assert.match(app.get('match-action-message').textContent,/Saved/);
+    assert.equal(editor.readOnly,true);
+    assert.equal(app.get('match-submit').disabled,true);
+    await app.get('match-submit').fire('click');
+    assert.equal(app.requests.filter(r=>r.url==='/submit').length,1);
+});
+
+test('cancelling the final confirmation keeps the workspace open and a submission from another tab locks it',async()=>{
+    const app=environment();await settle();
+    app.window.confirm=()=>false;
+    await app.get('match-submit').fire('click');
+    assert.equal(app.requests.filter(r=>r.url==='/submit').length,0);
+    assert.equal(app.get('match-code').readOnly,false);
+    app.network.state.participants[0].submissions=[{id:3,revision:0,verdict:'revise',on_time:true,feedback:'Check the loop condition.'}];
+    await app.interval(2000);
+    assert.equal(app.get('match-code').readOnly,true);
+    assert.match(app.get('match-save-status').textContent,/Final submission received/);
+    assert.match(app.get('match-my-submissions').children[0].children[0].textContent,/Needs improvement/);
 });
 
 test('a failed autosave keeps the local draft and displays a recoverable warning',async()=>{
@@ -156,6 +174,9 @@ test('teacher live updates change code while preserving unfinished feedback and 
     assert.equal(feedback.value,'Feedback I have not submitted');assert.equal(output.value,'test output');
     assert.equal(app.panels.get(1).querySelector('[data-live-code]').textContent,'<script>student code stays text</script>');
     assert.equal(descendants(list).find(n=>n.tagName==='pre').textContent,'immutable submitted code');
+    const launcher=descendants(list).find(n=>n.dataset.onecompilerEditor);
+    assert.equal(launcher.dataset.onecompilerEditor,'match-submitted-code-1');
+    assert.equal(launcher.dataset.onecompilerReview,'true');
 });
 test('teacher award is gated by pending earlier versions and locks after finalization',async()=>{
     const initial=teacherState();initial.candidate_id=1;initial.pending_earlier=1;initial.participants[0].submissions[0].verdict='correct';

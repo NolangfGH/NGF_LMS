@@ -23,7 +23,11 @@
 .onecompiler-dialog .onecompiler-close { flex-shrink: 0; padding: .4rem .8rem; }
 .onecompiler-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .5rem 1rem; border-block: 1px solid #dce8d6; background: #f5faef; }
 .onecompiler-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.onecompiler-dialog [hidden] { display: none !important; }
 .onecompiler-status { margin: 0; padding: .5rem 1rem; font-size: .8rem; line-height: 1.5; }
+.onecompiler-expected { margin: 0 .85rem .5rem; padding: .5rem .75rem; border: 1px solid #dce8d6; border-radius: .75rem; background: #f5faef; font-size: .8rem; }
+.onecompiler-expected summary { cursor: pointer; font-weight: 700; }
+.onecompiler-expected pre { margin: .5rem 0 0; max-height: 7rem; overflow: auto; white-space: pre-wrap; }
 .onecompiler-frame { flex: 1; width: 100%; min-height: 220px; border: 0; }
 .onecompiler-dialog .onecompiler-manual { width: calc(100% - 2rem); min-height: 100px; margin: .5rem 1rem; font-family: monospace; }
 @media (max-width: 600px) {
