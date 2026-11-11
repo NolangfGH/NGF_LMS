@@ -36,6 +36,7 @@ use App\Http\Controllers\StaffRegistrationStatusController;
 use App\Http\Controllers\StudentRegistrationApprovalController;
 use App\Http\Controllers\StudentRegistrationStatusController;
 use App\Http\Controllers\StudentSettingsController;
+use App\Http\Controllers\SystemAnalyticsController;
 use App\Http\Controllers\TeacherLessonController;
 use App\Http\Controllers\TeacherSettingsController;
 use App\Http\Controllers\TeacherStudentController;
@@ -81,6 +82,7 @@ Route::put('/school-admin/donations', [DonationController::class, 'save'])->midd
 Route::get('/school-admin/donations/receipts/{receipt}/image', [DonationController::class, 'receiptImage'])->whereNumber('receipt')->name('school.donations.receipt.image');
 Route::put('/school-admin/donations/receipts/{receipt}', [DonationController::class, 'reviewReceipt'])->whereNumber('receipt')->middleware('throttle:20,1')->name('school.donations.receipt.review');
 Route::view('/user-guide', 'user-guide', ['pageTitle' => 'User guide'])->name('system.guide');
+Route::view('/classroom-privacy', 'classroom-privacy', ['pageTitle' => 'Classroom Privacy'])->name('system.privacy');
 Route::get('/school-admin/audit-trail', [AuditReportController::class, 'index'])->name('school.audit');
 Route::get('/school-admin/audit-trail/export', [AuditReportController::class, 'index'])->middleware('throttle:10,1')->name('school.audit.export');
 Route::get('/teacher-assessment-activity', [AuditReportController::class, 'index'])->name('teacher.assessment-activity');
@@ -337,6 +339,7 @@ Route::post('/teacher-settings/avatar', [TeacherSettingsController::class, 'uplo
 Route::delete('/teacher-settings/avatar', [TeacherSettingsController::class, 'removeAvatar'])->name('teacher.settings.avatar.destroy');
 Route::get('/teacher-settings/avatar/{teacher}', [TeacherSettingsController::class, 'avatar'])->name('teacher.settings.avatar');
 Route::get('/reports', [ClassReportController::class, 'index'])->name('teacher.reports');
+Route::get('/system-analytics', [SystemAnalyticsController::class, 'index'])->name('teacher.analytics');
 Route::get('/reports/export', [ClassReportController::class, 'export'])->name('teacher.reports.export');
 Route::view('/teacher-login', 'teacher-login')->name('teacher.login');
 Route::post('/teacher-login', [HomeController::class, 'loginTeacher'])->name('teacher.login.store');

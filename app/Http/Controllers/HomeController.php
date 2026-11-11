@@ -52,7 +52,7 @@ class HomeController extends Controller
 
         return response()->view('home', [
             'home' => $home, 'search' => $search,
-            'matchCount' => collect($home['catalog'])->filter(fn ($lesson) => $search === '' || str_contains(mb_strtolower($lesson['title'].' '.$lesson['topic'].' '.$lesson['objective']), mb_strtolower($search)))->count(),
+            'matchCount' => collect($home['catalog'])->filter(fn (array $lesson): bool => str_contains($lesson['search'], mb_strtolower($search)))->count(),
         ])->header('Cache-Control', 'private, no-store');
     }
 

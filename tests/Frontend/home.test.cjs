@@ -21,9 +21,13 @@ function home() {
         return [name,slot];
     }));
     const cards = [{ dataset: { search: 'loops repetition' } },{ dataset: { search: 'console input' } }];
+    const courses = cards.map(card => {
+        const count = node();
+        return { hidden: false, count, querySelector: () => count, querySelectorAll: () => [card] };
+    });
     const root = { ...node(), dataset: { homeRevision: 'one', homeEndpoint: '/home/status' },
         querySelector(selector) { return slots[selector.match(/"(.+)"/)[1]]; },
-        querySelectorAll: () => cards };
+        querySelectorAll: selector => selector === '[data-home-course]' ? courses : cards };
     const ids = { 'home-live-root': root, 'home-refresh': node(), 'home-live-status': node(), 'home-status-text': node(),
         'home-search': { ...node(), value: '' }, 'home-result-count': node(), 'home-no-matches': node(), 'home-last-success': node() };
     const year = node();
@@ -46,7 +50,7 @@ function home() {
         setTimeout(fn,delay) { timers.set(++timerId,{fn,delay}); return timerId; },
         clearTimeout(id) { timers.delete(id); },
     });
-    return { ...state, state, data, ids, root, slots, cards, document, window, navigator, timers, year };
+    return { ...state, state, data, ids, root, slots, cards, courses, document, window, navigator, timers, year };
 }
 
 test('changed records refresh fragments while preserving course search and example expansion', async () => {
@@ -55,6 +59,8 @@ test('changed records refresh fragments while preserving course search and examp
     h.ids['home-search'].fire('input');
     assert.equal(h.cards[0].hidden,false);
     assert.equal(h.cards[1].hidden,true);
+    assert.equal(h.courses[1].hidden,true);
+    assert.equal(h.courses[0].count.textContent,'1 of 1 lessons');
     h.state.response = h.data('two');
     await h.ids['home-refresh'].fire('click');
     assert.equal(h.slots.stats.innerHTML,'fresh-stats');

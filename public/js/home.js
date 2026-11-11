@@ -17,6 +17,12 @@
             card.hidden = !card.dataset.search.includes(query);
             if (!card.hidden) visible++;
         });
+        root.querySelectorAll('[data-home-course]').forEach(course => {
+            const lessons = [...course.querySelectorAll('[data-home-lesson-card]')];
+            const count = lessons.filter(card => !card.hidden).length;
+            course.hidden = count === 0;
+            course.querySelector('[data-home-course-count]').textContent = count + ' of ' + lessons.length + ' lessons';
+        });
         document.getElementById('home-result-count').textContent = visible + ' of ' + cards.length + ' lessons shown';
         document.getElementById('home-no-matches').hidden = visible !== 0;
     };

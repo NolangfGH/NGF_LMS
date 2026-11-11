@@ -19,13 +19,29 @@ class HomepageService
     public function snapshot(?int $studentId = null, ?int $teacherId = null): array
     {
         $now = now(config('learning.timezone'));
-        $catalog = collect(config('lessons'))->map(fn ($lesson, $key) => [
-            'key' => $key, 'title' => $lesson['title'], 'topic' => $lesson['topic'], 'objective' => $lesson['objective'],
-            'minutes' => $lesson['minutes'], 'icon' => $lesson['icon'], 'url' => route('student.lesson.show', $key),
-        ])->values()->all();
+        $courses = [
+            'cpp' => ['title' => 'C++ Programming', 'heading' => 'Build your C++ foundations', 'grade' => 'Grade 8', 'lessons' => config('lessons')],
+            'arduino-uno' => ['title' => 'Arduino Uno Robotics', 'heading' => 'Build with Arduino Uno', 'grade' => 'Grade 9', 'lessons' => config('arduino_curriculum.lessons')],
+        ];
+        $catalog = [];
+        foreach ($courses as $course => &$summary) {
+            $number = 0;
+            foreach ($summary['lessons'] as $key => $lesson) {
+                $catalog[] = [
+                    'key' => $key, 'course' => $course, 'number' => ++$number,
+                    'title' => $lesson['title'], 'topic' => $lesson['topic'], 'objective' => $lesson['objective'],
+                    'minutes' => $lesson['minutes'], 'icon' => $lesson['icon'],
+                    'search' => mb_strtolower(implode(' ', [$summary['title'], $lesson['title'], $lesson['topic'], $lesson['objective']])),
+                    'url' => route('student.lesson.show', ['lesson' => $key, ...CourseAssessments::courseQuery($course)]),
+                ];
+            }
+            $summary['count'] = $number;
+            unset($summary['lessons']);
+        }
+        unset($summary);
         $snapshot = [
-            'available' => true, 'metrics' => null, 'student' => null, 'teacher' => null, 'catalog' => $catalog,
-            'catalog_totals' => ['lessons' => count($catalog), 'practice_activities' => count(config('code_lab.activities')),
+            'available' => true, 'metrics' => null, 'student' => null, 'teacher' => null, 'catalog' => $catalog, 'courses' => $courses,
+            'catalog_totals' => ['lessons' => count($catalog), 'practice_activities' => count(config('code_lab.activities')) + count(config('arduino_curriculum.practice')),
                 'challenges' => collect(config('challenges'))->reject(fn (array $challenge): bool => ! empty($challenge['legacy']))->count(), 'milestones' => count(config('achievements'))],
             'rewards' => ['welcome' => Student::REGISTRATION_XP, 'correct_answer' => QuizRewards::XP_PER_ANSWER, 'perfect_quiz' => QuizRewards::PERFECT_BONUS],
             'example' => ['title' => config('lessons.output.title'), 'code' => config('lessons.output.code'), 'output' => config('lessons.output.output')],

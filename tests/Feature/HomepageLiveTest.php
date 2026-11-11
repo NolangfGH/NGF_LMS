@@ -48,7 +48,8 @@ class HomepageLiveTest extends TestCase
             ->assertDontSee('A secret exam prompt')->assertDontSee('Private lesson task');
         $home = $response->viewData('home');
         $this->assertSame(['students' => 2, 'educators' => 2, 'sections' => 2, 'published_activities' => 2, 'published_assignments' => 1, 'published_quizzes' => 1], $home['metrics']);
-        $this->assertSame(count(config('lessons')), $home['catalog_totals']['lessons']);
+        $this->assertSame(count(config('lessons')) + count(config('arduino_curriculum.lessons')), $home['catalog_totals']['lessons']);
+        $this->assertSame(25, $home['courses']['arduino-uno']['count']);
         $this->assertNull($home['student']);
         $this->assertNull($home['teacher']);
         $this->assertArrayNotHasKey('checks', $home['catalog'][0]);
@@ -136,9 +137,21 @@ class HomepageLiveTest extends TestCase
     public function test_course_search_uses_the_real_library_and_escapes_input(): void
     {
         $page = $this->get(route('home', ['q' => 'loops']))->assertOk()->assertSee('for loop')->assertSee('home-search');
-        $this->assertSame(count(config('lessons')), count($page->viewData('home')['catalog']));
+        $this->assertSame(50, count($page->viewData('home')['catalog']));
+        $this->get(route('home', ['q' => 'Arduino Uno Robotics']))->assertOk()
+            ->assertSee('25 of 50 lessons shown')->assertSee('Introduction to Robotics')->assertSee('Build with Arduino Uno');
+        $this->getJson(route('home.status'))->assertOk()->assertSee('Build with Arduino Uno');
         $this->get(route('home', ['q' => '<script>alert(1)</script>']))->assertOk()->assertDontSee('<script>alert(1)</script>', false)->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
         $this->getJson(route('home', ['q' => ['invalid']]))->assertUnprocessable();
+    }
+
+    public function test_public_classroom_privacy_is_linked_and_does_not_show_enrollment_data(): void
+    {
+        $this->fixture();
+        $this->get(route('home'))->assertOk()->assertSee(route('system.privacy'), false);
+        $this->get(route('system.privacy'))->assertOk()->assertSee('Classroom Privacy')
+            ->assertSee('Approximate sign-in location')->assertSee('Parents and guardians')
+            ->assertDontSee('OwnCoder')->assertDontSee('HOMEPRIVATE1')->assertDontSee('JOINSECRET');
     }
 
     public function test_classmates_on_a_shared_ip_have_independent_refresh_allowances(): void
