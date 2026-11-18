@@ -14,6 +14,7 @@
             const code = row.querySelector('[data-explanation-code]');
             code.id = `explanation-${index}-code`;
             row.querySelectorAll('[data-onecompiler-editor]').forEach(button => { button.dataset.onecompilerEditor = code.id; });
+            row.querySelectorAll('[data-wokwi-editor]').forEach(button => { button.dataset.wokwiEditor = code.id; });
             const remove = row.querySelector('[data-explanation-remove]');
             remove.disabled = items.length <= 1;
             remove.setAttribute('aria-label', `Remove explanation ${index + 1}`);

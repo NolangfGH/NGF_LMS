@@ -16,3 +16,5 @@
 <script src="{{ asset('js/portal-ui.js') }}?v=20261107-portal-fixes" defer></script>
 <link rel="stylesheet" href="{{ asset('css/onecompiler.css') }}?v=review-2">
 <script src="{{ asset('js/onecompiler.js') }}?v=review-2" defer></script>
+<link rel="stylesheet" href="{{ asset('css/wokwi.css') }}?v=20261118">
+<script src="{{ asset('js/wokwi.js') }}?v=20261118" defer></script>

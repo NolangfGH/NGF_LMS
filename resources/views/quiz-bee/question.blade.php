@@ -24,7 +24,7 @@
                 <label>Accepted answer(s)<textarea name="questions[{{ $level }}][{{ $kind }}][{{ $index }}][accepted_answers]" rows="3" required @disabled(!$fillBlank) placeholder="Enter one accepted answer per line">{{ implode("\n", (array)($question['accepted_answers'] ?? [])) }}</textarea></label>
                 <p class="bee-help">Use _____ to show one blank. Enter up to 10 accepted answers, one per line (maximum 500 characters each). Leading and trailing spaces are ignored; all other spacing and punctuation must match.</p>
                 <label>Capitalization<select name="questions[{{ $level }}][{{ $kind }}][{{ $index }}][case_sensitive]" @disabled(!$fillBlank)>
-                    <option value="1" @selected($question['case_sensitive'] ?? true)>Match exactly · recommended for C++ code</option>
+                    <option value="1" @selected($question['case_sensitive'] ?? true)>Match exactly · recommended for code</option>
                     <option value="0" @selected(!($question['case_sensitive'] ?? true))>Ignore capitalization · suitable for vocabulary</option>
                 </select></label>
             </div>

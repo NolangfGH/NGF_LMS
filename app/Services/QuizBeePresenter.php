@@ -62,6 +62,7 @@ class QuizBeePresenter
             'captain' => (int) $member->student_id === (int) $ownTeam->captain_id, 'xp' => $member->xp_awarded])->values()->all() : [];
 
         return ['id' => $match->id, 'title' => $match->title, 'category' => $match->category, 'status' => $match->status,
+            'course' => $match->course, 'course_title' => $match->courseTitle(),
             'server_now' => now()->toISOString(), 'question' => $question, 'standings' => $standings, 'members' => $teamMembers,
             'regular_total' => collect($match->questions)->sum(fn ($level) => count($level['regular'])),
             'can_ready' => $match->status === 'lobby' && $ownTeam && (int) $ownTeam->captain_id === $student?->id && ! $ownTeam->ready_at,

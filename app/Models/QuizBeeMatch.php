@@ -8,6 +8,20 @@ class QuizBeeMatch extends Model
 {
     public const LEVELS = ['easy', 'average', 'difficult'];
 
+    public const COURSES = ['cpp' => 'C++ Programming', 'arduino-uno' => 'Arduino Uno Robotics'];
+
+    protected $attributes = ['course' => 'cpp'];
+
+    public function courseTitle(): string
+    {
+        return self::COURSES[$this->course] ?? self::COURSES['cpp'];
+    }
+
+    public static function questionBank(string $course): array
+    {
+        return config($course === 'arduino-uno' ? 'arduino_quiz_bee' : 'quiz_bee.questions');
+    }
+
     protected $guarded = ['id'];
 
     protected $hidden = ['questions'];

@@ -8,7 +8,9 @@ use App\Models\TeacherAccount;
 use App\Services\LearningNotifications;
 use App\Services\QuizBeePresenter;
 use App\Services\QuizBeeService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -38,34 +40,40 @@ class QuizBeeController extends Controller
         return $student;
     }
 
-    public function index()
+    public function index(Request $request): Response|RedirectResponse
     {
         $teacherRole = request()->routeIs('teacher.*');
         if (! session($teacherRole ? 'teacher_id' : 'student_id')) {
             return redirect()->route($teacherRole ? 'teacher.login' : 'student.login');
         }
         $actor = $teacherRole ? $this->teacher() : $this->student();
+        $filters = $request->validate(['course' => ['nullable', Rule::in(array_keys(QuizBeeMatch::COURSES))]]);
         $matches = QuizBeeMatch::when($teacherRole, fn ($query) => $query->where('teacher_account_id', $actor->id),
             fn ($query) => $query->where('status', '!=', 'draft')->where('teacher_account_id', $actor->classroom?->teacher_account_id)
-                ->whereIn('id', DB::table('quiz_bee_members')->where('student_id', $actor->id)->select('quiz_bee_match_id')))->latest()->paginate(20);
+                ->whereIn('id', DB::table('quiz_bee_members')->where('student_id', $actor->id)->select('quiz_bee_match_id')))
+            ->when($filters['course'] ?? null, fn ($query, $course) => $query->where('course', $course))->latest()->paginate(20)->withQueryString();
 
         return response()->view('quiz-bee.index', ['teacher' => $teacherRole ? $actor : null, 'student' => $teacherRole ? null : $actor,
             'classroom' => $teacherRole ? null : $actor->classroom, 'teacherRole' => $teacherRole, 'matches' => $matches,
+            'selectedCourse' => $filters['course'] ?? null,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A')])->header('Cache-Control', 'private, no-store');
     }
 
-    public function edit(?QuizBeeMatch $bee = null)
+    public function edit(Request $request, ?QuizBeeMatch $bee = null): Response
     {
         $teacher = $this->teacher();
         abort_if($bee && ($bee->teacher_account_id !== $teacher->id || $bee->status !== 'draft'), 404);
+        $filters = $request->validate(['course' => ['nullable', Rule::in(array_keys(QuizBeeMatch::COURSES))]]);
+        $course = $bee?->course ?? $filters['course'] ?? 'cpp';
+        $defaultQuestions = QuizBeeMatch::questionBank($course);
         $students = Student::with('classroom')->whereHas('classroom', fn ($query) => $query->where('teacher_account_id', $teacher->id))->orderBy('surname')->orderBy('first_name')->get();
         $teams = $bee ? app(QuizBeeService::class)->teams($bee)->map(fn ($team) => ['name' => $team->name, 'captain_id' => $team->captain_id,
             'members' => DB::table('quiz_bee_members')->where('quiz_bee_team_id', $team->id)->pluck('student_id')->reject(fn ($id) => (int) $id === (int) $team->captain_id)->values()->all()])->all() : [['name' => '', 'captain_id' => '', 'members' => []], ['name' => '', 'captain_id' => '', 'members' => []]];
 
-        return response()->view('quiz-bee.form', compact('teacher', 'bee', 'students', 'teams'))->header('Cache-Control', 'private, no-store');
+        return response()->view('quiz-bee.form', compact('teacher', 'bee', 'students', 'teams', 'course', 'defaultQuestions'))->header('Cache-Control', 'private, no-store');
     }
 
-    public function save(Request $request, ?QuizBeeMatch $bee = null)
+    public function save(Request $request, ?QuizBeeMatch $bee = null): RedirectResponse
     {
         $teacher = $this->teacher();
         $questions = $request->input('questions');
@@ -105,7 +113,8 @@ class QuizBeeController extends Controller
             unset($team);
             $request->merge(['teams' => $teams]);
         }
-        $rules = ['title' => ['required', 'string', 'max:160'], 'category' => ['required', Rule::in(['individual', 'group'])],
+        $rules = ['course' => ['sometimes', 'required', Rule::in(array_keys(QuizBeeMatch::COURSES))],
+            'title' => ['required', 'string', 'max:160'], 'category' => ['required', Rule::in(['individual', 'group'])],
             'status' => ['required', Rule::in(['draft', 'lobby'])], 'teams' => ['required', 'array', 'list', 'min:2', 'max:40'],
             'teams.*.name' => ['nullable', 'string', 'max:80'], 'teams.*.captain_id' => ['required', 'integer', 'distinct'],
             'teams.*.members' => ['required', 'array', 'list', 'min:1', 'max:5'], 'teams.*.members.*' => ['required', 'integer', 'distinct'],
@@ -162,7 +171,8 @@ class QuizBeeController extends Controller
                 unset($bank);
             }
             unset($level);
-            $attributes = ['teacher_account_id' => $teacher->id, 'title' => $data['title'], 'category' => $data['category'], 'status' => $data['status'], 'questions' => $questions];
+            $attributes = ['teacher_account_id' => $teacher->id, 'title' => $data['title'], 'category' => $data['category'], 'status' => $data['status'], 'questions' => $questions,
+                'course' => $data['course'] ?? $bee?->course ?? 'cpp'];
             if ($bee) {
                 $bee->update($attributes);
                 DB::table('quiz_bee_teams')->where('quiz_bee_match_id', $bee->id)->delete();

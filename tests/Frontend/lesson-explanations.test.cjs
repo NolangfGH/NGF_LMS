@@ -30,6 +30,7 @@ test('adding explanations creates independent fields and updates the OneCompiler
     const last=app.list.items.at(-1);
     assert.equal(last.code.name,'sections[2][code]');
     assert.equal(last.launch.dataset.onecompilerEditor,'explanation-2-code');
+    assert.equal(last.launch.dataset.wokwiEditor,'explanation-2-code');
     assert.equal(last.input.focused,true);
     assert.equal(app.notices[0].type,'ngf:explanation-added');
     assert.equal(app.notices[0].detail,last);
@@ -41,6 +42,7 @@ test('removing a section preserves the remaining text, code and output while enf
     assert.deepEqual(kept.fields.map(field=>field.value),values);
     assert.equal(kept.code.name,'sections[1][code]');
     assert.equal(kept.launch.dataset.onecompilerEditor,'explanation-1-code');
+    assert.equal(kept.launch.dataset.wokwiEditor,'explanation-1-code');
     app.remove(0);app.remove(0);
     assert.equal(app.list.items.length,1);
     for(let count=1;count<14;count++)app.add.listeners.click();
