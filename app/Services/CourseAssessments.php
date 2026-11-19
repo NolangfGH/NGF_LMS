@@ -160,6 +160,7 @@ class CourseAssessments
                 'student_id' => $current->id, 'assessment' => $assessment, 'score' => $grade['score'],
                 'total_questions' => $grade['total_questions'], 'skill_scores' => json_encode($skills, JSON_THROW_ON_ERROR), 'completed_at' => $completedAt,
             ]);
+            app(AssessmentStatistics::class)->capture('course_assessment', $resultId, $questions, $details);
             $ledger = app(XpLedger::class);
             foreach ([true, false] as $isCorrect) {
                 $numbers = array_keys(array_filter($details, static fn (array $result): bool => $result['correct'] === $isCorrect));

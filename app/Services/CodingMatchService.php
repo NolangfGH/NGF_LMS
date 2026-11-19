@@ -15,6 +15,22 @@ class CodingMatchService
 {
     public const PREPARATION_SECONDS = 5;
 
+    public static function starterCode(string $course): string
+    {
+        return $course === 'arduino-uno' ? "void setup() {\n    // Set up your components here.\n}\n\nvoid loop() {\n    // Write your robot logic here.\n}\n" : "#include <iostream>\n\nint main() {\n    // Write your solution here.\n    return 0;\n}\n";
+    }
+
+    public function noticeTeachers(CodingMatch $match, string $key, string $message): void
+    {
+        $ids = collect([$match->teacher_account_id]);
+        if ($match->origin === 'student') {
+            $ids = $ids->merge(DB::table('coding_match_approvals')->where('coding_match_id', $match->id)->pluck('teacher_account_id'));
+        }
+        foreach ($ids->unique() as $id) {
+            $this->notice($match, 'teacher', (int) $id, $key, $message);
+        }
+    }
+
     public function notice(CodingMatch $match, string $role, int $id, string $key, string $message): void
     {
         ChallengeNotice::firstOrCreate(['coding_match_id' => $match->id, $role === 'teacher' ? 'teacher_account_id' : 'student_id' => $id, 'event_key' => $key],
@@ -23,9 +39,12 @@ class CodingMatchService
 
     public function rosterValid(CodingMatch $match): bool
     {
+        if ($match->origin === 'student') {
+            return app(PeerCodingChallenges::class)->rosterValid($match);
+        }
         $match->loadMissing('participants.student.classroom');
 
-        return $match->participants->count() === 2 && $match->participants->every(fn ($participant) => $participant->student && $participant->student->classroom?->teacher_account_id === $match->teacher_account_id);
+        return $match->participants->count() === $match->participant_count && $match->participants->every(fn ($participant) => $participant->student && $participant->student->classroom?->teacher_account_id === $match->teacher_account_id);
     }
 
     public function phase(CodingMatch $match): string
@@ -46,7 +65,7 @@ class CodingMatchService
             throw ValidationException::withMessages(['challenge' => 'Enrollment changed. Ask your teacher to cancel and reassign this challenge.']);
         }
         if (! in_array($this->phase($match), ['active', 'overtime'])) {
-            throw ValidationException::withMessages(['challenge' => 'Coding is available after both students accept and the shared preparation countdown ends, until the teacher ends the match.']);
+            throw ValidationException::withMessages(['challenge' => 'Coding is available after every invited student accepts and the shared preparation countdown ends, until the teacher ends the match.']);
         }
     }
 
@@ -65,18 +84,18 @@ class CodingMatchService
                 throw ValidationException::withMessages(['response' => 'The roster changed. Your teacher needs to reassign the challenge.']);
             }
             $participant->update(['response' => $decision, 'accepted_at' => $decision === 'accepted' ? now() : null]);
-            $this->notice($current, 'teacher', $current->teacher_account_id, 'response:'.$participant->id, $participant->student_name.' '.($decision === 'accepted' ? 'accepted' : 'declined').' your coding challenge.');
+            $this->noticeTeachers($current, 'response:'.$participant->id, $participant->student_name.' '.($decision === 'accepted' ? 'accepted' : 'declined').' your coding challenge.');
             if ($decision === 'declined') {
                 $this->cancelLocked($current, 'An invited student declined the challenge.');
 
                 return;
             }
-            if ($current->participants()->where('response', 'accepted')->count() === 2) {
+            if ($current->participants()->where('response', 'accepted')->count() === $current->participant_count) {
                 $start = now()->addSeconds(self::PREPARATION_SECONDS);
                 $current->update(['status' => 'active', 'started_at' => $start, 'deadline_at' => $start->copy()->addMinutes($current->time_limit_minutes)]);
-                $this->notice($current, 'teacher', $current->teacher_account_id, 'ready', 'Both students accepted. The shared coding countdown is starting.');
+                $this->noticeTeachers($current, 'ready', 'All invited students accepted. The shared coding countdown is starting.');
                 foreach ($current->participants as $member) {
-                    $this->notice($current, 'student', $member->student_id, 'ready', 'Both students accepted. Open the arena for your shared countdown.');
+                    $this->notice($current, 'student', $member->student_id, 'ready', 'All invited students accepted. Open the arena for your shared countdown.');
                 }
             }
         });
@@ -114,12 +133,12 @@ class CodingMatchService
             }
             abort_if($participant->draft_revision !== $revision, 409, 'Save your newest draft before submitting.');
             if (trim($participant->draft_code) === '') {
-                throw ValidationException::withMessages(['code' => 'Write your C++ solution before submitting.']);
+                throw ValidationException::withMessages(['code' => 'Write your solution before submitting.']);
             }
             $submission = $participant->submissions()->create([
                 'revision' => $revision, 'code' => $participant->draft_code, 'submitted_at' => now(), 'on_time' => now()->lt($current->deadline_at),
             ]);
-            $this->notice($current, 'teacher', $current->teacher_account_id, 'submission:'.$submission->id, $participant->student_name.' submitted revision '.$revision.' for verification.');
+            $this->noticeTeachers($current, 'submission:'.$submission->id, $participant->student_name.' submitted revision '.$revision.' for verification.');
 
             return $submission;
         });
@@ -204,7 +223,7 @@ class CodingMatchService
                 $this->notice($match, 'student', $member->student_id, 'cancelled', 'Your teacher challenge was closed without a winner. Your saved code is kept.');
             }
         }
-        $this->notice($match, 'teacher', $match->teacher_account_id, 'cancelled', 'Challenge closed without an XP award.');
+        $this->noticeTeachers($match, 'cancelled', 'Challenge closed without an XP award.');
     }
 
     public function cancel(CodingMatch $match, TeacherAccount $teacher, string $reason): void

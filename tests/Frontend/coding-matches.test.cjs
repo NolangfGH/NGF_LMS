@@ -161,6 +161,21 @@ function teacherState() {
     state.participants[0].submissions=[{id:1,revision:1,code:'immutable submitted code',submitted_at:'2026-10-29T12:00:00+08:00',verdict:'pending',on_time:true,feedback:null,observed_output:null,download_url:'/download/1'}];
     return state;
 }
+test('teacher submission cards show elapsed seconds and use Wokwi for Arduino copies',async()=>{
+    const state=teacherState();state.course='arduino-uno';state.participants[0].submissions[0].elapsed_seconds=13;
+    const app=environment('teacher',state);await settle();
+    const nodes=descendants(app.panels.get(1).querySelector('[data-submissions]'));
+    assert.ok(nodes.some(node=>node.textContent.includes('Used 13 seconds')));
+    assert.ok(nodes.some(node=>node.dataset.wokwiOpen==='' && node.href==='https://wokwi.com/projects/new/arduino-uno'));
+    assert.ok(!nodes.some(node=>node.dataset.onecompilerEditor));
+});
+test('a supervising guest teacher can monitor but receives no active management controls',async()=>{
+    const state=teacherState();state.can_manage=false;
+    const app=environment('teacher',state);await settle();
+    assert.equal(descendants(app.panels.get(1).querySelector('[data-submissions]')).find(node=>node.tagName==='form').hidden,true);
+    assert.equal(app.get('match-award').hidden,true);
+    assert.equal(app.get('match-cancel-panel').hidden,true);
+});
 test('teacher live updates change code while preserving unfinished feedback and observed output',async()=>{
     const app=environment('teacher',teacherState());await settle();
     const list=app.panels.get(1).querySelector('[data-submissions]');

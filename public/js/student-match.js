@@ -129,7 +129,7 @@
     });
     get('match-download').addEventListener('click',()=>{
         const url=URL.createObjectURL(new Blob([editor.value],{type:'text/plain;charset=utf-8'})), link=document.createElement('a');
-        link.href=url;link.download='main.cpp';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        link.href=url;link.download=state.course==='arduino-uno' ? 'sketch.ino' : 'main.cpp';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     });
     window.addEventListener('beforeunload',event=>{if (editor.value!==savedCode) {event.preventDefault();event.returnValue='';}});
     document.addEventListener('visibilitychange',()=>{if (!document.hidden) {tick();poll();}});

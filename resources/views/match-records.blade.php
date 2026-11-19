@@ -7,11 +7,11 @@
 @php($myInvitation=$record->participants->firstWhere('student_id',session('student_id')))
 <p class="mt-2 text-sm font-bold text-primary">{{ $record->status==='inviting' && $myInvitation?->response==='invited' ? 'Invitation: your response is needed' : ($record->status==='inviting' ? 'Waiting for the other coder' : ($record->status==='active' ? 'Open the live arena' : 'View result and feedback')) }}</p>
 @else
-<p class="mt-2 text-xs text-muted">{{ $record->participants->where('response','accepted')->count() }}/2 accepted</p>
+<p class="mt-2 text-xs text-muted">{{ $record->participants->where('response','accepted')->count() }}/{{ $record->participant_count }} accepted</p>
 @endif
 <a class="mt-3 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white" href="{{ route($matchRole.'.matches.show',$record) }}">{{ $matchRole==='teacher' ? 'Monitor & review' : 'Open challenge' }} →</a>
 </article>
 @empty
-<p class="col-span-full rounded-xl border border-dashed border-green-200 p-6 text-sm text-secondary">{{ $matchRole==='teacher' ? 'No two-student challenges yet. Choose two coders below to create one.' : 'No two-student invitations yet. Your teacher can invite you from Challenge Studio.' }}</p>
+<p class="col-span-full rounded-xl border border-dashed border-green-200 p-6 text-sm text-secondary">{{ $matchRole==='teacher' ? 'No coding challenges yet. Choose two or ten coders below to create one.' : 'No coding invitations yet. Your teacher can invite you from Challenge Studio.' }}</p>
 @endforelse
 </div><div class="mt-4">{{ $codingMatches->links() }}</div>

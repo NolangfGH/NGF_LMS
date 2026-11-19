@@ -46,6 +46,7 @@ class ExamItemAnalysis
             $versions[$version] ??= $this->emptyVersion($questions);
             $score = count(array_filter($results, fn (array $result): bool => $result['correct']));
             $versions[$version]['learners']++;
+            $versions[$version]['scores'][] = ['score' => $score, 'total' => count($questions)];
             $versions[$version]['total_correct'] += $score;
             foreach ($questions as $index => $question) {
                 $this->addResponse($versions[$version]['items'][$question['key']], $results[$index], $score);
@@ -58,6 +59,8 @@ class ExamItemAnalysis
         $result = $versions[$selected];
         $result['items'] = array_values(array_map($this->summarize(...), $result['items']));
         $result['average'] = $this->percent($result['total_correct'], $result['learners'] * $result['question_count']);
+        $result['metrics'] = AssessmentStatistics::metrics($result['scores']);
+        $result['least_mastered'] = collect($result['items'])->filter(static fn (array $item): bool => $item['correct'] < $item['total'])->sortBy('percent_correct')->take(5)->values()->all();
 
         return $result + [
             'excluded' => $excluded,
@@ -125,7 +128,7 @@ class ExamItemAnalysis
             $items[$key]['numbers'][] = $index + 1;
         }
 
-        return ['learners' => 0, 'total_correct' => 0, 'question_count' => count($questions), 'items' => $items];
+        return ['learners' => 0, 'total_correct' => 0, 'question_count' => count($questions), 'items' => $items, 'scores' => []];
     }
 
     private function addResponse(array &$item, array $result, int $score): void

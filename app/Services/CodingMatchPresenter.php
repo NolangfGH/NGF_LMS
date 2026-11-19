@@ -6,7 +6,7 @@ use App\Models\CodingMatch;
 
 class CodingMatchPresenter
 {
-    public function snapshot(CodingMatch $match, ?int $studentId = null): array
+    public function snapshot(CodingMatch $match, ?int $studentId = null, ?int $teacherId = null): array
     {
         $service = app(CodingMatchService::class);
         $match->load('participants.student.classroom', 'participants.submissions');
@@ -17,6 +17,8 @@ class CodingMatchPresenter
 
         return [
             'server_now' => now()->getTimestampMs(), 'phase' => $service->phase($match),
+            'participant_count' => $match->participant_count, 'course' => $match->course,
+            'can_manage' => $teacher && ($teacherId === null || (int) $match->teacher_account_id === $teacherId),
             'roster_valid' => $service->rosterValid($match),
             'started_at' => $match->started_at?->getTimestampMs(), 'deadline_at' => $match->deadline_at?->getTimestampMs(),
             'time_limit_minutes' => $match->time_limit_minutes,
@@ -33,6 +35,7 @@ class CodingMatchPresenter
                     'saved_at' => $p->draft_saved_at?->toIso8601String(),
                     'submissions' => $p->submissions->sortByDesc('id')->values()->map(fn ($s) => [
                         'id' => $s->id, 'revision' => $s->revision, 'submitted_at' => $s->submitted_at->toIso8601String(),
+                        'elapsed_seconds' => $match->started_at ? (int) ceil(max(0, $s->submitted_at->getTimestampMs() - $match->started_at->getTimestampMs()) / 1000) : null,
                         'on_time' => $s->on_time, 'verdict' => $s->verdict, 'feedback' => $s->feedback,
                         ...($teacher ? ['code' => $s->code, 'observed_output' => $s->observed_output,
                             'download_url' => route('teacher.matches.download', [$match, $s])] : []),

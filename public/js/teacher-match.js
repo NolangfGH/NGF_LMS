@@ -37,8 +37,20 @@
         compiler.dataset.onecompilerExpected = 'match-expected-output';
         const launcher = node('div', null, 'onecompiler-launcher');
         launcher.append(compiler, node('p', 'Opens this C++ code in the external OneCompiler editor for testing.', 'onecompiler-note'));
+        if (state.course === 'arduino-uno') {
+            launcher.className = 'wokwi-launcher';
+            launcher.dataset.wokwiLauncher = '';
+            const open = node('a', 'Open in Wokwi ↗', 'wokwi-open');
+            open.href = 'https://wokwi.com/projects/new/arduino-uno'; open.target = '_blank'; open.rel = 'noopener noreferrer';
+            open.dataset.wokwiOpen = ''; open.dataset.wokwiEditor = code.id;
+            const status = node('p', null, 'wokwi-status'); status.dataset.wokwiStatus = ''; status.setAttribute('role', 'status');
+            const help = node('details'); help.dataset.wokwiHelp = ''; help.append(node('summary', 'Copy sketch manually'));
+            const source = node('textarea'); source.dataset.wokwiSource = ''; source.readOnly = true; source.rows = 5; source.setAttribute('aria-label', 'Sketch to copy'); help.append(source);
+            const copy = node('button', 'Copy submitted sketch', 'wokwi-secondary'); copy.type = 'button'; copy.dataset.wokwiCopy = ''; copy.dataset.wokwiEditor = code.id; help.append(copy);
+            launcher.replaceChildren(open, node('p', 'Copies this submitted sketch. Paste into Wokwi’s sketch.ino, configure the circuit and test. The saved submission stays unchanged.', 'wokwi-note'), status, help);
+        }
         details.append(code, launcher);
-        const download=node('a','Download .cpp for testing','mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
+        const download=node('a',state.course==='arduino-uno' ? 'Download .ino for testing' : 'Download .cpp for testing','mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
         const form=node('form');form.method='POST';form.action=config.reviewUrl.replace('/submissions/0/','/submissions/'+submission.id+'/');
         const csrf=node('input');csrf.type='hidden';csrf.name='_token';csrf.value=config.csrf;form.append(csrf);
         const verdict=field(form,'Teacher verification *','verdict','select');
@@ -69,8 +81,8 @@
                     if (!list.querySelector('article')) list.replaceChildren();
                     view=submissionCard(submission);cards.set(submission.id,view);list.append(view.card);
                 }
-                view.summary.textContent=`#${submission.id} · Revision ${submission.revision} · ${submission.on_time ? 'On time' : 'Overtime'} · ${submission.verdict} · ${new Date(submission.submitted_at).toLocaleString()}`;
-                view.form.hidden=state.phase==='awarded' || state.phase==='cancelled';
+                view.summary.textContent=`#${submission.id} · Revision ${submission.revision} · ${submission.on_time ? 'On time' : 'Overtime'}${submission.elapsed_seconds != null ? ' · Used '+submission.elapsed_seconds+' seconds' : ''} · ${submission.verdict} · ${new Date(submission.submitted_at).toLocaleString()}`;
+                view.form.hidden=state.can_manage===false || state.phase==='awarded' || state.phase==='cancelled';
                 view.form.querySelectorAll('button').forEach(button=>button.disabled=actionBusy);
                 view.savedFeedback.textContent=submission.feedback ? 'Saved feedback: '+submission.feedback : '';
             }
@@ -79,8 +91,8 @@
         get('match-candidate').textContent=candidate ? `Earliest verified correct: ${candidate.name}, submission #${candidate.id}. ${state.pending_earlier ? `${state.pending_earlier} earlier submission(s) still need review.` : 'All earlier submissions have been reviewed.'}` : 'No teacher-verified correct submission yet.';
         get('match-winning-id').value=state.candidate_id || '';
         get('match-award-button').disabled=!candidate || state.pending_earlier>0 || state.phase!=='active' && state.phase!=='overtime' || !state.roster_valid || actionBusy;
-        get('match-award').hidden=['awarded','cancelled'].includes(state.phase);
-        get('match-cancel-panel').hidden=['awarded','cancelled'].includes(state.phase);
+        get('match-award').hidden=state.can_manage===false || ['awarded','cancelled'].includes(state.phase);
+        get('match-cancel-panel').hidden=state.can_manage===false || ['awarded','cancelled'].includes(state.phase);
         window.CodingMatchClock.render(state,Date.now()+offset);
     }
     async function poll() {

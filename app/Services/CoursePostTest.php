@@ -171,7 +171,9 @@ class CoursePostTest
             'answers' => $attempt->answers, 'updated_at' => $now,
         ];
         if ($attempt->question_index >= self::QUESTIONS) {
-            $score = $this->grader->grade($this->decode($attempt->questions), $this->decode($attempt->answers))['score'];
+            $grade = $this->grader->grade($this->decode($attempt->questions), $this->decode($attempt->answers));
+            $score = $grade['score'];
+            app(AssessmentStatistics::class)->capture('post_test', $attempt->id, $this->decode($attempt->questions), $this->decode($grade['grading_results']));
             $attempt->finished_at = $now;
             $attempt->score = $score;
             if ($attempt->wrong_answer_penalty > 0) {

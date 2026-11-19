@@ -8,7 +8,10 @@ use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\CodingMatchPresenter;
 use App\Services\CodingMatchService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -24,10 +27,10 @@ class CodingMatchController extends Controller
         return Student::with('classroom')->find(session('student_id')) ?? abort(401, 'Sign in as a student.');
     }
 
-    private function authorizeTeacher(CodingMatch $match): TeacherAccount
+    private function authorizeTeacher(CodingMatch $match, bool $manage = true): TeacherAccount
     {
         $teacher = $this->teacher();
-        abort_unless($match->teacher_account_id === $teacher->id, 404);
+        abort_unless((int) $match->teacher_account_id === $teacher->id || ! $manage && $match->canBeViewedByTeacher($teacher->id), 404);
 
         return $teacher;
     }
@@ -40,7 +43,7 @@ class CodingMatchController extends Controller
         return $student;
     }
 
-    public function index()
+    public function index(): Response|RedirectResponse
     {
         if (! session('teacher_id')) {
             return redirect()->route('teacher.login');
@@ -50,29 +53,35 @@ class CodingMatchController extends Controller
         return response()->view('teacher-matches', [
             'teacher' => $teacher,
             'classrooms' => $teacher->classrooms()->with(['students' => fn ($q) => $q->orderBy('surname')->orderBy('first_name')])->orderBy('grade')->orderBy('section')->get(),
-            'codingMatches' => CodingMatch::with('participants')->where('teacher_account_id', $teacher->id)->latest('id')->paginate(12),
+            'codingMatches' => CodingMatch::with('participants')->supervisedBy($teacher->id)->latest('id')->paginate(12),
+            'pendingPeerRequests' => CodingMatch::where('origin', 'student')->where('status', 'awaiting_approval')->supervisedBy($teacher->id)->latest('id')->limit(8)->get(),
         ])->header('Cache-Control', 'no-store, private');
     }
 
-    public function store(Request $request, CodingMatchService $service)
+    public function store(Request $request, CodingMatchService $service): RedirectResponse
     {
         $teacher = $this->teacher();
+        $count = $request->integer('participant_count', 2);
         $data = $request->validate([
+            'participant_count' => ['sometimes', 'required', 'integer', Rule::in([2, 10])],
+            'course' => ['sometimes', 'required', Rule::in(['cpp', 'arduino-uno'])],
             'title' => ['required', 'string', 'max:160'], 'instructions' => ['required', 'string', 'min:10', 'max:10000'],
             'sample_output' => ['required', 'string', 'max:10000'], 'time_limit_minutes' => ['required', 'integer', 'between:1,180'],
             'winner_xp' => ['required', 'integer', 'between:0,10000'], 'award_title' => ['required', 'string', 'max:80'],
-            'students' => ['required', 'array', 'list', 'size:2'], 'students.*' => ['required', 'integer', 'distinct'],
+            'students' => ['required', 'array', 'list', 'size:'.$count], 'students.*' => ['required', 'integer', 'distinct'],
         ]);
+        $data += ['participant_count' => 2, 'course' => 'cpp'];
+        $data['participant_count'] = $count;
         $match = DB::transaction(function () use ($data, $teacher, $service) {
             $students = Student::with('classroom')->whereIn('id', $data['students'])->whereHas('classroom', fn ($q) => $q->where('teacher_account_id', $teacher->id))->lockForUpdate()->get()->keyBy('id');
-            abort_unless($students->count() === 2, 422, 'Choose two different students enrolled in your own sections.');
+            abort_unless($students->count() === $data['participant_count'], 422, 'Choose the required number of different students enrolled in your own sections.');
             $match = CodingMatch::create([...collect($data)->except('students')->all(), 'teacher_account_id' => $teacher->id]);
             foreach ($data['students'] as $slot => $id) {
                 $student = $students[$id];
                 $match->participants()->create(['student_id' => $student->id, 'slot' => $slot + 1,
                     'student_name' => trim($student->first_name.' '.$student->surname).' ('.$student->nickname.')',
                     'section_label' => $student->classroom->grade.' · '.($student->classroom->section ?: $student->classroom->name),
-                    'draft_code' => "#include <iostream>\n\nint main() {\n    // Write your solution here.\n    return 0;\n}\n",
+                    'draft_code' => CodingMatchService::starterCode($data['course']),
                 ]);
                 $service->notice($match, 'student', $student->id, 'invitation', 'Your teacher invited you to “'.$match->title.'”. Accept or decline in the challenge arena.');
             }
@@ -80,25 +89,31 @@ class CodingMatchController extends Controller
             return $match;
         });
 
-        return redirect()->route('teacher.matches.show', $match)->with('match_notice', 'Challenge assigned. Both students have an invitation.');
+        return redirect()->route('teacher.matches.show', $match)->with('match_notice', 'Challenge assigned. All '.$match->participant_count.' students have an invitation.');
     }
 
-    public function teacherShow(CodingMatch $match, CodingMatchPresenter $presenter)
+    public function teacherShow(CodingMatch $match, CodingMatchPresenter $presenter): Response|RedirectResponse
     {
         if (! session('teacher_id')) {
             return redirect()->route('teacher.login');
         }
-        $teacher = $this->authorizeTeacher($match);
+        $teacher = $this->authorizeTeacher($match, false);
+        if ($match->origin === 'student' && $match->status === 'awaiting_approval') {
+            return redirect()->route('teacher.peer-challenges.review', $match);
+        }
 
-        return response()->view('teacher-match', ['teacher' => $teacher, 'match' => $match, 'snapshot' => $presenter->snapshot($match)])->header('Cache-Control', 'no-store, private');
+        return response()->view('teacher-match', ['teacher' => $teacher, 'match' => $match, 'snapshot' => $presenter->snapshot($match, null, $teacher->id)])->header('Cache-Control', 'no-store, private');
     }
 
-    public function studentShow(CodingMatch $match, CodingMatchPresenter $presenter)
+    public function studentShow(CodingMatch $match, CodingMatchPresenter $presenter): Response|RedirectResponse
     {
         if (! session('student_id')) {
             return redirect()->route('student.login');
         }
         $student = $this->authorizeStudent($match);
+        if ($match->origin === 'student' && $match->status === 'awaiting_approval') {
+            return redirect()->route('student.peer-challenges');
+        }
 
         return response()->view('student-match', ['student' => $student, 'classroom' => $student->classroom,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A'),
@@ -106,24 +121,26 @@ class CodingMatchController extends Controller
         ])->header('Cache-Control', 'no-store, private');
     }
 
-    public function status(Request $request, CodingMatch $match, CodingMatchPresenter $presenter)
+    public function status(Request $request, CodingMatch $match, CodingMatchPresenter $presenter): JsonResponse
     {
         $studentId = null;
+        $teacherId = null;
         if ($request->routeIs('teacher.*')) {
-            $this->authorizeTeacher($match);
+            $teacher = $this->authorizeTeacher($match, false);
+            $teacherId = $teacher->id;
         } else {
             $studentId = $this->authorizeStudent($match)->id;
         }
 
-        return response()->json($presenter->snapshot($match, $studentId))->header('Cache-Control', 'no-store, private');
+        return response()->json($presenter->snapshot($match, $studentId, $teacherId))->header('Cache-Control', 'no-store, private');
     }
 
-    public function records(Request $request)
+    public function records(Request $request): JsonResponse
     {
         $teacher = $request->routeIs('teacher.*');
         $query = CodingMatch::with('participants');
         if ($teacher) {
-            $query->where('teacher_account_id', $this->teacher()->id);
+            $query->supervisedBy($this->teacher()->id);
         } else {
             $query->whereHas('participants', fn ($q) => $q->where('student_id', $this->student()->id));
         }
@@ -133,7 +150,7 @@ class CodingMatchController extends Controller
         return response()->json(['html' => view('match-records', ['codingMatches' => $matches, 'matchRole' => $teacher ? 'teacher' : 'student'])->render()])->header('Cache-Control', 'no-store, private');
     }
 
-    public function respond(Request $request, CodingMatch $match, CodingMatchService $service)
+    public function respond(Request $request, CodingMatch $match, CodingMatchService $service): JsonResponse
     {
         $student = $this->authorizeStudent($match);
         $data = $request->validate(['decision' => ['required', Rule::in(['accepted', 'declined'])]]);
@@ -142,7 +159,7 @@ class CodingMatchController extends Controller
         return response()->json(['message' => 'Your response was saved.']);
     }
 
-    public function save(Request $request, CodingMatch $match, CodingMatchService $service)
+    public function save(Request $request, CodingMatch $match, CodingMatchService $service): JsonResponse
     {
         $student = $this->authorizeStudent($match);
         $data = $request->validate(['revision' => ['required', 'integer', 'min:0'], 'code' => ['present', 'nullable', 'string', 'max:50000']]);
@@ -151,7 +168,7 @@ class CodingMatchController extends Controller
         return response()->json(['revision' => $draft->draft_revision, 'saved_at' => $draft->draft_saved_at?->toIso8601String()]);
     }
 
-    public function submit(Request $request, CodingMatch $match, CodingMatchService $service)
+    public function submit(Request $request, CodingMatch $match, CodingMatchService $service): JsonResponse
     {
         $student = $this->authorizeStudent($match);
         $data = $request->validate(['revision' => ['required', 'integer', 'min:0']]);
@@ -160,7 +177,7 @@ class CodingMatchController extends Controller
         return response()->json(['id' => $record->id, 'message' => 'Final code submitted. Your teacher can now verify it.']);
     }
 
-    public function review(Request $request, CodingMatch $match, CodingMatchSubmission $submission, CodingMatchService $service)
+    public function review(Request $request, CodingMatch $match, CodingMatchSubmission $submission, CodingMatchService $service): JsonResponse|RedirectResponse
     {
         $teacher = $this->authorizeTeacher($match);
         abort_unless($submission->participant->coding_match_id === $match->id, 404);
@@ -177,17 +194,17 @@ class CodingMatchController extends Controller
         return back()->with('match_notice', 'Verification saved. The student can read your feedback.');
     }
 
-    public function download(CodingMatch $match, CodingMatchSubmission $submission)
+    public function download(CodingMatch $match, CodingMatchSubmission $submission): Response
     {
-        $this->authorizeTeacher($match);
+        $this->authorizeTeacher($match, false);
         abort_unless($submission->participant->coding_match_id === $match->id, 404);
 
         return response($submission->code, 200, ['Content-Type' => 'text/plain; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="submission-'.$submission->id.'.cpp"',
+            'Content-Disposition' => 'attachment; filename="submission-'.$submission->id.($match->course === 'arduino-uno' ? '.ino' : '.cpp').'"',
             'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'no-store, private']);
     }
 
-    public function award(Request $request, CodingMatch $match, CodingMatchService $service)
+    public function award(Request $request, CodingMatch $match, CodingMatchService $service): JsonResponse|RedirectResponse
     {
         $teacher = $this->authorizeTeacher($match);
         $data = $request->validate(['submission_id' => ['required', 'integer'], 'note' => ['required', 'string', 'min:5', 'max:2000'], 'confirmed' => ['accepted']]);
@@ -199,7 +216,7 @@ class CodingMatchController extends Controller
         return back()->with('match_notice', 'Winner finalized. XP was awarded once and is included in the leaderboard.');
     }
 
-    public function cancel(Request $request, CodingMatch $match, CodingMatchService $service)
+    public function cancel(Request $request, CodingMatch $match, CodingMatchService $service): JsonResponse|RedirectResponse
     {
         $teacher = $this->authorizeTeacher($match);
         $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:1000']]);

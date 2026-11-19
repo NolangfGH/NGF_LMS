@@ -7,7 +7,7 @@
         <label class="wokwi-label">Sketch to copy<textarea data-wokwi-source readonly rows="5" spellcheck="false" aria-label="Sketch to copy">Click Open in Wokwi to prepare the current sketch here.</textarea></label>
         <button type="button" class="wokwi-secondary" data-wokwi-copy data-wokwi-editor="{{ $wokwiEditor }}">Copy current sketch</button>
         @unless($wokwiReview ?? false)
-            <label class="wokwi-label">Paste your tested sketch.ino from Wokwi<textarea data-wokwi-return rows="5" maxlength="20000" spellcheck="false" placeholder="Copy all of sketch.ino from Wokwi, then paste it here."></textarea></label>
+            <label class="wokwi-label">Paste your tested sketch.ino from Wokwi<textarea data-wokwi-return rows="5" maxlength="{{ $wokwiMaxLength ?? 20000 }}" spellcheck="false" placeholder="Copy all of sketch.ino from Wokwi, then paste it here."></textarea></label>
             <button type="button" class="wokwi-secondary" data-wokwi-apply data-wokwi-editor="{{ $wokwiEditor }}">Use tested sketch in this editor</button>
         @endunless
     </details>

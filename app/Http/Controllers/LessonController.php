@@ -6,6 +6,7 @@ use App\Models\LessonContent;
 use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Services\AchievementService;
+use App\Services\AssessmentStatistics;
 use App\Services\CourseAssessments;
 use App\Services\LearningRewards;
 use App\Services\LessonService;
@@ -131,6 +132,10 @@ class LessonController extends Controller
                     'total' => count($definition['checks']), 'reflection' => $data['reflection'], 'answers' => $record->answers];
             }
             $record->save();
+            app(AssessmentStatistics::class)->capture('checkpoint', $record->id, $definition['checks'], array_map(
+                static fn (array $question, int $index): array => ['correct' => (int) $data['answers'][$index] === $question['correct'], 'answer' => (int) $data['answers'][$index]],
+                $definition['checks'], array_keys($definition['checks'])
+            ), $definition['topic']);
 
             return false;
         });

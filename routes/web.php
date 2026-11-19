@@ -26,6 +26,7 @@ use App\Http\Controllers\LessonContentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\MobileAppController;
 use App\Http\Controllers\ParentPortalController;
+use App\Http\Controllers\PeerChallengeController;
 use App\Http\Controllers\QuizBeeController;
 use App\Http\Controllers\QuizSubmissionController;
 use App\Http\Controllers\RecitationController;
@@ -137,7 +138,9 @@ Route::post('/teaching-library/{key}/{kind}', [TeachingLibraryController::class,
 Route::get('/teacher-content/{key}/edit', [LessonContentController::class, 'edit'])->where('key', '[a-z0-9-]+')->name('teacher.content.edit');
 Route::post('/teacher-content/{key}', [LessonContentController::class, 'save'])->where('key', '[a-z0-9-]+')->name('teacher.content.save');
 Route::get('/teacher-content/{content}/image', [LessonContentController::class, 'image'])->whereNumber('content')->name('teacher.content.image');
+Route::get('/teacher-content/{content}/section-image/{media}', [LessonContentController::class, 'sectionImage'])->whereNumber('content')->whereUuid('media')->name('teacher.content.section-image');
 Route::get('/lesson-resource/{content}', [LessonContentController::class, 'image'])->whereNumber('content')->middleware(RequireCoursePretest::class)->name('student.lesson.image');
+Route::get('/lesson-resource/{content}/section/{media}', [LessonContentController::class, 'sectionImage'])->whereNumber('content')->whereUuid('media')->middleware(RequireCoursePretest::class)->name('student.lesson.section-image');
 
 Route::post('/code-lab/{workspace}/run', [CodeExecutionController::class, 'store'])->middleware('throttle:compiler-run')->name('student.code-runs.store');
 Route::get('/code-runs/{run}', [CodeExecutionController::class, 'show'])->middleware('throttle:match-read')->name('student.code-runs.show');
@@ -238,6 +241,11 @@ Route::prefix('coding-challenges')->name('student.matches.')->group(function () 
     Route::put('/{match}/draft', [CodingMatchController::class, 'save'])->middleware('throttle:match-write')->name('save');
     Route::post('/{match}/submit', [CodingMatchController::class, 'submit'])->middleware('throttle:match-write')->name('submit');
 });
+Route::get('/peer-challenges', [PeerChallengeController::class, 'index'])->name('student.peer-challenges');
+Route::post('/peer-challenges', [PeerChallengeController::class, 'store'])->middleware('throttle:3,1')->name('student.peer-challenges.store');
+Route::post('/peer-challenges/{match}/withdraw', [PeerChallengeController::class, 'withdraw'])->whereNumber('match')->middleware('throttle:match-write')->name('student.peer-challenges.withdraw');
+Route::get('/teacher-peer-challenges/{match}', [PeerChallengeController::class, 'review'])->whereNumber('match')->name('teacher.peer-challenges.review');
+Route::post('/teacher-peer-challenges/{match}', [PeerChallengeController::class, 'decide'])->whereNumber('match')->middleware('throttle:match-write')->name('teacher.peer-challenges.decide');
 foreach (['teacher', 'student'] as $noticeRole) {
     Route::get('/'.$noticeRole.'-challenge-notices', [ChallengeNoticeController::class, 'index'])->middleware('throttle:match-read')->name($noticeRole.'.match-notices');
     Route::post('/'.$noticeRole.'-challenge-notices/read', [ChallengeNoticeController::class, 'read'])->middleware('throttle:match-write')->name($noticeRole.'.match-notices.read');

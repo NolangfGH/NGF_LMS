@@ -4,7 +4,7 @@
         if (['countdown','active','overtime'].includes(phase)) phase = now < state.started_at ? 'countdown' : (now >= state.deadline_at ? 'overtime' : 'active');
         const seconds = Math.max(0, Math.ceil(((phase === 'countdown' ? state.started_at : state.deadline_at) - now)/1000));
         const format = value => `${Math.floor(value/60)}:${String(value%60).padStart(2,'0')}`;
-        const labels = {inviting:'Waiting for both students to accept', countdown:'Get ready — coding starts together', active:'Challenge in progress', overtime:'Time limit reached — overtime submissions allowed', awarded:'Winner finalized — coding closed', cancelled:'Challenge closed without a winner'};
+        const labels = {awaiting_approval:'Waiting for teacher approval', inviting:(state.participant_count || 2) === 2 ? 'Waiting for both students to accept' : `Waiting for all ${state.participant_count} students to accept`, countdown:'Get ready — coding starts together', active:'Challenge in progress', overtime:'Time limit reached — overtime submissions allowed', awarded:'Winner finalized — coding closed', cancelled:'Challenge closed without a winner'};
         return {phase, label:labels[phase] || phase,
             writable:state.roster_valid && ['active','overtime'].includes(phase),
             time:['countdown','active'].includes(phase) ? format(seconds) : (phase === 'overtime' ? 'OVERTIME' : '—'),

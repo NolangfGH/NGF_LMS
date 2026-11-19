@@ -3,8 +3,10 @@
 @section('content')
 <section class="rounded-3xl border border-green-200 bg-white p-6 shadow-card sm:p-8">
     <h1 class="text-3xl font-extrabold tracking-tight text-primary">System Analytics</h1>
-    <p class="mt-2 max-w-3xl text-sm leading-7">Review a term exam question by question. Compare correct, incorrect and unanswered responses, then inspect which choices students selected.</p>
-    <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <p class="mt-2 max-w-3xl text-sm leading-7">Compare MPS, mean, median and mode, then find the questions and learning areas that need more practice. Results stay within your assigned classes.</p>
+    <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:items-end">
+        <label class="block text-sm font-bold text-primary">Assessment type<select name="kind" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">@foreach(\App\Services\LearningAnalytics::KINDS as $key=>$label)<option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>@endforeach</select></label>
+        @unless($quizKind)<label class="block text-sm font-bold text-primary">Course<select name="course" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="cpp" @selected($course==='cpp')>C++ Programming</option><option value="arduino-uno" @selected($course==='arduino-uno')>Arduino Uno Robotics</option></select></label>@endunless
         <label class="block text-sm font-bold text-primary">Classroom
             <select name="classroom" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">
                 <option value="">All my active sections</option>
@@ -21,12 +23,15 @@
                 @endforeach
             </select>
         </label>
-        <button class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm font-bold text-primary">Find exams</button>
+        @if($kind==='post')<label class="block text-sm font-bold text-primary">Post-test attempts<select name="attempt" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="first" @selected(($filters['attempt']??'first')==='first')>First finished attempt</option><option value="latest" @selected(($filters['attempt']??'first')==='latest')>Latest finished attempt</option></select></label>@endif
+        <button class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm font-bold text-primary">Apply filters</button>
     </form>
+    <p class="mt-3 text-xs leading-6 text-secondary">Term filters apply to quizzes, summative tests, term exams and lesson checkpoints. Starting assessments, post-tests and Quiz Bee matches are course-wide. The reasoning challenge is shared by both courses.</p>
 
+    @if($quizKind)
     @if($exams->isNotEmpty())
         <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-4 grid gap-3 border-t border-green-100 pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
-            @foreach(['term', 'classroom'] as $filter)
+            @foreach(['term', 'classroom', 'kind'] as $filter)
                 @if(isset($filters[$filter]))<input type="hidden" name="{{ $filter }}" value="{{ $filters[$filter] }}">@endif
             @endforeach
             <label class="block min-w-0 text-sm font-bold text-primary">Published exam or quiz
@@ -39,11 +44,21 @@
             </label>
             <button class="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Analyze questions</button>
         </form>
-        <p class="mt-3 text-xs leading-6 text-secondary">Term filters use the linked Grading Sheet term or a term in the assessment title. Choose All terms to find assessments without a term.</p>
+        <p class="mt-3 text-xs leading-6 text-secondary">Term filters use the linked Grading Sheet term or a term in the assessment title. Summative and term-exam categories use the assessment title. Choose Quizzes and exams / All terms to find manually named assessments.</p>
     @else
         <p class="mt-5 rounded-xl border border-dashed border-green-200 bg-paper p-4 text-sm">No published assessments match these filters. Try All terms or publish an exam in <a class="font-bold text-primary underline" href="{{ route('teacher.quizzes') }}">Quiz Builder</a>.</p>
     @endif
+    @elseif($kind==='checkpoint' || str_starts_with($kind,'bee-'))
+        <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-5 grid items-end gap-3 sm:grid-cols-[1fr_auto]">
+            @foreach(['kind'=>$kind,'course'=>$course,'term'=>$filters['term']??null,'classroom'=>$filters['classroom']??null] as $field=>$value)@if($value)<input type="hidden" name="{{ $field }}" value="{{ $value }}">@endif @endforeach
+            @if($kind==='checkpoint')<label class="block text-sm font-bold text-primary">Lesson<select name="lesson" required class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="">Choose a lesson</option>@foreach($lessons as $key=>$lesson)<option value="{{ $key }}" @selected(($filters['lesson']??'')===$key)>{{ $lesson['title'] }}</option>@endforeach</select></label>
+            @else<label class="block text-sm font-bold text-primary">Completed Quiz Bee match<select name="bee" required class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="">Choose a completed match</option>@foreach($bees as $option)<option value="{{ $option->id }}" @selected($selectedBee?->id===$option->id)>{{ $option->title }} · #{{ $option->id }}</option>@endforeach</select></label>@endif
+            <button class="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Analyze results</button>
+        </form>
+    @endif
 </section>
+
+@if($insight)@include('analytics-summary')@endif
 
 @if($report)
     <section class="mt-6 rounded-3xl border border-green-200 bg-white p-6 shadow-card sm:p-8" aria-labelledby="analysis-title">

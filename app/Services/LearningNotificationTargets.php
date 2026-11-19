@@ -36,7 +36,7 @@ class LearningNotificationTargets
         $role = $teacher ? 'teacher' : 'student';
         if ($notice->coding_match_id) {
             $match = $this->find(CodingMatch::class, $notice->coding_match_id);
-            if (! $match || ($teacher ? $match->teacher_account_id !== $actor->id : ! $match->participants()->where('student_id', $actor->id)->exists())) {
+            if (! $match || ($teacher ? ! $match->canBeViewedByTeacher($actor->id) : ! $match->participants()->where('student_id', $actor->id)->exists())) {
                 return null;
             }
 
