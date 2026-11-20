@@ -76,19 +76,20 @@ class ClassReportService
         return (int) $submission->score === array_sum($submission->rubric);
     }
 
-    public function build(TeacherAccount $teacher, Collection $rooms, ?Carbon $from, Carbon $until): array
+    public function build(TeacherAccount $teacher, Collection $rooms, ?Carbon $from, Carbon $until, ?string $course = null): array
     {
-        $catalog = app(LessonService::class)->catalogForTeacher($teacher->id, null);
+        $catalog = app(LessonService::class)->catalogForTeacher($teacher->id, $course);
         // Select only the teacher's current roster and summary evidence, never source code or AI drafts.
         $students = Student::with('classroom')->whereIn('classroom_id', $rooms->pluck('id'))->orderBy('nickname')->orderBy('id')->get();
-        $requiredKeys = $students->mapWithKeys(fn ($student) => [$student->id => array_keys(array_filter($catalog, fn ($lesson) => ($lesson['course'] ?? 'cpp') === LearningCourses::recommendedForGrade($student->classroom?->grade)))]);
+        $requiredKeys = $students->mapWithKeys(fn ($student) => [$student->id => array_keys(array_filter($catalog, fn ($lesson) => ($lesson['course'] ?? 'cpp') === ($course ?? LearningCourses::recommendedForGrade($student->classroom?->grade))))]);
         $ids = $students->pluck('id');
         $lessons = LessonProgress::whereIn('student_id', $ids)->whereIn('lesson_key', array_keys($catalog))->get();
         $labs = LabSubmission::with('workspace:id,student_id,teacher_assignment_id,activity_key')
             ->where('teacher_account_id', $teacher->id)->whereHas('workspace', fn ($query) => $query->whereIn('student_id', $ids))
+            ->when($course, fn ($query) => $query->whereHas('workspace', fn ($workspace) => $workspace->where(fn ($scope) => $scope->whereIn('activity_key', array_map(fn ($lesson) => 'practice:'.$lesson['practice'], $catalog))->orWhereHas('assignment', fn ($assignment) => $assignment->where('course', $course)))))
             ->get(['id', 'code_workspace_id', 'teacher_account_id', 'revision', 'title', 'rubric', 'score', 'created_at', 'reviewed_at']);
         $quizResults = DB::table('quiz_submissions as result')->join('teacher_quizzes as quiz', 'quiz.id', '=', 'result.teacher_quiz_id')
-            ->where('quiz.teacher_account_id', $teacher->id)->whereIn('result.student_id', $ids)
+            ->where('quiz.teacher_account_id', $teacher->id)->whereIn('result.student_id', $ids)->when($course, fn ($query) => $query->where('quiz.course', $course))
             ->get(['result.id', 'result.student_id', 'result.teacher_quiz_id', 'result.score', 'result.total_questions', 'result.graded_questions', 'result.created_at']);
         $completed = $lessons->filter(fn ($item) => in_array($item->lesson_key, $requiredKeys[$item->student_id] ?? [], true) && $this->within($item->completed_at, $from, $until));
         $periodQuizzes = $quizResults->filter(fn ($item) => $this->within($item->created_at, $from, $until));

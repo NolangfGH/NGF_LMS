@@ -73,6 +73,7 @@
             sync();
         });
         editor.addEventListener('drop', event => event.preventDefault());
+        root.addEventListener('ngf:insert-equation', event => apply('insertText', event.detail));
         form?.addEventListener('submit', event => {
             if (!root.isConnected || sync()) return;
             if (!event.defaultPrevented) { event.preventDefault(); editor.focus(); }

@@ -5,7 +5,6 @@
     const add = root.querySelector('[data-explanation-add]');
     const template = root.querySelector('[data-explanation-template]');
     const status = root.querySelector('[data-explanation-count]');
-    const previews = new WeakMap();
     const rows = () => Array.from(list.querySelectorAll('[data-explanation]'));
     const refresh = () => {
         const items = rows();
@@ -36,30 +35,10 @@
         if (!button || button.disabled || rows().length <= 1) return;
         const row = button.closest('[data-explanation]');
         if (!row || !list.contains(row)) return;
-        const previous = previews.get(row.querySelector('[data-explanation-image]'));
-        if (previous) { URL.revokeObjectURL(previous); }
+        window.dispatchEvent(new CustomEvent('ngf:explanation-removed', {detail: row}));
         row.remove();
         refresh();
         add.focus();
-    });
-    list.addEventListener('change', event => {
-        const input = event.target.closest('[data-explanation-image]');
-        const file = input?.files?.[0];
-        if (!file) { return; }
-        const previous = previews.get(input);
-        if (previous) { URL.revokeObjectURL(previous); }
-        const url = URL.createObjectURL(file);
-        previews.set(input, url);
-        const row = input.closest('[data-explanation]');
-        let preview = row.querySelector('[data-explanation-image-preview]');
-        if (!preview) {
-            preview = document.createElement('img');
-            preview.dataset.explanationImagePreview = '';
-            preview.className = 'mt-3 max-h-52 rounded-xl';
-            input.closest('div').append(preview);
-        }
-        preview.src = url;
-        preview.alt = 'Selected explanation image preview';
     });
     refresh();
 })();

@@ -44,6 +44,11 @@ class LearningCourses
         return isset(self::TITLES[$course]) && ! isset(self::TECHNOLOGY[$course]);
     }
 
+    public static function supportsEquations(string $course): bool
+    {
+        return preg_match('/^(math|science|advmath|stem|research)(7|8|9|10)$/', $course) === 1;
+    }
+
     public static function isElective(string $course): bool
     {
         return self::isAcademic($course) && preg_match('/^(research|advmath|stem)/', $course) === 1;

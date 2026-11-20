@@ -12,6 +12,7 @@
 <details class="mt-5 rounded-xl border border-green-100 bg-white p-4 text-sm">
     <summary class="cursor-pointer font-bold text-primary">{{ ($lesson['assessment'] ?? false) ? 'Exam topics' : 'Lesson coverage' }} · {{ $lesson['term'] }}</summary>
     <p class="mt-3 text-xs leading-7">{{ implode(' · ', $lesson['subtopics']) }}</p>
+    @if(($lesson['assessment'] ?? false) && str_ends_with($lesson['key'],'-term-exam'))<a href="{{ route('teacher.tos.edit',[$courseKey,$lesson['term']]) }}" class="mt-3 inline-block text-xs font-bold text-primary underline">Edit Table of Specifications (TOS) →</a>@endif
     @empty($lesson['assessment'])
         <a href="{{ route('teacher.content.edit', $lesson['key']) }}" class="mt-3 inline-block text-xs font-bold text-primary underline">Review or edit the lesson →</a>
         <a href="{{ route('teacher.ilaw.edit', $lesson['key']) }}" class="ml-3 mt-3 inline-block text-xs font-bold text-primary underline">Edit ILAW plan →</a>

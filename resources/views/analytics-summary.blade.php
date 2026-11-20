@@ -3,7 +3,7 @@
     <h2 id="statistics-title" class="mt-2 text-2xl font-extrabold text-primary">{{ $insightTitle }}</h2>
     <p class="mt-3 text-sm leading-7">{{ $insight['basis'] }}</p>
     @if(count($insight['versions']) > 1)
-        <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-4 flex flex-wrap items-end gap-3">
+        <form method="GET" action="{{ route($analyticsRoute) }}" class="mt-4 flex flex-wrap items-end gap-3">
             @foreach(collect($filters)->except('version') as $field=>$value)@if($value !== null)<input type="hidden" name="{{ $field }}" value="{{ $value }}">@endif @endforeach
             <label class="text-sm font-bold">Question set<select name="version" class="mt-2 block rounded-xl border bg-white p-3 font-normal"><option value="">All recorded sets</option>@foreach($insight['versions'] as $key=>$info)<option value="{{ $key }}" @selected(($insight['selected_version']??null)===$key)>{{ $info['has_items'] ? 'Question set '.strtoupper(substr($key,0,6)) : 'Historical totals only' }} · {{ $info['count'] }} results</option>@endforeach</select></label><button class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm font-bold">Show set</button>
         </form>

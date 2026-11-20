@@ -18,6 +18,12 @@
     <span>{{ $principalLabel }}</span>
 </a>
 @endforeach
+<a href="{{ route('school.analytics') }}" @if(request()->routeIs('school.analytics')) aria-current="page" @endif class="principal-menu-link">
+    <span class="material-symbols-outlined" aria-hidden="true">analytics</span><span>System Analytics</span>
+</a>
+<a href="{{ route('school.reports') }}" @if(request()->routeIs('school.reports.*','school.reports')) aria-current="page" @endif class="principal-menu-link">
+    <span class="material-symbols-outlined" aria-hidden="true">monitoring</span><span>Reports</span>
+</a>
 <a href="{{ route('school.ilaw.index') }}" @if(request()->routeIs('school.ilaw.*')) aria-current="page" @endif class="principal-menu-link">
     <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
     <span>ILAW Lesson Plan Reviews</span>

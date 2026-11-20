@@ -211,17 +211,18 @@ class SchoolOverviewService
                 ->when($course, fn ($query) => $query->where(fn ($scope) => $scope->whereIn('lesson_key', array_keys(LearningCourses::lessons($course)))->orWhereIn('lesson_key', LessonContent::whereIn('teacher_account_id', $teachers->keys())->where('definition->course', $course)->select('lesson_key'))))
                 ->latest()->paginate(12)->withQueryString();
             $definitions = LessonContent::whereIn('teacher_account_id', $rows->getCollection()->pluck('teacher_account_id'))->whereIn('lesson_key', $rows->getCollection()->pluck('lesson_key'))
-                ->get(['teacher_account_id', 'lesson_key', 'definition'])->keyBy(fn ($content) => $content->teacher_account_id.':'.$content->lesson_key);
+                ->get(['id', 'teacher_account_id', 'lesson_key', 'definition'])->keyBy(fn ($content) => $content->teacher_account_id.':'.$content->lesson_key);
             $rows->through(function ($plan) use ($classrooms, $teachers, $definitions) {
-                $definition = $definitions->get($plan->teacher_account_id.':'.$plan->lesson_key)?->definition ?? (LearningCourses::lessons()[$plan->lesson_key] ?? config('legacy_lessons.'.$plan->lesson_key, []));
+                $resource = $definitions->get($plan->teacher_account_id.':'.$plan->lesson_key);
+                $definition = $resource?->definition ?? (LearningCourses::lessons()[$plan->lesson_key] ?? config('legacy_lessons.'.$plan->lesson_key, []));
 
                 return ['title' => $definition['title'] ?? 'Saved lesson plan', 'teacher' => $teachers->get($plan->teacher_account_id)?->fullName(), 'sections' => $this->section($classrooms->firstWhere('id', $plan->classroom_id)),
-                    'status' => $plan->status, 'instructions' => $plan->instructions, 'due_at' => $plan->due_at, 'definition' => $this->lessonDefinition($definition)];
+                    'status' => $plan->status, 'instructions' => $plan->instructions, 'due_at' => $plan->due_at, 'definition' => $this->lessonDefinition($definition), 'content_id' => $resource?->id];
             });
             $contents = LessonContent::whereIn('teacher_account_id', $selected ? $classrooms->pluck('teacher_account_id')->unique() : $teachers->keys())
                 ->when($course, fn ($query) => $query->where('definition->course', $course))
                 ->latest()->paginate(12, ['id', 'teacher_account_id', 'definition', 'status'], 'content_page')->withQueryString()
-                ->through(fn ($content) => ['teacher' => $teachers->get($content->teacher_account_id)?->fullName(), 'status' => $content->status, 'definition' => $this->lessonDefinition($content->definition)]);
+                ->through(fn ($content) => ['id' => $content->id, 'teacher' => $teachers->get($content->teacher_account_id)?->fullName(), 'status' => $content->status, 'definition' => $this->lessonDefinition($content->definition)]);
 
             return compact('rows', 'contents');
         }

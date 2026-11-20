@@ -1,6 +1,7 @@
 @extends('layouts.teacher-learning')
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/grading-sheet.css') }}?v=20261101-auto">
+<div class="mb-4 rounded-xl border border-green-200 bg-white p-4"><p class="font-bold text-primary">New: DepEd subject grading sheets &amp; printable learner cards</p><p class="mt-1 text-xs">Choose any Grade 7–10 subject and term. Your existing gradebook remains unchanged.</p><a class="mt-2 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white" href="{{ route('teacher.subject-grading') }}">Open subject grading templates →</a></div>
 <div class="grading-shell" data-grading-sheet data-has-unsaved="{{ old('revision') ? 'true' : 'false' }}" data-status-url="{{ route('teacher.grading.status', $query) }}" data-print="{{ request()->boolean('print') ? 'true' : 'false' }}" data-masked="{{ request()->boolean('mask') ? 'true' : 'false' }}">
     <div class="grading-heading">
         <div><p class="grading-eyebrow">Curriculum Console / Assessment records</p><h1>Grading Sheet</h1><p>Turn saved C++ learning evidence into clear, actionable assessment records.</p>@if($room)<p class="grading-help">{{ $room->grade }} · {{ $room->section ?: $room->name }} · {{ $schoolYear }} · {{ config('grading.terms.'.$term) }}</p>@endif</div>

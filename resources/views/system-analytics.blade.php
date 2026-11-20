@@ -3,13 +3,14 @@
 @section('content')
 <section class="rounded-3xl border border-green-200 bg-white p-6 shadow-card sm:p-8">
     <h1 class="text-3xl font-extrabold tracking-tight text-primary">System Analytics</h1>
-    <p class="mt-2 max-w-3xl text-sm leading-7">Compare MPS, mean, median and mode, then find the questions and learning areas that need more practice. Results stay within your assigned classes.</p>
-    <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:items-end">
+    <p class="mt-2 max-w-3xl text-sm leading-7">Compare MPS, mean, median and mode, then find the questions and learning areas that need more practice. {{ $schoolView ? 'School-wide results are limited to active teachers and sections at your school.' : 'Results stay within your assigned classes.' }}</p>
+    <form method="GET" action="{{ route($analyticsRoute) }}" class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:items-end">
         <label class="block text-sm font-bold text-primary">Assessment type<select name="kind" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">@foreach(\App\Services\LearningAnalytics::KINDS as $key=>$label)<option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>@endforeach</select></label>
         <label class="block text-sm font-bold text-primary">Course<select name="course" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">@if($quizKind)<option value="" @selected(!isset($filters['course']))>All subjects (including older unclassified quizzes)</option>@endif @foreach(\App\Services\LearningCourses::TITLES as $optionCourse=>$optionLabel)<option value="{{ $optionCourse }}" @selected(($filters['course']??($quizKind?'':$course))===$optionCourse)>{{ $optionLabel }}</option>@endforeach</select></label>
+        @if($schoolView)<label class="block text-sm font-bold text-primary">Grade level<select name="grade" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="">All grades</option>@foreach(['Grade 7','Grade 8','Grade 9','Grade 10'] as $grade)<option value="{{ $grade }}" @selected(($filters['grade']??'')===$grade)>{{ $grade }}</option>@endforeach</select></label>@endif
         <label class="block text-sm font-bold text-primary">Classroom
             <select name="classroom" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">
-                <option value="">All my active sections</option>
+                <option value="">{{ $schoolView ? 'All school sections' : 'All my active sections' }}</option>
                 @foreach($classrooms as $classroom)
                     <option value="{{ $classroom->id }}" @selected($selectedRoom?->id === $classroom->id)>{{ $classroom->grade }} · {{ $classroom->section ?: $classroom->name }}</option>
                 @endforeach
@@ -30,7 +31,7 @@
 
     @if($quizKind)
     @if($exams->isNotEmpty())
-        <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-4 grid gap-3 border-t border-green-100 pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
+        <form method="GET" action="{{ route($analyticsRoute) }}" class="mt-4 grid gap-3 border-t border-green-100 pt-4 sm:grid-cols-[1fr_auto] sm:items-end">
             @foreach(['term', 'classroom', 'kind'] as $filter)
                 @if(isset($filters[$filter]))<input type="hidden" name="{{ $filter }}" value="{{ $filters[$filter] }}">@endif
             @endforeach
@@ -46,11 +47,11 @@
         </form>
         <p class="mt-3 text-xs leading-6 text-secondary">Term filters use the linked Grading Sheet term or a term in the assessment title. Summative and term-exam categories use the assessment title. Choose Quizzes and exams / All terms to find manually named assessments.</p>
     @else
-        <p class="mt-5 rounded-xl border border-dashed border-green-200 bg-paper p-4 text-sm">No published assessments match these filters. Try All terms or publish an exam in <a class="font-bold text-primary underline" href="{{ route('teacher.quizzes') }}">Quiz Builder</a>.</p>
+        <p class="mt-5 rounded-xl border border-dashed border-green-200 bg-paper p-4 text-sm">No published assessments match these filters. Try All terms. @unless($schoolView)Publish an exam in <a class="font-bold text-primary underline" href="{{ route('teacher.quizzes') }}">Quiz Builder</a>.@endunless</p>
     @endif
     @elseif($kind==='checkpoint' || str_starts_with($kind,'bee-'))
-        <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-5 grid items-end gap-3 sm:grid-cols-[1fr_auto]">
-            @foreach(['kind'=>$kind,'course'=>$course,'term'=>$filters['term']??null,'classroom'=>$filters['classroom']??null] as $field=>$value)@if($value)<input type="hidden" name="{{ $field }}" value="{{ $value }}">@endif @endforeach
+        <form method="GET" action="{{ route($analyticsRoute) }}" class="mt-5 grid items-end gap-3 sm:grid-cols-[1fr_auto]">
+            @foreach(['kind'=>$kind,'course'=>$course,'term'=>$filters['term']??null,'classroom'=>$filters['classroom']??null,'grade'=>$filters['grade']??null] as $field=>$value)@if($value)<input type="hidden" name="{{ $field }}" value="{{ $value }}">@endif @endforeach
             @if($kind==='checkpoint')<label class="block text-sm font-bold text-primary">Lesson<select name="lesson" required class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="">Choose a lesson</option>@foreach($lessons as $key=>$lesson)<option value="{{ $key }}" @selected(($filters['lesson']??'')===$key)>{{ $lesson['title'] }}</option>@endforeach</select></label>
             @else<label class="block text-sm font-bold text-primary">Completed Quiz Bee match<select name="bee" required class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="">Choose a completed match</option>@foreach($bees as $option)<option value="{{ $option->id }}" @selected($selectedBee?->id===$option->id)>{{ $option->title }} · #{{ $option->id }}</option>@endforeach</select></label>@endif
             <button class="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">Analyze results</button>
@@ -69,8 +70,8 @@
                 <p class="mt-2 text-xs leading-6">Calculated from the first saved submission per learner. {{ $report['selected_version'] === $report['current_version'] ? 'Current exam version.' : 'Earlier exam version.' }}</p>
             </div>
             @if($report['versions']->count() > 1)
-                <form action="{{ route('teacher.analytics') }}" method="GET" class="flex flex-wrap items-end gap-2">
-                    @foreach(['term', 'classroom', 'exam'] as $filter)
+                <form action="{{ route($analyticsRoute) }}" method="GET" class="flex flex-wrap items-end gap-2">
+                    @foreach(['term', 'classroom', 'exam', 'grade'] as $filter)
                         @if(isset($filters[$filter]))<input type="hidden" name="{{ $filter }}" value="{{ $filters[$filter] }}">@endif
                     @endforeach
                     <label class="text-sm font-bold text-primary">Exam version

@@ -18,6 +18,7 @@ use App\Http\Controllers\CourseAssessmentController;
 use App\Http\Controllers\CoursePostTestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DonationController;
+use App\Http\Controllers\ExamSpecificationController;
 use App\Http\Controllers\GradingSheetController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IlawPlanController;
@@ -31,12 +32,14 @@ use App\Http\Controllers\QuizBeeController;
 use App\Http\Controllers\QuizSubmissionController;
 use App\Http\Controllers\RecitationController;
 use App\Http\Controllers\SchoolAdminController;
+use App\Http\Controllers\SchoolReportController;
 use App\Http\Controllers\SecondChanceController;
 use App\Http\Controllers\StaffPasswordController;
 use App\Http\Controllers\StaffRegistrationStatusController;
 use App\Http\Controllers\StudentRegistrationApprovalController;
 use App\Http\Controllers\StudentRegistrationStatusController;
 use App\Http\Controllers\StudentSettingsController;
+use App\Http\Controllers\SubjectGradingController;
 use App\Http\Controllers\SystemAnalyticsController;
 use App\Http\Controllers\TeacherLessonController;
 use App\Http\Controllers\TeacherSettingsController;
@@ -94,6 +97,9 @@ Route::post('/assessment-activity', [AssessmentActivityController::class, 'store
 Route::get('/staff-registration-status', [StaffRegistrationStatusController::class, 'show'])->name('staff.registration.status');
 Route::get('/staff-registration-status/check', [StaffRegistrationStatusController::class, 'check'])->middleware('throttle:match-read')->name('staff.registration.check');
 Route::get('/school-overview', [SchoolAdminController::class, 'overview'])->name('school.overview');
+Route::get('/school-overview/analytics', [SystemAnalyticsController::class, 'index'])->name('school.analytics');
+Route::get('/school-overview/reports', [SchoolReportController::class, 'index'])->name('school.reports');
+Route::get('/school-overview/reports/export', [SchoolReportController::class, 'export'])->name('school.reports.export');
 Route::prefix('school-overview/lesson-plans')->name('school.ilaw.')->controller(IlawPlanController::class)->group(function () {
     Route::get('/', 'reviews')->name('index');
     Route::get('/{plan}', 'show')->whereNumber('plan')->name('show');
@@ -133,12 +139,18 @@ Route::post('/teacher-classes/{classroom}/archive', [SchoolAdminController::clas
 
 Route::get('/teacher-content', [LessonContentController::class, 'index'])->name('teacher.content');
 Route::get('/teaching-library', [TeachingLibraryController::class, 'index'])->name('teacher.library');
+Route::prefix('teacher-tos/{course}/{term}')->where(['course' => '[a-z0-9-]+', 'term' => 'Term[123]'])->name('teacher.tos.')->controller(ExamSpecificationController::class)->group(function () {
+    Route::get('/', 'edit')->name('edit');
+    Route::put('/', 'save')->middleware('throttle:match-write')->name('save');
+    Route::get('/download', 'download')->name('download');
+});
 Route::get('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'show'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge|article|recitation')->name('teacher.library.show');
 Route::post('/teaching-library/{key}/{kind}', [TeachingLibraryController::class, 'store'])->where('key', '[a-z0-9-]+')->where('kind', 'quiz|assignment|challenge|article|recitation')->middleware('throttle:20,1')->name('teacher.library.store');
 Route::get('/teacher-content/{key}/edit', [LessonContentController::class, 'edit'])->where('key', '[a-z0-9-]+')->name('teacher.content.edit');
 Route::post('/teacher-content/{key}', [LessonContentController::class, 'save'])->where('key', '[a-z0-9-]+')->name('teacher.content.save');
 Route::get('/teacher-content/{content}/image', [LessonContentController::class, 'image'])->whereNumber('content')->name('teacher.content.image');
 Route::get('/teacher-content/{content}/section-image/{media}', [LessonContentController::class, 'sectionImage'])->whereNumber('content')->whereUuid('media')->name('teacher.content.section-image');
+Route::get('/school-overview/lesson-image/{content}/{media}', [LessonContentController::class, 'sectionImage'])->whereNumber('content')->whereUuid('media')->name('school.lesson.section-image');
 Route::get('/lesson-resource/{content}', [LessonContentController::class, 'image'])->whereNumber('content')->middleware(RequireCoursePretest::class)->name('student.lesson.image');
 Route::get('/lesson-resource/{content}/section/{media}', [LessonContentController::class, 'sectionImage'])->whereNumber('content')->whereUuid('media')->middleware(RequireCoursePretest::class)->name('student.lesson.section-image');
 
@@ -156,6 +168,14 @@ Route::prefix('grading-sheet')->name('teacher.grading')->controller(GradingSheet
     Route::delete('/{sheet}/assessments/{assessment}', 'destroyAssessment')->whereNumber(['sheet', 'assessment'])->name('.assessments.destroy');
     Route::put('/{sheet}/students/{student}', 'scores')->whereNumber(['sheet', 'student'])->name('.scores');
     Route::post('/{sheet}/import', 'import')->whereNumber('sheet')->middleware('throttle:20,1')->name('.import');
+});
+Route::prefix('subject-grading')->name('teacher.subject-grading')->controller(SubjectGradingController::class)->group(function () {
+    Route::get('/', 'index');
+    Route::post('/', 'create')->middleware('throttle:match-write')->name('.create');
+    Route::get('/card', 'card')->name('.card');
+    Route::get('/export', 'export')->name('.export');
+    Route::put('/{sheet}/settings', 'settings')->whereNumber('sheet')->name('.settings');
+    Route::put('/{sheet}/students/{student}', 'scores')->whereNumber(['sheet', 'student'])->name('.scores');
 });
 
 foreach (['student', 'teacher'] as $notificationRole) {

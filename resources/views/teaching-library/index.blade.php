@@ -22,7 +22,7 @@
     <p class="my-3 text-sm leading-6">Two summative exams and one term exam for each term. Each has 25 multiple-choice questions, automatic checking and the usual quiz XP. Review a set, copy it to a private draft, and edit it in Quiz Builder.</p>
     <div class="grid gap-3 md:grid-cols-3">
         @foreach($termExams as $exam)
-            <a href="{{ route('teacher.library.show', [$exam['key'], 'quiz']) }}" class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm font-bold text-primary hover:bg-green-100">{{ $exam['title'] }} →</a>
+            <div class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm"><a href="{{ route('teacher.library.show', [$exam['key'], 'quiz']) }}" class="font-bold text-primary hover:underline">{{ $exam['title'] }} →</a>@if(str_ends_with($exam['key'],'-term-exam'))<a href="{{ route('teacher.tos.edit',[$course,$exam['term']]) }}" class="mt-2 block text-xs font-bold text-primary underline">Edit Table of Specifications (TOS) →</a>@endif</div>
         @endforeach
     </div>
 </details>

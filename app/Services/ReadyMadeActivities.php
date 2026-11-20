@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Arr;
+
 class ReadyMadeActivities
 {
     /** @return array<string, array<string, mixed>> */
@@ -96,16 +98,24 @@ class ReadyMadeActivities
                 if (LearningCourses::isAcademic($course)) {
                     $balanced = [[], [], []];
                     $position = 0;
-                    foreach (AcademicCurriculum::pack($course)['exam'][$term] as $round) {
-                        foreach ($round as $question) {
-                            $balanced[$position++ % 3][] = ['type' => 'multiple_choice', 'prompt' => $question['prompt'], 'options' => $question['options'], 'correct' => [$question['options'][$question['correct']]], 'explanation' => $question['why']];
+                    foreach (AcademicCurriculum::pack($course)['exam'][$term] as $variant => $round) {
+                        foreach ($round as $item => $question) {
+                            $lesson = array_values($lessons)[intdiv($item, 5)];
+                            $level = match ($variant) {
+                                0 => 'remember',
+                                1, 2 => 'understand',
+                                3 => str_starts_with($question['prompt'], 'In ') || str_starts_with($question['prompt'], 'Sa pagtalakay') ? 'remember' : 'apply',
+                                default => 'analyze',
+                            };
+                            $balanced[$position++ % 3][] = ['type' => 'multiple_choice', 'prompt' => $question['prompt'], 'options' => $question['options'], 'correct' => [$question['options'][$question['correct']]], 'explanation' => $question['why'], 'item_spec' => ExamSpecification::item($lesson, $level)];
                         }
                     }
                     $questions = array_merge(...$balanced);
                 } else {
                     for ($position = 0; $position < 10; $position++) {
                         foreach ($lessons as $lesson) {
-                            $questions[] = $lesson['quiz']['questions'][$position];
+                            $question = $lesson['quiz']['questions'][$position];
+                            $questions[] = $question + ['item_spec' => ExamSpecification::item($lesson, ExamSpecification::suggestLevel($question['prompt']))];
                         }
                     }
                 }
@@ -114,9 +124,9 @@ class ReadyMadeActivities
                     $set = array_splice($questions, 0, 25);
                     $title = ($course === 'arduino-uno' ? 'Arduino' : LearningCourses::title($course)).' · '.str_replace('Term', 'Term ', $term).' · '.$label;
                     $exams[$key] = ['key' => $key, 'title' => $title, 'topic' => $label, 'term' => $term,
-                        'course' => $course, 'assessment' => true, 'subtopics' => array_column($lessons, 'topic'),
+                        'course' => $course, 'assessment' => true, 'subtopics' => array_column($lessons, 'topic'), 'item_specs' => array_column($set, 'item_spec'),
                         'quiz' => ['title' => $title, 'instructions' => 'Answer 25 multiple-choice questions about the lessons in this term. Read the examples carefully. Your teacher reviews this editable draft before publishing.',
-                            'questions' => $set, 'xp' => 0, 'time_limit' => 25, 'untimed' => false, 'question_seconds' => 60]];
+                            'questions' => array_map(fn (array $question): array => Arr::except($question, ['item_spec']), $set), 'xp' => 0, 'time_limit' => 25, 'untimed' => false, 'question_seconds' => 60]];
                 }
             }
 
@@ -134,6 +144,7 @@ class ReadyMadeActivities
                 array_splice($options, crc32($prompt) % 4, 0, [$answer]);
                 $rounds[$term][$position][] = [
                     'type' => 'multiple_choice', 'prompt' => $prompt, 'options' => $options, 'correct' => [$answer],
+                    'item_spec' => ExamSpecification::item($lesson, ExamSpecification::suggestLevel($prompt)),
                 ];
             }
         }
@@ -145,12 +156,13 @@ class ReadyMadeActivities
             foreach (['summative-1' => 'Summative Exam 1', 'summative-2' => 'Summative Exam 2', 'term-exam' => 'Term Exam'] as $type => $label) {
                 $key = strtolower($term).'-'.$type;
                 $title = 'Term '.substr($term, -1).' · '.$label;
+                $set = array_shift($questionSets);
                 $exams[$key] = [
                     'key' => $key, 'title' => $title, 'topic' => $label, 'term' => $term,
-                    'subtopics' => $topics[$term], 'assessment' => true,
+                    'course' => 'cpp', 'subtopics' => $topics[$term], 'assessment' => true, 'item_specs' => array_column($set, 'item_spec'),
                     'quiz' => [
                         'title' => $title, 'instructions' => 'Choose one answer for each of the 25 questions. Read code carefully and trace variable values before answering.',
-                        'questions' => array_shift($questionSets),
+                        'questions' => array_map(fn (array $question): array => Arr::except($question, ['item_spec']), $set),
                         'xp' => 0, 'time_limit' => 25, 'untimed' => false, 'question_seconds' => 60,
                     ],
                 ];

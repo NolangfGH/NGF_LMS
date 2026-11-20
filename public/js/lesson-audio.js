@@ -106,7 +106,16 @@
             const walker = document.createTreeWalker(passage, 4);
             const textNodes = [];
             while (walker.nextNode()) textNodes.push(walker.currentNode);
+            const equations = new Set();
             textNodes.forEach(node => {
+                const equation = node.parentElement?.closest('[data-equation-speech]');
+                if (equation) {
+                    if (!equations.has(equation)) {
+                        equations.add(equation); elements.push(equation);
+                        words.push({text: equation.dataset.equationSpeech, passage: index});
+                    }
+                    return;
+                }
                 const fragment = document.createDocumentFragment();
                 node.textContent.split(/(\s+)/).filter(Boolean).forEach(part => {
                     if (/^\s+$/.test(part)) { fragment.appendChild(document.createTextNode(part)); return; }

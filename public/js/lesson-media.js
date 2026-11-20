@@ -12,9 +12,10 @@
         frame.allow = 'encrypted-media; fullscreen; picture-in-picture';
         frame.allowFullscreen = true;
         frame.referrerPolicy = 'strict-origin-when-cross-origin';
-        frame.style.cssText = 'width:100%;aspect-ratio:16/9;border:0;border-radius:12px;display:block';
+        frame.className = 'lesson-video-frame';
         player.append(frame);
         player.hidden = false;
         button.hidden = true;
+        if (root.querySelector('[data-video-placeholder]')) root.querySelector('[data-video-placeholder]').hidden = true;
     });
 })();

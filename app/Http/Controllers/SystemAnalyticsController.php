@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classroom;
 use App\Models\QuizBeeMatch;
 use App\Models\Student;
 use App\Models\TeacherAccount;
@@ -24,9 +25,13 @@ class SystemAnalyticsController extends Controller
         if (! $teacher) {
             return redirect()->route('teacher.login');
         }
-        abort_unless($teacher->hasStaffAccess() && ! $teacher->isPrincipal(), 403);
+        $schoolView = $request->routeIs('school.analytics');
+        abort_unless($teacher->hasStaffAccess() && ($schoolView ? ($teacher->isPrincipal() || $teacher->isSchoolAdmin()) : ! $teacher->isPrincipal()), 403);
+        $analyticsRoute = $schoolView ? 'school.analytics' : 'teacher.analytics';
+        $teacherIds = $schoolView ? TeacherAccount::where('school', $teacher->school)->where('staff_access_status', 'active')->whereIn('role', ['teacher', 'school_admin'])->pluck('id') : collect([$teacher->id]);
         $filters = $request->validate([
             'classroom' => ['nullable', 'integer', 'min:1'],
+            'grade' => ['nullable', Rule::in(['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'])],
             'term' => ['nullable', Rule::in(['Term1', 'Term2', 'Term3'])],
             'exam' => ['nullable', 'integer', 'min:1'],
             'version' => ['nullable', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
@@ -38,20 +43,24 @@ class SystemAnalyticsController extends Controller
         $kind = $filters['kind'] ?? 'quiz';
         $course = $filters['course'] ?? 'cpp';
         $quizKind = in_array($kind, ['quiz', 'summative-1', 'summative-2', 'term-exam'], true);
-        $classrooms = $teacher->classrooms()->orderBy('grade')->orderBy('section')->get(['id', 'name', 'grade', 'section']);
+        $classrooms = $schoolView ? Classroom::whereIn('teacher_account_id', $teacherIds)->whereNull('archived_at')->orderBy('grade')->orderBy('section')->get(['id', 'name', 'grade', 'section', 'teacher_account_id'])
+            : $teacher->classrooms()->orderBy('grade')->orderBy('section')->get(['id', 'name', 'grade', 'section', 'teacher_account_id']);
+        if ($schoolView && isset($filters['grade'])) {
+            $classrooms = $classrooms->where('grade', $filters['grade'])->values();
+        }
         $selectedRoom = isset($filters['classroom']) ? $classrooms->firstWhere('id', (int) $filters['classroom']) : null;
         abort_if(isset($filters['classroom']) && ! $selectedRoom, 404);
         $scope = $selectedRoom ? collect([$selectedRoom->id]) : $classrooms->pluck('id');
 
         $terms = DB::table('grading_assessments as assessment')
             ->join('grading_sheets as sheet', 'sheet.id', '=', 'assessment.grading_sheet_id')
-            ->where('sheet.teacher_account_id', $teacher->id)->whereIn('sheet.classroom_id', $scope)
+            ->whereIn('sheet.teacher_account_id', $teacherIds)->whereIn('sheet.classroom_id', $scope)
             ->where('assessment.source_type', 'quiz')->get(['assessment.source_id', 'sheet.term'])->groupBy('source_id');
-        $exams = TeacherQuiz::where('teacher_account_id', $teacher->id)->where('status', 'published')
+        $exams = TeacherQuiz::whereIn('teacher_account_id', $teacherIds)->where('status', 'published')
             ->where(fn ($query) => $query->whereIn('classroom_id', $scope)
                 ->orWhereHas('classrooms', fn ($rooms) => $rooms->whereIn('classrooms.id', $scope)))
             ->when($quizKind && isset($filters['course']), fn ($query) => $query->where('course', $course))
-            ->with('classrooms:id')->latest('id')->get(['id', 'classroom_id', 'title', 'course']);
+            ->with('classrooms:id')->latest('id')->get(['id', 'classroom_id', 'title', 'course', 'teacher_account_id']);
         $exams->each(function (TeacherQuiz $exam) use ($terms): void {
             $linked = $terms->get($exam->id, collect())->pluck('term')->unique()->sort()->values()->all();
             if ($linked === [] && preg_match('/\bterm[\s_-]*([123])\b/i', $exam->title, $matches)) {
@@ -78,15 +87,22 @@ class SystemAnalyticsController extends Controller
         $report = null;
         if ($exam) {
             $targets = $exam->classrooms->pluck('id')->push($exam->classroom_id);
-            $exam->questions = TeacherQuiz::where('teacher_account_id', $teacher->id)->where('status', 'published')->findOrFail($exam->id)->questions;
-            $report = $analysis->report($exam, $scope->intersect($targets)->values(), $filters['version'] ?? null);
+            $exam->questions = TeacherQuiz::whereIn('teacher_account_id', $teacherIds)->where('status', 'published')->findOrFail($exam->id)->questions;
+            $examScope = $schoolView ? $classrooms->where('teacher_account_id', $exam->teacher_account_id)->pluck('id')->intersect($scope) : $scope;
+            $report = $analysis->report($exam, $examScope->intersect($targets)->values(), $filters['version'] ?? null);
         }
 
-        $lessons = collect(app(LessonService::class)->catalogForTeacher($teacher->id, $course))
+        $catalog = app(LessonService::class)->catalogForTeacher($schoolView ? null : $teacher->id, $course);
+        if ($schoolView) {
+            foreach ($classrooms->whereIn('id', $scope)->pluck('teacher_account_id')->unique() as $ownerId) {
+                $catalog += app(LessonService::class)->catalogForTeacher($ownerId, $course);
+            }
+        }
+        $lessons = collect($catalog)
             ->filter(fn (array $lesson): bool => ! isset($filters['term']) || ($lesson['term'] ?? null) === $filters['term']);
         $selectedLesson = isset($filters['lesson']) ? $lessons->get($filters['lesson']) : null;
         abort_if($kind === 'checkpoint' && isset($filters['lesson']) && ! $selectedLesson, 404);
-        $bees = QuizBeeMatch::where('teacher_account_id', $teacher->id)->where('course', $course)->where('status', 'completed')
+        $bees = QuizBeeMatch::whereIn('teacher_account_id', $teacherIds)->where('course', $course)->where('status', 'completed')
             ->where('category', $kind === 'bee-group' ? 'group' : 'individual')
             ->whereIn('id', DB::table('quiz_bee_members')->whereIn('student_id', Student::whereIn('classroom_id', $scope)->select('id'))->select('quiz_bee_match_id'))
             ->latest('id')->get();
@@ -111,7 +127,7 @@ class SystemAnalyticsController extends Controller
             $insight = $analytics->beeResults($selectedBee, $scope, $filters['version'] ?? null);
         }
 
-        return response()->view('system-analytics', compact('teacher', 'classrooms', 'selectedRoom', 'filters', 'exams', 'exam', 'report', 'kind', 'course', 'quizKind', 'lessons', 'selectedLesson', 'bees', 'selectedBee', 'insight', 'insightTitle'))
+        return response()->view('system-analytics', compact('teacher', 'classrooms', 'selectedRoom', 'filters', 'exams', 'exam', 'report', 'kind', 'course', 'quizKind', 'lessons', 'selectedLesson', 'bees', 'selectedBee', 'insight', 'insightTitle', 'schoolView', 'analyticsRoute'))
             ->header('Cache-Control', 'private, no-store');
     }
 }

@@ -1,0 +1,29 @@
+.equation-composer { border:1px solid #c6dcb9; border-radius:.75rem; background:#f7fbf4; font-size:.8rem; color:#234820; min-width:0; }
+.equation-composer > summary { cursor:pointer; display:flex; align-items:center; gap:.45rem; padding:.75rem; font-weight:750; color:#14532d; }
+.equation-composer > summary::before { content:'▸'; }
+.equation-composer[open] > summary::before { content:'▾'; }
+.equation-composer > summary small { margin-inline-start:auto; padding:.2rem .45rem; font-size:.65rem; border-radius:.4rem; background:#dcefd2; white-space:nowrap; }
+.equation-composer-body { padding:.75rem; border-top:1px solid #d3e6cb; }
+.equation-composer-body p { line-height:1.6; margin-bottom:.6rem; }
+.equation-composer label { display:block; margin-top:.65rem; font-size:.75rem; font-weight:700; }
+.equation-composer select,.equation-composer textarea { display:block; width:100%; background:white; border:1px solid #bdd0b5; border-radius:.45rem; margin-top:.35rem; padding:.55rem; color:#253b24; }
+.equation-composer textarea { font-family: ui-monospace,monospace; font-size:.85rem; }
+.equation-symbols,.equation-actions { display:flex; flex-wrap:wrap; gap:.3rem; margin-block:.6rem; }
+.equation-symbols button { border:1px solid #cbdcc4; border-radius:.35rem; background:white; padding:.25rem .5rem; min-width:32px; min-height:32px; color:#14532d; font-size:1rem; font-family:Georgia,serif; }
+.equation-symbols button:hover { background:#dcefd2; }
+.equation-display-preview { margin-top:.65rem; min-height:4rem; display:grid; place-items:center; padding:.7rem; border:1px dashed #a8c29c; border-radius:.5rem; background:white; overflow:auto; color:#243c22; }
+.equation-status { font-size:.7rem; margin-top:.4rem; overflow-wrap:anywhere; }
+.equation-actions button { background:#14532d; color:white; border-radius:.45rem; padding:.55rem .8rem; font-size:.78rem; font-weight:750; }
+.equation-actions button:last-child { background:#fff; border:1px solid #a6c49b; color:#14532d; }
+.equation-actions button:disabled { opacity:.45; cursor:not-allowed; }
+.equation-reference { margin-top:.65rem; border-top:1px solid #d6e8cc; padding-top:.6rem; }
+.equation-reference > summary { cursor:pointer; font-weight:700; margin-bottom:.5rem; }
+.equation-reference code { background:#e7f0e1; padding:.1rem .2rem; font-size:.75rem; }
+.equation-preview-label { font-size:.7rem; font-weight:750; text-transform:uppercase; letter-spacing:.03em; }
+.equation-document-preview { max-height:14rem; overflow:auto; background:white; border:1px solid #d0e2c8; border-radius:.5rem; padding:.7rem; white-space:pre-wrap; overflow-wrap:anywhere; color:#263a24; line-height:1.8; }
+.lesson-equation { display:inline-block; max-width:100%; vertical-align:middle; line-height:1.4; overflow-x:auto; overflow-y:hidden; padding-inline:.1em; }
+.lesson-equation math { font-size:1.16em; color:inherit; font-family:math, 'Cambria Math', 'STIX Two Math', serif; }
+.lesson-equation-display { display:block; text-align:center; margin:.45em 0; padding:.4em .2em; max-width:100%; }
+.lesson-equation-display math { margin-inline:auto; }
+.equation-display-preview .lesson-equation-display { margin:0; font-size:1.1rem; }
+.lesson-equation[data-speech-active] { outline:2px solid #c09c22; border-radius:.25em; }

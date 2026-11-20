@@ -74,7 +74,8 @@ class LessonContentController extends Controller
             'minutes' => ['required', 'integer', 'between:1,60'], 'status' => ['required', 'in:draft,published'],
             'sections' => ['required', 'array', 'list', 'min:1', 'max:12'], 'sections.*.title' => ['required', 'string', 'max:100'], 'sections.*.text' => ['required', 'string', 'max:5000'],
             'sections.*.code' => ['nullable', 'string', 'max:20000'], 'sections.*.output' => ['nullable', 'string', 'max:5000'],
-            'sections.*' => ['required', 'array:title,text,formatted_text,code,output,media_key,image,image_alt,remove_image,video_url'],
+            'sections.*' => ['required', 'array:title,text,formatted_text,code,output,media_key,image,image_alt,remove_image,video_url,'.implode(',', LessonMedia::formatFields())],
+            ...LessonMedia::formatRules(),
             'sections.*.formatted_text' => ['nullable', 'string', 'max:20000'],
             'sections.*.media_key' => ['nullable', 'uuid', 'distinct'],
             'sections.*.image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4000,max_height=4000'],
@@ -153,6 +154,10 @@ class LessonContentController extends Controller
         $teacher = TeacherAccount::find(session('teacher_id'));
         $allowed = request()->routeIs('teacher.content.section-image') ? $teacher && $teacher->id === (int) $content->teacher_account_id
             : $student && $content->status === 'published' && (int) $student->classroom?->teacher_account_id === (int) $content->teacher_account_id;
+        if (request()->routeIs('school.lesson.section-image')) {
+            $allowed = $teacher?->hasStaffAccess() && ($teacher->isPrincipal() || $teacher->isSchoolAdmin())
+                && TeacherAccount::whereKey($content->teacher_account_id)->where('school', $teacher->school)->where('staff_access_status', 'active')->whereIn('role', ['teacher', 'school_admin'])->exists();
+        }
         $section = collect($content->definition['sections'] ?? [])->firstWhere('media_key', $media);
         $path = $section['image_path'] ?? '';
         abort_unless($allowed && str_starts_with($path, 'lesson-resources/') && Storage::disk('local')->exists($path), 404);
