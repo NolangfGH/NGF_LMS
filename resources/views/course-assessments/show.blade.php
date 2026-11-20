@@ -5,7 +5,7 @@
 <h1 class="mb-3 mt-4 text-3xl font-extrabold text-primary">{{ $title }}</h1>
 <p class="mb-5 rounded-xl border border-green-200 bg-white p-4 text-sm leading-6">New submissions: <b>+5 XP for each correct answer</b> and <b>−3 XP for each wrong answer</b>. Gains are recorded first, then deductions; your balance stops at zero. Results can be submitted once. Previously completed assessments keep their saved XP. <a href="{{ route('student.achievements') }}#xp-history" class="font-bold underline">View XP history →</a></p>
 @if($assessment === 'reasoning')
-    <p class="mb-5 max-w-3xl text-sm leading-6">This 50-question student reasoning exercise is required once before starting either course. Completion at any score counts. It reports your performance on these items. The skill breakdown is for classroom practice and personal reflection.</p>
+    <p class="mb-5 max-w-3xl text-sm leading-6">This 50-question student reasoning exercise is required once before starting any subject. Completion at any score counts. It reports your performance on these items. The skill breakdown is for classroom practice and personal reflection.</p>
 @endif
 @if($result)
     <div class="rounded-2xl border border-green-100 bg-white p-6 shadow-card">

@@ -53,7 +53,7 @@ class LessonReadinessTest extends TestCase
         $this->assertSame(100, $student->fresh()->xp);
     }
 
-    public function test_one_valid_reasoning_submission_counts_for_both_courses_and_preserves_the_selected_course(): void
+    public function test_one_valid_reasoning_submission_counts_for_all_subjects_and_preserves_the_selected_course(): void
     {
         [, $student] = $this->learner();
         $service = app(CourseAssessments::class);
@@ -66,11 +66,12 @@ class LessonReadinessTest extends TestCase
         $this->assertDatabaseEmpty('course_assessment_results');
         $this->get($show)->assertOk()->assertSee('Student Reasoning Challenge')->assertSee($submit, false);
         $this->post($submit, ['answers' => $answers])->assertRedirect($show);
-        $this->get($show)->assertOk()->assertSee('Starting requirement complete for both')->assertSee(route('student.assessments.show', 'arduino-pre-test'), false);
+        $this->get($show)->assertOk()->assertSee('Shared reasoning requirement complete for all learning subjects')->assertSee(route('student.assessments.show', 'arduino-pre-test'), false);
         $this->post($submit, ['answers' => $answers])->assertRedirect($show);
         $this->assertDatabaseCount('course_assessment_results', 1);
         $this->get(route('student.lesson.show', 'introduction'))->assertRedirect(route('student.assessments.show', 'pre-test'));
         $this->get(route('student.lesson.show', 'arduino-robotics'))->assertRedirect(route('student.assessments.show', 'arduino-pre-test'));
+        $this->get(route('student.lesson.show', 'math7-polygons'))->assertRedirect(route('student.assessments.show', 'math7-pre-test'));
         $this->completed($student, CourseAssessments::PRE);
         $this->get(route('student.lesson.show', 'introduction'))->assertOk();
         $this->get(route('student.lesson.show', 'arduino-robotics'))->assertRedirect(route('student.assessments.show', 'arduino-pre-test'));
