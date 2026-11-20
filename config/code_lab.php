@@ -2,6 +2,7 @@
 
 $topics = (require __DIR__.'/cpp_curriculum.php')['lessons'];
 $templates = require __DIR__.'/ready_made_activities.php';
+$creative = require __DIR__.'/creative_technology.php';
 $challengeActivities = [];
 foreach ($topics as $key => $lesson) {
     $task = $templates[$key]['challenge'];
@@ -12,6 +13,8 @@ foreach ($topics as $key => $lesson) {
 return [
     'assignment_starter' => "#include <iostream>\n\nint main() {\n    // Write your solution to the assignment here.\n    return 0;\n}\n",
     'activities' => [
+        ...$creative['ct7']['practice'],
+        ...$creative['ct10']['practice'],
         ...(require __DIR__.'/arduino_curriculum.php')['practice'],
         ...$challengeActivities,
         ...array_combine(

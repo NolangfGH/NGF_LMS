@@ -33,6 +33,10 @@ class CourseAssessments
         self::ARDUINO_PRE => 'Arduino Uno Pre-Test',
         self::ARDUINO_POST => 'Arduino Uno Post-Test',
         self::REASONING => 'Student Reasoning Challenge',
+        'ct7-pre-test' => 'Creative Technology 7 Pre-Test',
+        'ct7-post-test' => 'Creative Technology 7 Post-Test',
+        'ct10-pre-test' => 'Creative Technology 10 Pre-Test',
+        'ct10-post-test' => 'Creative Technology 10 Post-Test',
     ];
 
     public function hasCompleted(Student $student, string $assessment): bool
@@ -42,7 +46,7 @@ class CourseAssessments
 
     public function nextLessonAssessment(Student $student, string $course = 'cpp'): ?string
     {
-        foreach ([self::REASONING, $course === 'arduino-uno' ? self::ARDUINO_PRE : self::PRE] as $assessment) {
+        foreach ([self::REASONING, LearningCourses::pretest($course)] as $assessment) {
             if (! $this->hasCompleted($student, $assessment)) {
                 return $assessment;
             }
@@ -58,17 +62,21 @@ class CourseAssessments
 
     public static function selectedCourse(): string
     {
-        return request()->query('course') === 'arduino-uno' ? 'arduino-uno' : 'cpp';
+        $course = request()->query('course');
+
+        return in_array($course, LearningCourses::keys(), true) ? $course : 'cpp';
     }
 
     public static function courseQuery(?string $course = null): array
     {
-        return ($course ?? self::selectedCourse()) === 'arduino-uno' ? ['course' => 'arduino-uno'] : [];
+        $course ??= self::selectedCourse();
+
+        return $course === 'cpp' ? [] : ['course' => $course];
     }
 
     public function progress(Student $student, string $course = 'cpp'): array
     {
-        $keys = array_keys(config($course === 'arduino-uno' ? 'arduino_curriculum.lessons' : 'lessons'));
+        $keys = array_keys(LearningCourses::lessons($course));
         $completed = LessonProgress::where('student_id', $student->id)->whereIn('lesson_key', $keys)->whereNotNull('completed_at')->count();
 
         return ['completed' => $completed, 'total' => count($keys)];
@@ -84,10 +92,11 @@ class CourseAssessments
     /** @return list<array{skill: string, type: string, prompt: string, options: list<string>, correct: list<string>}> */
     public function questions(string $assessment): array
     {
-        if (in_array($assessment, [self::ARDUINO_PRE, self::ARDUINO_POST], true)) {
+        $course = LearningCourses::assessmentCourse($assessment);
+        if ($course && $course !== 'cpp') {
             $questions = [];
-            $offset = $assessment === self::ARDUINO_PRE ? 0 : 2;
-            foreach (app(ReadyMadeActivities::class)->catalog('arduino-uno') as $lesson) {
+            $offset = $assessment === LearningCourses::pretest($course) ? 0 : 2;
+            foreach (app(ReadyMadeActivities::class)->catalog($course) as $lesson) {
                 foreach (array_slice($lesson['quiz']['questions'], $offset, 2) as $question) {
                     $questions[] = Arr::only($question, ['type', 'prompt', 'options', 'correct']) + ['skill' => $lesson['term'].' · '.$lesson['topic']];
                 }
@@ -138,7 +147,7 @@ class CourseAssessments
 
     public function submit(Student $student, string $assessment, array $questions, array $answers, QuizGrader $grader): void
     {
-        abort_if(in_array($assessment, [self::POST, self::ARDUINO_POST], true), 403);
+        abort_unless($assessment === self::REASONING || in_array($assessment, array_map(LearningCourses::pretest(...), LearningCourses::keys()), true), 403);
         DB::transaction(function () use ($student, $assessment, $questions, $answers, $grader): void {
             $current = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
             abort_unless($current->classroom && ! $current->classroom->archived_at, 403);
@@ -191,8 +200,8 @@ class CourseAssessments
             'student_id' => $student->id, 'teacher_account_id' => $teacher?->id, 'award_type' => 'excellence', 'course' => $course,
             'certificate_code' => (string) Str::ulid(), 'recipient' => $recipient ?: $student->nickname,
             'school' => $teacher?->school ?: 'NGF_C++CodeQuest', 'issuer' => $teacher?->fullName() ?: 'NGF_C++CodeQuest',
-            'title' => $course === 'arduino-uno' ? 'Certificate of Excellence in Arduino Uno Robotics' : 'Certificate of Excellence in C++ Average Programmer',
-            'message' => $course === 'arduino-uno' ? 'Awarded for completing the Arduino Uno Robotics course and passing the timed 50-question certification exam with at least 45 correct answers. Practical skills remain subject to teacher review.' : 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.',
+            'title' => $course === 'cpp' ? 'Certificate of Excellence in C++ Average Programmer' : 'Certificate of Excellence in '.LearningCourses::title($course),
+            'message' => $course === 'cpp' ? 'Awarded for completing the C++ Programming course and passing the timed C++ certification exam.' : 'Awarded for completing the '.LearningCourses::title($course).' course and passing the timed 50-question certification exam with at least 45 correct answers. Practical skills remain subject to teacher review.',
             'issued_at' => now(),
         ]);
     }

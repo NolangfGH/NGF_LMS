@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\CourseAssessments;
+use App\Services\LearningCourses;
 use App\Services\QuizGrader;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -114,7 +115,7 @@ class CourseAssessmentController extends Controller
 
     private function studentView(string $view, Student $student, Collection $results, array $data = []): Response
     {
-        $courseKey = ($data['assessment'] ?? null) === CourseAssessments::ARDUINO_PRE ? 'arduino-uno' : CourseAssessments::selectedCourse();
+        $courseKey = LearningCourses::assessmentCourse($data['assessment'] ?? '') ?? CourseAssessments::selectedCourse();
         $assessmentXp = isset($data['result']->id) ? DB::table('xp_events')->where('student_id', $student->id)
             ->where('source_type', 'course_assessment')->where('source_id', (string) $data['result']->id)->orderBy('id')->get() : collect();
 
@@ -122,7 +123,7 @@ class CourseAssessmentController extends Controller
             'student' => $student, 'classroom' => $student->classroom,
             'assessmentXp' => $assessmentXp,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A'),
-            'courseKey' => $courseKey, 'courseQuery' => CourseAssessments::courseQuery($courseKey), 'courseTitle' => $courseKey === 'arduino-uno' ? 'Arduino Uno' : 'C++', 'pretest' => $results->get($courseKey === 'arduino-uno' ? CourseAssessments::ARDUINO_PRE : CourseAssessments::PRE),
+            'courseKey' => $courseKey, 'courseQuery' => CourseAssessments::courseQuery($courseKey), 'courseTitle' => $courseKey === 'arduino-uno' ? 'Arduino Uno' : ($courseKey === 'cpp' ? 'C++' : LearningCourses::title($courseKey)), 'pretest' => $results->get(LearningCourses::pretest($courseKey)),
             'reasoning' => $results->get(CourseAssessments::REASONING), 'courseProgress' => $this->assessments->progress($student, $courseKey),
         ])->header('Cache-Control', 'private, no-store');
     }

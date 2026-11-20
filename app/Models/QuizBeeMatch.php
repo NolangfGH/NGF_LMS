@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Services\LearningCourses;
 use Illuminate\Database\Eloquent\Model;
 
 class QuizBeeMatch extends Model
 {
     public const LEVELS = ['easy', 'average', 'difficult'];
 
-    public const COURSES = ['cpp' => 'C++ Programming', 'arduino-uno' => 'Arduino Uno Robotics'];
+    public const COURSES = LearningCourses::TITLES;
 
     protected $attributes = ['course' => 'cpp'];
 
@@ -19,6 +20,10 @@ class QuizBeeMatch extends Model
 
     public static function questionBank(string $course): array
     {
+        if (LearningCourses::isCreative($course)) {
+            return config('creative_technology.'.$course.'.bee');
+        }
+
         return config($course === 'arduino-uno' ? 'arduino_quiz_bee' : 'quiz_bee.questions');
     }
 

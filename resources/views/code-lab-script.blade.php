@@ -99,6 +99,11 @@ labForm.onsubmit=async event=>{
 };
 document.getElementById('checkCode').onclick=()=>{
     const source=editor.value;
+    if(labInitial.environment==='design'){
+        const list=document.getElementById('codeChecks');list.replaceChildren();
+        ['Identify the intended user and measurable success criteria.', 'Label dimensions and units; describe the tool and steps used.', 'Separate expected results from actual observations.', 'Explain one revision and one limitation.'].forEach(note=>{const item=document.createElement('li');item.className='rounded-xl bg-paper p-3 leading-6';item.textContent=note;list.append(item);});
+        list.scrollIntoView({behavior:'smooth',block:'nearest'});return;
+    }
     // Mask comments and quoted text so brackets and keywords inside them are not treated as code.
     const masked=source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g,match=>match.replace(/[^\n]/g,' '));
     const notes=[];const stack=[];const pairs={')':'(',']':'[','}':'{'};let unbalanced=false;

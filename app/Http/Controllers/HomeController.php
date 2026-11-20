@@ -18,10 +18,12 @@ use App\Services\AchievementService;
 use App\Services\ChallengeService;
 use App\Services\CodeExecutionService;
 use App\Services\CodeLabTimer;
+use App\Services\CourseAssessments;
 use App\Services\DashboardService;
 use App\Services\HomepageService;
 use App\Services\Judge0Client;
 use App\Services\LeaderboardPeriods;
+use App\Services\LearningCourses;
 use App\Services\LearningNotifications;
 use App\Services\LessonService;
 use App\Services\QuizAttemptService;
@@ -431,7 +433,7 @@ class HomeController extends Controller
             return $data;
         }
 
-        return response()->view('learn', [...$data, 'lessonPath' => app(LessonService::class)->path($data['student'], $request->query('course') === 'arduino-uno' ? 'arduino-uno' : 'cpp')])->header('Cache-Control', 'private, no-store');
+        return response()->view('learn', [...$data, 'lessonPath' => app(LessonService::class)->path($data['student'], CourseAssessments::selectedCourse())])->header('Cache-Control', 'private, no-store');
     }
 
     public function studentCodeLab(Request $request)
@@ -460,10 +462,11 @@ class HomeController extends Controller
         return view('code-lab', [...$data, 'labActivity' => $activity, 'workspace' => $workspace,
             'labSubmissions' => $workspace->submissions()->latest()->get(), 'practiceActivities' => $practiceActivities,
             'arduinoLab' => $workspace->isArduino(),
-            'compilerConfigured' => ! $workspace->isArduino() && app(Judge0Client::class)->configured(),
+            'designLab' => $workspace->environment() === 'design',
+            'compilerConfigured' => $workspace->environment() === 'cpp' && app(Judge0Client::class)->configured(),
             'codeRuns' => CodeRun::where('code_workspace_id', $workspace->id)->latest()->limit(10)->get(),
             'visibleTests' => collect(app(CodeExecutionService::class)->cases($workspace))->filter(fn ($case) => empty($case['hidden']))->values(),
-            'labClient' => ['environment' => $workspace->isArduino() ? 'arduino-uno' : 'cpp', 'filename' => $workspace->isArduino() ? 'sketch.ino' : 'main.cpp', 'revision' => $workspace->revision, 'starter' => $activity['code'], 'saveUrl' => route('student.code-lab.save', $workspace), 'submitUrl' => route('student.code-lab.submit', $workspace), 'statusUrl' => route('student.code-lab.status', $workspace), 'timer' => app(CodeLabTimer::class)->describe($workspace)]]);
+            'labClient' => ['environment' => $workspace->environment(), 'filename' => $workspace->filename(), 'revision' => $workspace->revision, 'starter' => $activity['code'], 'saveUrl' => route('student.code-lab.save', $workspace), 'submitUrl' => route('student.code-lab.submit', $workspace), 'statusUrl' => route('student.code-lab.status', $workspace), 'timer' => app(CodeLabTimer::class)->describe($workspace)]]);
     }
 
     public function studentChallenges()
@@ -545,7 +548,7 @@ class HomeController extends Controller
             return $data;
         }
 
-        return response()->view('progress', [...$data, 'lessonPath' => app(LessonService::class)->path($data['student'])])->header('Cache-Control', 'private, no-store');
+        return response()->view('progress', [...$data, 'lessonPath' => app(LessonService::class)->path($data['student'], CourseAssessments::selectedCourse())])->header('Cache-Control', 'private, no-store');
     }
 
     public function studentAssignments()
@@ -594,7 +597,7 @@ class HomeController extends Controller
             'classrooms' => $teacher->classrooms()->withCount('students')->orderBy('grade')->orderBy('section')->get(),
             'quizzes' => $quizzes,
             'editableQuizzes' => $quizzes->map(fn ($quiz) => [
-                'id' => $quiz->id, 'title' => $quiz->title, 'instructions' => $quiz->instructions,
+                'id' => $quiz->id, 'title' => $quiz->title, 'instructions' => $quiz->instructions, 'course' => $quiz->course,
                 'classroom_id' => $quiz->classroom_id, 'xp' => $quiz->xp, 'time_limit' => $quiz->time_limit,
                 'untimed' => $quiz->untimed, 'question_seconds' => $quiz->question_seconds,
                 'classroom_ids' => $quiz->classrooms->isNotEmpty() ? $quiz->classrooms->pluck('id')->all() : [$quiz->classroom_id],
@@ -657,6 +660,7 @@ class HomeController extends Controller
             'opens_at' => ['nullable', 'date_format:Y-m-d\\TH:i'],
             'closes_at' => ['nullable', 'required_with:opens_at', 'date_format:Y-m-d\\TH:i', 'after:opens_at'],
             'title' => ['required', 'string', 'max:255'],
+            'course' => ['sometimes', 'nullable', Rule::in(LearningCourses::keys())],
             'instructions' => ['nullable', 'string', 'max:5000'],
             'questions' => ['required', 'array', 'min:1', 'max:50'],
             'questions.*.type' => ['required', 'in:multiple_choice,identification,true_false,multiple_answer,code_output,fill_code,debugging,ordering'],
@@ -703,6 +707,7 @@ class HomeController extends Controller
                 'teacher_account_id' => $teacher->id,
                 'classroom_id' => $classroomIds[0],
                 'title' => $data['title'], 'instructions' => $data['instructions'] ?? null,
+                'course' => array_key_exists('course', $data) ? $data['course'] : $quiz->course,
                 'opens_at' => ! empty($data['opens_at']) ? Carbon::createFromFormat('Y-m-d\\TH:i', $data['opens_at'], config('learning.timezone'))->utc() : null,
                 'closes_at' => ! empty($data['closes_at']) ? Carbon::createFromFormat('Y-m-d\\TH:i', $data['closes_at'], config('learning.timezone'))->utc() : null,
                 'questions' => $questions, 'status' => $data['status'], 'xp' => $data['xp'], 'time_limit' => $data['time_limit'],

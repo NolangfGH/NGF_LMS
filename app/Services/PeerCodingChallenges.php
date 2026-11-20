@@ -34,7 +34,7 @@ class PeerCodingChallenges
                 throw ValidationException::withMessages(['opponent' => 'A match between you and this learner is already open.']);
             }
             $lesson = $this->unlockedLesson($challenger, $course, $lessonKey);
-            if ($teacherIds->count() > 1 && ! isset(config('lessons')[$lessonKey]) && ! isset(config('arduino_curriculum.lessons')[$lessonKey])) {
+            if ($teacherIds->count() > 1 && ! isset(LearningCourses::lessons()[$lessonKey])) {
                 throw ValidationException::withMessages(['lesson' => 'Choose a shared course topic when the learners have different teachers.']);
             }
             $activity = app(ReadyMadeActivities::class)->catalog($course)[$lessonKey]['challenge'] ?? [];

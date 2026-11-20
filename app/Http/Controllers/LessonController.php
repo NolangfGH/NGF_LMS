@@ -31,7 +31,7 @@ class LessonController extends Controller
         if (! $student) {
             return redirect()->route('student.login');
         }
-        $next = $service->path($student, request('course') === 'arduino-uno' ? 'arduino-uno' : 'cpp')['next'];
+        $next = $service->path($student, CourseAssessments::selectedCourse())['next'];
 
         return redirect()->route('student.lesson.show', $next['key'] ?? array_key_first($service->catalog(CourseAssessments::selectedCourse())));
     }

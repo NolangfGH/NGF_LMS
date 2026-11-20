@@ -8,6 +8,7 @@ use App\Models\TeacherAccount;
 use App\Models\TeacherQuiz;
 use App\Services\ExamItemAnalysis;
 use App\Services\LearningAnalytics;
+use App\Services\LearningCourses;
 use App\Services\LessonService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class SystemAnalyticsController extends Controller
             'exam' => ['nullable', 'integer', 'min:1'],
             'version' => ['nullable', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
             'kind' => ['nullable', Rule::in(array_keys(LearningAnalytics::KINDS))],
-            'course' => ['nullable', Rule::in(['cpp', 'arduino-uno'])],
+            'course' => ['nullable', Rule::in(LearningCourses::keys())],
             'lesson' => ['nullable', 'string', 'max:60'], 'bee' => ['nullable', 'integer', 'min:1'],
             'attempt' => ['nullable', Rule::in(['first', 'latest'])],
         ]);
@@ -49,7 +50,8 @@ class SystemAnalyticsController extends Controller
         $exams = TeacherQuiz::where('teacher_account_id', $teacher->id)->where('status', 'published')
             ->where(fn ($query) => $query->whereIn('classroom_id', $scope)
                 ->orWhereHas('classrooms', fn ($rooms) => $rooms->whereIn('classrooms.id', $scope)))
-            ->with('classrooms:id')->latest('id')->get(['id', 'classroom_id', 'title']);
+            ->when($quizKind && isset($filters['course']), fn ($query) => $query->where('course', $course))
+            ->with('classrooms:id')->latest('id')->get(['id', 'classroom_id', 'title', 'course']);
         $exams->each(function (TeacherQuiz $exam) use ($terms): void {
             $linked = $terms->get($exam->id, collect())->pluck('term')->unique()->sort()->values()->all();
             if ($linked === [] && preg_match('/\bterm[\s_-]*([123])\b/i', $exam->title, $matches)) {
@@ -92,7 +94,7 @@ class SystemAnalyticsController extends Controller
         abort_if(str_starts_with($kind, 'bee-') && isset($filters['bee']) && ! $selectedBee, 404);
         $insightTitle = LearningAnalytics::KINDS[$kind];
         if (in_array($kind, ['pre', 'post'], true)) {
-            $insightTitle = ($course === 'arduino-uno' ? 'Arduino Uno Robotics' : 'C++ Programming').' · '.$insightTitle;
+            $insightTitle = LearningCourses::title($course).' · '.$insightTitle;
         }
         $insight = null;
         if ($report) {

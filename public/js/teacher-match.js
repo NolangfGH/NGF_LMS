@@ -37,7 +37,7 @@
         compiler.dataset.onecompilerExpected = 'match-expected-output';
         const launcher = node('div', null, 'onecompiler-launcher');
         launcher.append(compiler, node('p', 'Opens this C++ code in the external OneCompiler editor for testing.', 'onecompiler-note'));
-        if (state.course === 'arduino-uno') {
+        if (['arduino-uno','ct10'].includes(state.course)) {
             launcher.className = 'wokwi-launcher';
             launcher.dataset.wokwiLauncher = '';
             const open = node('a', 'Open in Wokwi ↗', 'wokwi-open');
@@ -49,8 +49,9 @@
             const copy = node('button', 'Copy submitted sketch', 'wokwi-secondary'); copy.type = 'button'; copy.dataset.wokwiCopy = ''; copy.dataset.wokwiEditor = code.id; help.append(copy);
             launcher.replaceChildren(open, node('p', 'Copies this submitted sketch. Paste into Wokwi’s sketch.ino, configure the circuit and test. The saved submission stays unchanged.', 'wokwi-note'), status, help);
         }
-        details.append(code, launcher);
-        const download=node('a',state.course==='arduino-uno' ? 'Download .ino for testing' : 'Download .cpp for testing','mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
+        details.append(code);
+        if (state.course !== 'ct7') details.append(launcher);
+        const download=node('a',state.course==='ct7' ? 'Download design notebook' : (['arduino-uno','ct10'].includes(state.course) ? 'Download .ino for testing' : 'Download .cpp for testing'),'mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
         const form=node('form');form.method='POST';form.action=config.reviewUrl.replace('/submissions/0/','/submissions/'+submission.id+'/');
         const csrf=node('input');csrf.type='hidden';csrf.name='_token';csrf.value=config.csrf;form.append(csrf);
         const verdict=field(form,'Teacher verification *','verdict','select');

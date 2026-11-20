@@ -8,6 +8,7 @@ use App\Models\RecitationRound;
 use App\Models\TeacherAccount;
 use App\Models\TeacherAssignment;
 use App\Models\TeacherQuiz;
+use App\Services\LearningCourses;
 use App\Services\ReadyMadeActivities;
 use App\Services\RecitationService;
 use Illuminate\Contracts\View\View;
@@ -28,7 +29,7 @@ class TeachingLibraryController extends Controller
         }
         abort_if($teacher->isPrincipal(), 403);
 
-        $data = $request->validate(['course' => ['nullable', Rule::in(['cpp', 'arduino-uno'])], 'q' => ['nullable', 'string', 'max:100'], 'term' => ['nullable', Rule::in(['Term1', 'Term2', 'Term3'])]]);
+        $data = $request->validate(['course' => ['nullable', Rule::in(LearningCourses::keys())], 'q' => ['nullable', 'string', 'max:100'], 'term' => ['nullable', Rule::in(['Term1', 'Term2', 'Term3'])]]);
         $course = $data['course'] ?? 'cpp';
         $query = mb_strtolower(trim($data['q'] ?? ''));
         $catalog = array_filter($library->catalog($course), static fn (array $lesson): bool => (empty($data['term']) || $lesson['term'] === $data['term'])
@@ -82,6 +83,9 @@ class TeachingLibraryController extends Controller
 
         $activity = DB::transaction(function () use ($teacher, $data, $lesson, $kind): TeacherQuiz|TeacherAssignment {
             $attributes = Arr::except($lesson[$kind], ['sample_input']);
+            if ($kind === 'quiz') {
+                $attributes['course'] = $lesson['course'] ?? 'cpp';
+            }
             if ($kind !== 'quiz') {
                 $attributes['school_term'] = $data['school_term'];
             }
@@ -142,8 +146,10 @@ class TeachingLibraryController extends Controller
 
     private function template(ReadyMadeActivities $library, string $key, string $kind): array
     {
-        if ($kind === 'quiz' && preg_match('/^(?:arduino-)?term[123]-/', $key)) {
-            $exam = $library->termExams(str_starts_with($key, 'arduino-') ? 'arduino-uno' : 'cpp')[$key] ?? null;
+        if ($kind === 'quiz' && preg_match('/^(?:(?:arduino|ct7|ct10)-)?term[123]-/', $key)) {
+            $exam = $library->termExams(match (true) {
+                str_starts_with($key, 'arduino-') => 'arduino-uno', str_starts_with($key, 'ct7-') => 'ct7', str_starts_with($key, 'ct10-') => 'ct10', default => 'cpp'
+            })[$key] ?? null;
             abort_unless($exam, 404);
 
             return $exam;

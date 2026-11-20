@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CodeRun;
 use App\Models\LabSubmission;
 use App\Models\LessonProgress;
 use App\Models\Student;
@@ -16,20 +17,40 @@ class ClassReportService
 {
     private function execution(TeacherAccount $teacher, Collection $students, ?Carbon $from, Carbon $until): array
     {
-        $runs=\App\Models\CodeRun::where('teacher_account_id',$teacher->id)->whereIn('student_id',$students->pluck('id'))->where('mode','tests')->where('status','completed')
-            ->when($from,fn($query)=>$query->where('created_at','>=',$from))->where('created_at','<',$until)->latest()->limit(1000)->get(['results']);
-        $passed=0;$total=0;$errors=[];
-        foreach($runs as $run)foreach($run->results ?? [] as $result){$total++;if($result['passed'] ?? false)$passed++;elseif(isset($result['status']))$errors[$result['status']]=($errors[$result['status']] ?? 0)+1;}
-        $tasks=TeacherAssignment::where('teacher_account_id',$teacher->id)->where('status','published')->whereNotNull('due_at')->where('due_at','<',now()->min($until))
-            ->when($from,fn($query)=>$query->where('due_at','>=',$from))->with('classrooms')->get();
-        $pairs=DB::table('lab_submissions as submission')->join('code_workspaces as workspace','workspace.id','=','submission.code_workspace_id')
-            ->where('submission.teacher_account_id',$teacher->id)->whereIn('workspace.student_id',$students->pluck('id'))->where('submission.created_at','<',$until)
-            ->get(['workspace.student_id','workspace.teacher_assignment_id'])->mapWithKeys(fn($row)=>[$row->student_id.':'.$row->teacher_assignment_id=>true]);
-        $missing=0;
-        foreach($students as $student)foreach($tasks as $task){$targets=$task->classrooms->pluck('id')->push($task->classroom_id);if($targets->contains($student->classroom_id)&&!isset($pairs[$student->id.':'.$task->id]))$missing++;}
+        $runs = CodeRun::where('teacher_account_id', $teacher->id)->whereIn('student_id', $students->pluck('id'))->where('mode', 'tests')->where('status', 'completed')
+            ->when($from, fn ($query) => $query->where('created_at', '>=', $from))->where('created_at', '<', $until)->latest()->limit(1000)->get(['results']);
+        $passed = 0;
+        $total = 0;
+        $errors = [];
+        foreach ($runs as $run) {
+            foreach ($run->results ?? [] as $result) {
+                $total++;
+                if ($result['passed'] ?? false) {
+                    $passed++;
+                } elseif (isset($result['status'])) {
+                    $errors[$result['status']] = ($errors[$result['status']] ?? 0) + 1;
+                }
+            }
+        }
+        $tasks = TeacherAssignment::where('teacher_account_id', $teacher->id)->where('status', 'published')->whereNotNull('due_at')->where('due_at', '<', now()->min($until))
+            ->when($from, fn ($query) => $query->where('due_at', '>=', $from))->with('classrooms')->get();
+        $pairs = DB::table('lab_submissions as submission')->join('code_workspaces as workspace', 'workspace.id', '=', 'submission.code_workspace_id')
+            ->where('submission.teacher_account_id', $teacher->id)->whereIn('workspace.student_id', $students->pluck('id'))->where('submission.created_at', '<', $until)
+            ->get(['workspace.student_id', 'workspace.teacher_assignment_id'])->mapWithKeys(fn ($row) => [$row->student_id.':'.$row->teacher_assignment_id => true]);
+        $missing = 0;
+        foreach ($students as $student) {
+            foreach ($tasks as $task) {
+                $targets = $task->classrooms->pluck('id')->push($task->classroom_id);
+                if ($targets->contains($student->classroom_id) && ! isset($pairs[$student->id.':'.$task->id])) {
+                    $missing++;
+                }
+            }
+        }
         arsort($errors);
-        return ['runs'=>$runs->count(),'passed'=>$passed,'total'=>$total,'errors'=>$errors,'missing'=>$missing];
+
+        return ['runs' => $runs->count(), 'passed' => $passed, 'total' => $total, 'errors' => $errors, 'missing' => $missing];
     }
+
     private function within($at, ?Carbon $from, Carbon $until): bool
     {
         if (! $at) {
@@ -57,9 +78,10 @@ class ClassReportService
 
     public function build(TeacherAccount $teacher, Collection $rooms, ?Carbon $from, Carbon $until): array
     {
-        $catalog=app(LessonService::class)->catalogForTeacher($teacher->id);
+        $catalog = app(LessonService::class)->catalogForTeacher($teacher->id, null);
         // Select only the teacher's current roster and summary evidence, never source code or AI drafts.
         $students = Student::with('classroom')->whereIn('classroom_id', $rooms->pluck('id'))->orderBy('nickname')->orderBy('id')->get();
+        $requiredKeys = $students->mapWithKeys(fn ($student) => [$student->id => array_keys(array_filter($catalog, fn ($lesson) => ($lesson['course'] ?? 'cpp') === LearningCourses::recommendedForGrade($student->classroom?->grade)))]);
         $ids = $students->pluck('id');
         $lessons = LessonProgress::whereIn('student_id', $ids)->whereIn('lesson_key', array_keys($catalog))->get();
         $labs = LabSubmission::with('workspace:id,student_id,teacher_assignment_id,activity_key')
@@ -68,7 +90,7 @@ class ClassReportService
         $quizResults = DB::table('quiz_submissions as result')->join('teacher_quizzes as quiz', 'quiz.id', '=', 'result.teacher_quiz_id')
             ->where('quiz.teacher_account_id', $teacher->id)->whereIn('result.student_id', $ids)
             ->get(['result.id', 'result.student_id', 'result.teacher_quiz_id', 'result.score', 'result.total_questions', 'result.graded_questions', 'result.created_at']);
-        $completed = $lessons->filter(fn ($item) => $this->within($item->completed_at, $from, $until));
+        $completed = $lessons->filter(fn ($item) => in_array($item->lesson_key, $requiredKeys[$item->student_id] ?? [], true) && $this->within($item->completed_at, $from, $until));
         $periodQuizzes = $quizResults->filter(fn ($item) => $this->within($item->created_at, $from, $until));
         $graded = $periodQuizzes->filter(fn ($item) => $item->score !== null && $item->total_questions > 0 && (int) $item->graded_questions === (int) $item->total_questions && $item->score >= 0 && $item->score <= $item->total_questions)
             ->groupBy(fn ($item) => $item->student_id.':'.$item->teacher_quiz_id)
@@ -80,7 +102,7 @@ class ClassReportService
             ->filter(fn ($item) => $this->within($item->reviewed_at, $from, $until));
         $confirmed = $reviews->filter(fn ($item) => $item->rubric['correctness'] >= 3 && $item->rubric['logic'] >= 3);
         $pending = $latestLabs->filter(fn ($item) => ! $item->reviewed_at && $this->within($item->created_at, $from, $until));
-        $rows = $students->map(function ($student) use ($lessons, $completed, $periodQuizzes, $graded, $periodLabs, $reviews, $confirmed, $pending, $from, $until, $catalog) {
+        $rows = $students->map(function ($student) use ($lessons, $completed, $periodQuizzes, $graded, $periodLabs, $reviews, $confirmed, $pending, $from, $until, $catalog, $requiredKeys) {
             $history = $lessons->where('student_id', $student->id);
             $visibleHistory = $history->filter(fn ($item) => $this->within($item->last_opened_at, $from, $until) || $this->within($item->completed_at, $from, $until));
             $results = $graded->where('student_id', $student->id);
@@ -120,11 +142,11 @@ class ClassReportService
 
             return [
                 'id' => $student->id, 'nickname' => $student->nickname, 'student_id' => $student->student_id,
-                'name'=>trim(implode(' ',array_filter([$student->first_name,$student->middle_name,$student->surname]))),
+                'name' => trim(implode(' ', array_filter([$student->first_name, $student->middle_name, $student->surname]))),
                 'classroom_id' => $student->classroom_id, 'grade' => $student->classroom->grade,
                 'section' => $student->classroom->section ?: $student->classroom->name,
                 'level' => $student->level, 'xp' => $student->xp,
-                'lessons' => $completed->where('student_id', $student->id)->count(), 'lesson_total' => count($catalog),
+                'lessons' => $completed->where('student_id', $student->id)->count(), 'lesson_total' => count($requiredKeys[$student->id]),
                 'quiz_average' => $quizAverage, 'quiz_count' => $periodQuizzes->where('student_id', $student->id)->unique('teacher_quiz_id')->count(),
                 'graded_quizzes' => $results->count(), 'coding_count' => $studentLabs->unique('code_workspace_id')->count(),
                 'confirmed' => $strong, 'pending' => $pending->filter(fn ($item) => $item->workspace->student_id === $student->id)->count(),
@@ -137,10 +159,11 @@ class ClassReportService
                 ])->values(),
             ];
         });
-        $topics = collect($catalog)->map(function ($definition, $key) use ($completed, $students) {
+        $topics = collect($catalog)->filter(fn ($definition, $key) => $requiredKeys->contains(fn ($keys) => in_array($key, $keys, true)))->map(function ($definition, $key) use ($completed, $requiredKeys) {
             $count = $completed->where('lesson_key', $key)->count();
+            $total = $requiredKeys->filter(fn ($keys) => in_array($key, $keys, true))->count();
 
-            return ['title' => $definition['title'], 'completed' => $count, 'total' => $students->count(), 'percent' => $students->isEmpty() ? null : round(100 * $count / $students->count())];
+            return ['title' => $definition['title'], 'completed' => $count, 'total' => $total, 'percent' => $total === 0 ? null : round(100 * $count / $total)];
         })->values();
         $events = collect();
         foreach ($completed as $record) {
@@ -152,10 +175,10 @@ class ClassReportService
         foreach ($periodQuizzes->sortBy('id')->unique(fn ($record) => $record->student_id.':'.$record->teacher_quiz_id) as $record) {
             $events->push(['at' => Carbon::parse($record->created_at, 'UTC'), 'kind' => 'quizzes']);
         }
-        $opportunities = $students->count() * count($catalog);
+        $opportunities = $requiredKeys->sum(fn ($keys) => count($keys));
 
         return [
-            'execution'=>$this->execution($teacher,$students,$from,$until), 'rows' => $rows, 'topics' => $topics, 'chart' => $this->chart($events, $from, $until),
+            'execution' => $this->execution($teacher, $students, $from, $until), 'rows' => $rows, 'topics' => $topics, 'chart' => $this->chart($events, $from, $until),
             'metrics' => [
                 'students' => $students->count(), 'completion' => $opportunities ? round(100 * $completed->count() / $opportunities, 1) : null,
                 'completed' => $completed->count(), 'opportunities' => $opportunities,

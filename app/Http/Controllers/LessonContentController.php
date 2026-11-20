@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\LessonContent;
 use App\Models\Student;
 use App\Models\TeacherAccount;
+use App\Services\CourseAssessments;
+use App\Services\LearningCourses;
 use App\Services\LessonCodeNotes;
 use App\Services\LessonMedia;
 use App\Services\LessonService;
@@ -31,7 +33,7 @@ class LessonContentController extends Controller
     {
         $teacher = $this->teacher();
 
-        return response()->view('content.index', ['teacher' => $teacher, 'catalog' => $service->catalogForTeacher($teacher->id, null),
+        return response()->view('content.index', ['teacher' => $teacher, 'catalog' => $service->catalogForTeacher($teacher->id, CourseAssessments::selectedCourse()), 'selectedCourse' => CourseAssessments::selectedCourse(),
             'contents' => LessonContent::where('teacher_account_id', $teacher->id)->latest()->get()])->header('Cache-Control', 'private, no-store');
     }
 
@@ -44,8 +46,8 @@ class LessonContentController extends Controller
         if ($definition) {
             $definition = LessonCodeNotes::definition($definition);
         }
-        if ($definition && isset(config('arduino_curriculum.lessons')[$key])) {
-            $definition += ['course' => 'arduino-uno'];
+        if ($definition) {
+            $definition += ['course' => LearningCourses::lessonCourse($key)];
         }
         $submittedChecks = old('checks', $definition['checks'] ?? []);
         $checkpointChecks = is_array($submittedChecks) ? array_values($submittedChecks) : [];
@@ -67,6 +69,7 @@ class LessonContentController extends Controller
         $teacher = $this->teacher();
         $data = $request->validate([
             'revision' => ['required', 'integer', 'min:0'], 'title' => ['required', 'string', 'max:160'], 'topic' => ['required', 'string', 'max:80'],
+            'course' => ['sometimes', 'required', Rule::in(LearningCourses::keys())],
             'objective' => ['required', 'string', 'max:1000'], 'practice' => ['required', Rule::in(array_keys(config('code_lab.activities')))],
             'minutes' => ['required', 'integer', 'between:1,60'], 'status' => ['required', 'in:draft,published'],
             'sections' => ['required', 'array', 'list', 'min:1', 'max:12'], 'sections.*.title' => ['required', 'string', 'max:100'], 'sections.*.text' => ['required', 'string', 'max:5000'],
@@ -107,9 +110,7 @@ class LessonContentController extends Controller
                 }
                 unset($check);
                 $definition += ['icon' => 'menu_book', 'version' => $version];
-                if (isset(config('arduino_curriculum.lessons')[$key])) {
-                    $definition['course'] = 'arduino-uno';
-                }
+                $definition['course'] = $content?->definition['course'] ?? $availableLessons[$key]['course'] ?? (str_starts_with($key, 'custom-') ? ($data['course'] ?? 'cpp') : LearningCourses::lessonCourse($key));
                 $attributes = ['definition' => $definition, 'status' => $data['status'], 'revision' => $version];
                 if ($newPath) {
                     $attributes += ['image_path' => $newPath, 'image_mime' => $request->file('image')->getMimeType()];
@@ -131,7 +132,7 @@ class LessonContentController extends Controller
             throw $error;
         }
 
-        return redirect()->route('teacher.content')->with('lesson_notice', 'Lesson content saved. Publishing makes it available only to your teaching sections.');
+        return redirect()->route('teacher.content', CourseAssessments::courseQuery($data['course'] ?? LearningCourses::lessonCourse($key)))->with('lesson_notice', 'Lesson content saved. Publishing makes it available only to your teaching sections.');
     }
 
     public function image(LessonContent $content): BinaryFileResponse

@@ -33,7 +33,7 @@ class AssessmentActivity
             $attempt = DB::table('course_post_test_attempts')->where('student_id', $student->id)->find($id);
             abort_unless($attempt, 404);
 
-            return ['active' => $attempt->started_at !== null && $attempt->finished_at === null, 'title' => ($attempt->course === 'arduino-uno' ? 'Arduino Uno Robotics' : 'C++').' certification post-test'];
+            return ['active' => $attempt->started_at !== null && $attempt->finished_at === null, 'title' => LearningCourses::title($attempt->course).' certification post-test'];
         }
         if ($kind === 'recitation') {
             $round = RecitationRound::where('classroom_id', $student->classroom_id)->where('teacher_account_id', $student->classroom->teacher_account_id)->where('status', '!=', 'draft')->findOrFail($id);

@@ -78,7 +78,7 @@ class AchievementService
             }
         }
         foreach (LessonProgress::where('student_id', $student->id)->whereNotNull('completed_at')->get() as $lesson) {
-            $title = config('lessons.'.$lesson->lesson_key.'.title', config('legacy_lessons.'.$lesson->lesson_key.'.title', 'Saved C++ lesson'));
+            $title = LearningCourses::lessons()[$lesson->lesson_key]['title'] ?? config('legacy_lessons.'.$lesson->lesson_key.'.title', 'Saved lesson');
             $event = $this->event('lesson', $lesson->id, $title, $lesson->completed_at, 'Lesson checkpoint completed with a reflection');
             $events['active_days'][$lesson->completed_at->copy()->timezone(config('learning.timezone'))->toDateString()] ??= $event;
         }

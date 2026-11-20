@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CreativeTechnologyCurriculum;
 use Illuminate\Database\Eloquent\Model;
 
 class CodeWorkspace extends Model
@@ -10,9 +11,29 @@ class CodeWorkspace extends Model
 
     public function isArduino(): bool
     {
-        return $this->teacher_assignment_id
-            ? $this->assignment?->unit === 'Arduino UNO R3'
-            : config('code_lab.activities.'.str_replace('practice:', '', $this->activity_key).'.environment') === 'arduino-uno';
+        return $this->environment() === 'arduino-uno';
+    }
+
+    public function environment(): string
+    {
+        if ($this->teacher_assignment_id) {
+            return match ($this->assignment?->unit) {
+                'Arduino UNO R3', CreativeTechnologyCurriculum::ROBOTICS_UNIT => 'arduino-uno',
+                CreativeTechnologyCurriculum::DESIGN_UNIT => 'design',
+                default => 'cpp',
+            };
+        }
+
+        return config('code_lab.activities.'.str_replace('practice:', '', $this->activity_key).'.environment', 'cpp');
+    }
+
+    public function filename(): string
+    {
+        return match ($this->environment()) {
+            'arduino-uno' => 'sketch.ino',
+            'design' => 'design-notebook.txt',
+            default => 'main.cpp',
+        };
     }
 
     protected function casts(): array

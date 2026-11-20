@@ -106,7 +106,7 @@ function editQuiz(id) {
     editingQuizId = quiz.id;
     editingQuizStatus = quiz.status;
     const form = document.getElementById('quizForm');
-    ['title','instructions','xp','time_limit','opens_at','closes_at','untimed','question_seconds'].forEach(name => form.elements[name].value = name==='untimed' ? (quiz[name]?'1':'0') : (quiz[name] ?? (name==='question_seconds'?'60':'')));
+    ['title','instructions','course','xp','time_limit','opens_at','closes_at','untimed','question_seconds'].forEach(name => form.elements[name].value = name==='untimed' ? (quiz[name]?'1':'0') : (quiz[name] ?? (name==='question_seconds'?'60':'')));
     sectionBoxes.forEach(box => box.checked = quiz.classroom_ids.map(String).includes(box.value));
     const firstSelected = sectionBoxes.find(box => box.checked);
     if (firstSelected) gradeFilter.value = firstSelected.dataset.grade;

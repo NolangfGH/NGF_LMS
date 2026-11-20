@@ -12,7 +12,7 @@ class CodeExecutionService
 {
     public function cases(CodeWorkspace $workspace): array
     {
-        if ($workspace->isArduino()) {
+        if ($workspace->environment() !== 'cpp') {
             return [];
         }
 
@@ -21,8 +21,8 @@ class CodeExecutionService
 
     public function begin(CodeWorkspace $workspace, array $data): CodeRun
     {
-        if ($workspace->isArduino()) {
-            throw ValidationException::withMessages(['compiler' => 'This Arduino activity requires Arduino IDE or a compatible board simulator. Save your .ino sketch and submit your observations for teacher review; the C++ console compiler cannot test hardware.']);
+        if ($workspace->environment() !== 'cpp') {
+            throw ValidationException::withMessages(['compiler' => $workspace->environment() === 'design' ? 'Use a design tool and submit your notebook for teacher review. This activity does not use a compiler.' : 'This Arduino activity requires Arduino IDE or a compatible board simulator. Save your .ino sketch and submit your observations for teacher review; the C++ console compiler cannot test hardware.']);
         }
 
         if (! app(Judge0Client::class)->configured()) {

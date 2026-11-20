@@ -104,7 +104,7 @@ class LessonReadinessTest extends TestCase
             if ($route === 'teacher.library') {
                 $this->withSession(['student_id' => null, 'teacher_id' => $teacher->id]);
             }
-            foreach (['cpp', 'arduino-uno'] as $course) {
+            foreach (['cpp', 'arduino-uno', 'ct7', 'ct10'] as $course) {
                 $url = route($route, CourseAssessments::courseQuery($course));
                 $response = $this->get($url)->assertOk()->assertSee('Arduino Uno Robotics')->assertDontSee('Grade 9 Arduino Uno')->assertDontSee('Grade 8 Reasoning Challenge');
                 preg_match('~<nav aria-label="(?:Assessment course|Learning course|Library course)"[^>]*>(.*?)</nav>~s', $response->getContent(), $navigation);

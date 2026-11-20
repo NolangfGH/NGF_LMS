@@ -6,7 +6,7 @@
     <p class="mt-2 max-w-3xl text-sm leading-7">Compare MPS, mean, median and mode, then find the questions and learning areas that need more practice. Results stay within your assigned classes.</p>
     <form method="GET" action="{{ route('teacher.analytics') }}" class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:items-end">
         <label class="block text-sm font-bold text-primary">Assessment type<select name="kind" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">@foreach(\App\Services\LearningAnalytics::KINDS as $key=>$label)<option value="{{ $key }}" @selected($kind === $key)>{{ $label }}</option>@endforeach</select></label>
-        @unless($quizKind)<label class="block text-sm font-bold text-primary">Course<select name="course" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="cpp" @selected($course==='cpp')>C++ Programming</option><option value="arduino-uno" @selected($course==='arduino-uno')>Arduino Uno Robotics</option></select></label>@endunless
+        <label class="block text-sm font-bold text-primary">Course<select name="course" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">@if($quizKind)<option value="" @selected(!isset($filters['course']))>All subjects (including older unclassified quizzes)</option>@endif @foreach(\App\Services\LearningCourses::TITLES as $optionCourse=>$optionLabel)<option value="{{ $optionCourse }}" @selected(($filters['course']??($quizKind?'':$course))===$optionCourse)>{{ $optionLabel }}</option>@endforeach</select></label>
         <label class="block text-sm font-bold text-primary">Classroom
             <select name="classroom" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal">
                 <option value="">All my active sections</option>
@@ -26,7 +26,7 @@
         @if($kind==='post')<label class="block text-sm font-bold text-primary">Post-test attempts<select name="attempt" class="mt-2 block w-full rounded-xl border border-green-200 bg-white p-3 font-normal"><option value="first" @selected(($filters['attempt']??'first')==='first')>First finished attempt</option><option value="latest" @selected(($filters['attempt']??'first')==='latest')>Latest finished attempt</option></select></label>@endif
         <button class="rounded-xl border border-green-200 bg-paper px-4 py-3 text-sm font-bold text-primary">Apply filters</button>
     </form>
-    <p class="mt-3 text-xs leading-6 text-secondary">Term filters apply to quizzes, summative tests, term exams and lesson checkpoints. Starting assessments, post-tests and Quiz Bee matches are course-wide. The reasoning challenge is shared by both courses.</p>
+    <p class="mt-3 text-xs leading-6 text-secondary">Term filters apply to quizzes, summative tests, term exams and lesson checkpoints. Starting assessments, post-tests and Quiz Bee matches are course-wide. The reasoning challenge is shared by all courses.</p>
 
     @if($quizKind)
     @if($exams->isNotEmpty())

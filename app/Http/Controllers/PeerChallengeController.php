@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CodingMatch;
 use App\Models\Student;
 use App\Models\TeacherAccount;
+use App\Services\LearningCourses;
 use App\Services\LessonService;
 use App\Services\PeerCodingChallenges;
 use Illuminate\Database\Eloquent\Builder;
@@ -43,8 +44,8 @@ class PeerChallengeController extends Controller
         }
         $student = $this->student();
         abort_unless(filled($student->classroom?->grade), 403, 'Ask your teacher to assign a grade level before requesting a peer match.');
-        $filters = $request->validate(['course' => ['nullable', Rule::in(['cpp', 'arduino-uno'])], 'q' => ['nullable', 'string', 'min:2', 'max:60'], 'opponent' => ['nullable', 'integer', 'min:1']]);
-        $course = in_array(old('course'), ['cpp', 'arduino-uno'], true) ? old('course') : ($filters['course'] ?? 'cpp');
+        $filters = $request->validate(['course' => ['nullable', Rule::in(LearningCourses::keys())], 'q' => ['nullable', 'string', 'min:2', 'max:60'], 'opponent' => ['nullable', 'integer', 'min:1']]);
+        $course = in_array(old('course'), LearningCourses::keys(), true) ? old('course') : ($filters['course'] ?? 'cpp');
         $eligible = $this->eligiblePeers($student);
         $opponentId = filter_var(old('opponent', $filters['opponent'] ?? null), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         $selectedOpponent = $opponentId ? (clone $eligible)->find($opponentId, ['id', 'nickname', 'leaderboard_visible', 'classroom_id']) : null;
@@ -65,7 +66,7 @@ class PeerChallengeController extends Controller
             $card = $path['cards']->firstWhere('key', $key);
 
             return $card && ! $card['locked'] && (! $selectedOpponent || $selectedOpponent->classroom?->teacher_account_id === $student->classroom->teacher_account_id
-                || isset(config('lessons')[$key]) || isset(config('arduino_curriculum.lessons')[$key]));
+                || isset(LearningCourses::lessons()[$key]));
         });
         $requests = CodingMatch::with('participants.student')->where('origin', 'student')->whereHas('participants', fn (Builder $query): Builder => $query->where('student_id', $student->id))->latest('id')->paginate(12)->withQueryString();
         $approvals = DB::table('coding_match_approvals')->whereIn('coding_match_id', $requests->pluck('id'))->get()->groupBy('coding_match_id');
@@ -76,7 +77,7 @@ class PeerChallengeController extends Controller
 
     public function store(Request $request, PeerCodingChallenges $service): RedirectResponse
     {
-        $data = $request->validate(['opponent' => ['required', 'integer', 'min:1'], 'course' => ['required', Rule::in(['cpp', 'arduino-uno'])], 'lesson' => ['required', 'string', 'max:60']]);
+        $data = $request->validate(['opponent' => ['required', 'integer', 'min:1'], 'course' => ['required', Rule::in(LearningCourses::keys())], 'lesson' => ['required', 'string', 'max:60']]);
         $match = $service->request($this->student(), (int) $data['opponent'], $data['course'], $data['lesson']);
 
         return redirect()->route('student.peer-challenges', ['course' => $match->course])->with('peer_notice', 'Request sent to your teacher. Coding stays locked until every supervising teacher approves and the opponent accepts.');

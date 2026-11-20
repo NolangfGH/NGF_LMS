@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\LessonContent;
 use App\Models\Student;
 use App\Services\CourseAssessments;
+use App\Services\LearningCourses;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,8 +27,11 @@ class RequireCoursePretest
             $content = LessonContent::find($content);
         }
         $lesson = $request->route('lesson') ?? $content?->lesson_key;
-        $arduino = $lesson ? isset(config('arduino_curriculum.lessons')[$lesson]) : CourseAssessments::selectedCourse() === 'arduino-uno';
-        $course = $arduino ? 'arduino-uno' : 'cpp';
+        $course = $lesson ? LearningCourses::lessonCourse($lesson) : CourseAssessments::selectedCourse();
+        if ($lesson && $student && str_starts_with($lesson, 'custom-')) {
+            $course = LessonContent::where('teacher_account_id', $student->classroom?->teacher_account_id)
+                ->where('lesson_key', $lesson)->first()?->definition['course'] ?? $course;
+        }
         $required = $student ? $this->assessments->nextLessonAssessment($student, $course) : null;
         if ($required) {
             $redirect = route('student.assessments.show', [$required] + ($required === CourseAssessments::REASONING ? CourseAssessments::courseQuery($course) : []));

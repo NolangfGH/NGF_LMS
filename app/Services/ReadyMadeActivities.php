@@ -8,9 +8,11 @@ class ReadyMadeActivities
     public function catalog(string $course = 'cpp'): array
     {
         $catalog = [];
-        $arduino = $course === 'arduino-uno';
-        foreach (config($arduino ? 'arduino_curriculum.lessons' : 'lessons') as $key => $lesson) {
-            $template = config(($arduino ? 'arduino_curriculum.activities.' : 'ready_made_activities.').$key);
+        $arduino = LearningCourses::environment($course) === 'arduino-uno';
+        $creative = LearningCourses::isCreative($course);
+        $prefix = $creative ? 'creative_technology.'.$course : 'arduino_curriculum';
+        foreach (LearningCourses::lessons($course) as $key => $lesson) {
+            $template = config($course === 'cpp' ? 'ready_made_activities.'.$key : $prefix.'.activities.'.$key);
             if ($template === null) {
                 continue;
             }
@@ -21,7 +23,7 @@ class ReadyMadeActivities
                 'options' => $question['options'],
                 'correct' => [$question['options'][$question['correct']]],
                 'explanation' => $question['why'],
-            ], $arduino ? $template['questions'] : [...$lesson['checks'], ...$template['questions']]);
+            ], $course !== 'cpp' ? $template['questions'] : [...$lesson['checks'], ...$template['questions']]);
             $catalog[$key] = [
                 'key' => $key, 'title' => $lesson['title'], 'topic' => $lesson['topic'], 'course' => $course,
                 'objective' => $lesson['objective'], 'term' => $template['term'],
@@ -38,7 +40,7 @@ class ReadyMadeActivities
                 'question' => $question['question'],
                 'accepted_answers' => implode("\n", $question['accepted_answers']),
                 'case_sensitive' => $question['case_sensitive'],
-            ], $recitations = config('ready_made_recitations.'.$key, []), array_keys($recitations));
+            ], $recitations = config($creative ? $prefix.'.recitations.'.$key : 'ready_made_recitations.'.$key, []), array_keys($recitations));
             foreach (['assignment', 'challenge'] as $kind) {
                 $catalog[$key][$kind] = $template[$kind] + [
                     'kind' => $kind,
@@ -49,13 +51,13 @@ class ReadyMadeActivities
                     'csta_standard' => null,
                 ];
             }
-            $article = config(($arduino ? 'arduino_curriculum.articles.' : 'ready_made_articles.').$key);
+            $article = config($course === 'cpp' ? 'ready_made_articles.'.$key : $prefix.'.articles.'.$key);
             if ($article !== null) {
                 $parts = ['Learning goal', $lesson['objective'], $article['introduction']];
                 foreach ($lesson['sections'] as $section) {
                     $parts[] = $section['title']."\n".$section['text'];
                 }
-                $parts[] = ($arduino ? "Arduino sketch (.ino)\n" : "C++ example\n").$lesson['code'];
+                $parts[] = ($arduino ? "Arduino sketch (.ino)\n" : ($creative ? "Worked design example\n" : "C++ example\n")).$lesson['code'];
                 $parts[] = ($arduino ? "Expected behavior / output\n" : "Expected output\n").$lesson['output'];
                 $parts[] = "Your private response\n".implode("\n\n", array_map(static fn (string $prompt, int $index): string => ($index + 1).'. '.$prompt, $article['prompts'], array_keys($article['prompts'])));
                 $parts[] = 'Explain your reasoning in your own words. You may attach a code screenshot or record a voice response. Your comments and teacher replies stay private between you and your teacher.';
@@ -74,7 +76,7 @@ class ReadyMadeActivities
     /** @return array<string, mixed> */
     public function lesson(string $key): array
     {
-        $catalog = $this->catalog(config('arduino_curriculum.lessons.'.$key) ? 'arduino-uno' : 'cpp');
+        $catalog = $this->catalog(LearningCourses::lessonCourse($key));
         abort_unless(isset($catalog[$key]), 404);
 
         return $catalog[$key];
@@ -83,7 +85,7 @@ class ReadyMadeActivities
     /** @return array<string, array<string, mixed>> */
     public function termExams(string $course = 'cpp'): array
     {
-        if ($course === 'arduino-uno') {
+        if ($course !== 'cpp') {
             $exams = [];
             $catalog = $this->catalog($course);
             foreach (['Term1', 'Term2', 'Term3'] as $term) {
@@ -95,12 +97,12 @@ class ReadyMadeActivities
                     }
                 }
                 foreach (['summative-1' => 'Summative Test 1', 'summative-2' => 'Summative Test 2', 'term-exam' => 'Term Exam'] as $index => $label) {
-                    $key = 'arduino-'.strtolower($term).'-'.$index;
+                    $key = ($course === 'arduino-uno' ? 'arduino' : $course).'-'.strtolower($term).'-'.$index;
                     $set = array_splice($questions, 0, 25);
-                    $title = 'Arduino · '.str_replace('Term', 'Term ', $term).' · '.$label;
+                    $title = ($course === 'arduino-uno' ? 'Arduino' : LearningCourses::title($course)).' · '.str_replace('Term', 'Term ', $term).' · '.$label;
                     $exams[$key] = ['key' => $key, 'title' => $title, 'topic' => $label, 'term' => $term,
                         'course' => $course, 'assessment' => true, 'subtopics' => array_column($lessons, 'topic'),
-                        'quiz' => ['title' => $title, 'instructions' => 'Answer 25 multiple-choice questions about the Arduino lessons in this term. Trace each circuit or sketch carefully. Your teacher reviews this editable draft before publishing.',
+                        'quiz' => ['title' => $title, 'instructions' => 'Answer 25 multiple-choice questions about the lessons in this term. Read the examples carefully. Your teacher reviews this editable draft before publishing.',
                             'questions' => $set, 'xp' => 0, 'time_limit' => 25, 'untimed' => false, 'question_seconds' => 60]];
                 }
             }

@@ -26,7 +26,7 @@ class CoursePostTest
 
     public function forCourse(string $course): self
     {
-        abort_unless(in_array($course, ['cpp', 'arduino-uno'], true), 404);
+        abort_unless(in_array($course, LearningCourses::keys(), true), 404);
         $exam = clone $this;
         $exam->courseKey = $course;
 
@@ -102,7 +102,7 @@ class CoursePostTest
             if (! $attempt || $attempt->started_at || ! $this->validGrant($current, $attempt) || ! Hash::check(strtoupper($code), $attempt->access_code_hash)) {
                 throw ValidationException::withMessages(['code' => 'Enter the current code issued by your teacher for this attempt.']);
             }
-            $questions = collect($this->course->questions($this->courseKey === 'arduino-uno' ? CourseAssessments::ARDUINO_POST : CourseAssessments::POST))->shuffle()->map(function (array $question): array {
+            $questions = collect($this->course->questions(LearningCourses::posttest($this->courseKey)))->shuffle()->map(function (array $question): array {
                 shuffle($question['options']);
 
                 return $question;
@@ -179,7 +179,7 @@ class CoursePostTest
             if ($attempt->wrong_answer_penalty > 0) {
                 $wrong = self::QUESTIONS - $score;
                 app(XpLedger::class)->change($student->id, 'post-test-penalty:'.$attempt->id, -$wrong * $attempt->wrong_answer_penalty,
-                    ['type' => 'post-test', 'id' => $attempt->id, 'title' => ($this->courseKey === 'arduino-uno' ? 'Arduino Uno' : 'C++').' Post-Test · Attempt '.$attempt->attempt_number, 'reason' => 'Post-test incorrect answers',
+                    ['type' => 'post-test', 'id' => $attempt->id, 'title' => ($this->courseKey === 'arduino-uno' ? 'Arduino Uno' : ($this->courseKey === 'cpp' ? 'C++' : LearningCourses::title($this->courseKey))).' Post-Test · Attempt '.$attempt->attempt_number, 'reason' => 'Post-test incorrect answers',
                         'details' => [$wrong.' incorrect or unanswered questions × '.$attempt->wrong_answer_penalty.' XP = '.($wrong * $attempt->wrong_answer_penalty).' XP deduction requested.', 'Only the final total is recorded here. Question content, answer keys and per-question correctness are not disclosed.']]);
             }
             $update = array_replace($update, ['finished_at' => $now, 'score' => $score, 'questions' => null, 'answers' => null]);

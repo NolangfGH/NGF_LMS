@@ -34,7 +34,7 @@ class CodeLabController extends Controller
             $assignment = TeacherAssignment::forClassroom($student->classroom_id)->where('status', 'published')->findOrFail($data['assignment']);
             abort_if(app(SecondChanceService::class)->assignmentScheduleClosed($assignment, $student->id), 403, 'This assignment is closed. Your saved work has been kept.');
 
-            return ['key' => 'assignment:'.$assignment->id, 'assignment' => $assignment, 'title' => $assignment->title, 'objective' => $assignment->objective, 'hint' => 'Read the assignment objective and sample output. Plan the steps, predict the output, and explain how your code works.', 'code' => $assignment->starter_code ?: config('code_lab.assignment_starter')];
+            return ['key' => 'assignment:'.$assignment->id, 'assignment' => $assignment, 'title' => $assignment->title, 'objective' => $assignment->objective, 'hint' => 'Read the assignment objective and sample output. Plan the steps, predict the output, and explain how your code works.', 'code' => $assignment->starterCode()];
         }
         $key = $data['activity'] ?? 'hello';
         $activity = config('code_lab.activities.'.$key);
@@ -64,7 +64,7 @@ class CodeLabController extends Controller
             // The student row lock serializes repeated clicks; activity_key is also unique per student.
             $workspace = CodeWorkspace::firstOrCreate(
                 ['student_id' => $currentStudent->id, 'activity_key' => 'assignment:'.$assignment->id],
-                ['teacher_assignment_id' => $assignment->id, 'title' => $assignment->title, 'code' => $assignment->starter_code ?: config('code_lab.assignment_starter')]
+                ['teacher_assignment_id' => $assignment->id, 'title' => $assignment->title, 'code' => $assignment->starterCode()]
             );
             app(CodeLabTimer::class)->startIfNeeded($workspace);
             app(CodeLabTimer::class)->enforce($workspace);

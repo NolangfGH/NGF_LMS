@@ -22,6 +22,8 @@ class HomepageService
         $courses = [
             'cpp' => ['title' => 'C++ Programming', 'heading' => 'Build your C++ foundations', 'grade' => 'Grade 8', 'lessons' => config('lessons')],
             'arduino-uno' => ['title' => 'Arduino Uno Robotics', 'heading' => 'Build with Arduino Uno', 'grade' => 'Grade 9', 'lessons' => config('arduino_curriculum.lessons')],
+            'ct7' => ['title' => 'Creative Technology 7', 'heading' => 'Design, model and create', 'grade' => 'Grade 7', 'lessons' => LearningCourses::lessons('ct7')],
+            'ct10' => ['title' => 'Creative Technology 10', 'heading' => 'Engineer and test robotics projects', 'grade' => 'Grade 10', 'lessons' => LearningCourses::lessons('ct10')],
         ];
         $catalog = [];
         foreach ($courses as $course => &$summary) {
@@ -41,7 +43,7 @@ class HomepageService
         unset($summary);
         $snapshot = [
             'available' => true, 'metrics' => null, 'student' => null, 'teacher' => null, 'catalog' => $catalog, 'courses' => $courses,
-            'catalog_totals' => ['lessons' => count($catalog), 'practice_activities' => count(config('code_lab.activities')) + count(config('arduino_curriculum.practice')),
+            'catalog_totals' => ['lessons' => count($catalog), 'practice_activities' => count(config('code_lab.activities')),
                 'challenges' => collect(config('challenges'))->reject(fn (array $challenge): bool => ! empty($challenge['legacy']))->count(), 'milestones' => count(config('achievements'))],
             'rewards' => ['welcome' => Student::REGISTRATION_XP, 'correct_answer' => QuizRewards::XP_PER_ANSWER, 'perfect_quiz' => QuizRewards::PERFECT_BONUS],
             'example' => ['title' => config('lessons.output.title'), 'code' => config('lessons.output.code'), 'output' => config('lessons.output.output')],

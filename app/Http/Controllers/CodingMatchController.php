@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\CodingMatchPresenter;
 use App\Services\CodingMatchService;
+use App\Services\LearningCourses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,7 +65,7 @@ class CodingMatchController extends Controller
         $count = $request->integer('participant_count', 2);
         $data = $request->validate([
             'participant_count' => ['sometimes', 'required', 'integer', Rule::in([2, 10])],
-            'course' => ['sometimes', 'required', Rule::in(['cpp', 'arduino-uno'])],
+            'course' => ['sometimes', 'required', Rule::in(LearningCourses::keys())],
             'title' => ['required', 'string', 'max:160'], 'instructions' => ['required', 'string', 'min:10', 'max:10000'],
             'sample_output' => ['required', 'string', 'max:10000'], 'time_limit_minutes' => ['required', 'integer', 'between:1,180'],
             'winner_xp' => ['required', 'integer', 'between:0,10000'], 'award_title' => ['required', 'string', 'max:80'],
@@ -200,7 +201,7 @@ class CodingMatchController extends Controller
         abort_unless($submission->participant->coding_match_id === $match->id, 404);
 
         return response($submission->code, 200, ['Content-Type' => 'text/plain; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="submission-'.$submission->id.($match->course === 'arduino-uno' ? '.ino' : '.cpp').'"',
+            'Content-Disposition' => 'attachment; filename="submission-'.$submission->id.('.'.pathinfo(LearningCourses::filename($match->course), PATHINFO_EXTENSION)).'"',
             'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'no-store, private']);
     }
 

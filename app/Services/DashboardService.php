@@ -14,7 +14,7 @@ class DashboardService
 {
     public function student(Student $student): array
     {
-        $path = app(LessonService::class)->path($student);
+        $path = app(LessonService::class)->path($student, LearningCourses::recommendedForGrade($student->classroom?->grade));
         $assignments = TeacherAssignment::where('teacher_account_id', $student->classroom->teacher_account_id)->forClassroom($student->classroom_id)->where('status', 'published')->orderByRaw('due_at IS NULL')->orderBy('due_at')->limit(8)->get();
         $workspaces = CodeWorkspace::with('submissions')->where('student_id', $student->id)->whereIn('teacher_assignment_id', $assignments->pluck('id'))->get()->keyBy('teacher_assignment_id');
         $quizzes = TeacherQuiz::where('teacher_account_id', $student->classroom->teacher_account_id)->forClassroom($student->classroom_id)->where('status', 'published')->orderByRaw('closes_at IS NULL')->orderBy('closes_at')->limit(6)->get();

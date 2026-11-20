@@ -6,6 +6,7 @@ use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Services\CourseAssessments;
 use App\Services\CoursePostTest;
+use App\Services\LearningCourses;
 use App\Services\LearningNotifications;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -30,7 +31,9 @@ class CoursePostTestController extends Controller
         return response()->view('course-assessments.post-test', [
             'student' => $student, 'classroom' => $student->classroom,
             'lastSyncedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A'),
-            'state' => $state, 'courseKey' => CourseAssessments::selectedCourse(), 'courseQuery' => CourseAssessments::courseQuery(), 'courseTitle' => CourseAssessments::selectedCourse() === 'arduino-uno' ? 'Arduino Uno' : 'C++', 'courseProgress' => $course->progress($student, CourseAssessments::selectedCourse()),
+            'state' => $state, 'courseKey' => CourseAssessments::selectedCourse(), 'courseQuery' => CourseAssessments::courseQuery(), 'courseTitle' => match (CourseAssessments::selectedCourse()) {
+                'cpp' => 'C++', 'arduino-uno' => 'Arduino Uno', default => LearningCourses::title(CourseAssessments::selectedCourse())
+            }, 'courseProgress' => $course->progress($student, CourseAssessments::selectedCourse()),
         ], 200, ['Cache-Control' => 'private, no-store', 'Permissions-Policy' => 'display-capture=()']);
     }
 
@@ -71,7 +74,9 @@ class CoursePostTestController extends Controller
             ->latest('exam.id')->paginate(25, ['exam.id', 'exam.attempt_number', 'exam.created_at', 'exam.code_issued_by', 'exam.code_expires_at',
                 'students.first_name', 'students.surname', 'students.nickname', 'classrooms.grade', 'classrooms.section', 'classrooms.name']);
 
-        return response()->view('course-assessments.code-requests', ['pageTitle' => 'Post-test codes', 'teacher' => $teacher, 'requests' => $requests, 'courseQuery' => CourseAssessments::courseQuery(), 'courseTitle' => CourseAssessments::selectedCourse() === 'arduino-uno' ? 'Arduino Uno' : 'C++'])
+        return response()->view('course-assessments.code-requests', ['pageTitle' => 'Post-test codes', 'teacher' => $teacher, 'requests' => $requests, 'courseQuery' => CourseAssessments::courseQuery(), 'courseTitle' => match (CourseAssessments::selectedCourse()) {
+            'cpp' => 'C++', 'arduino-uno' => 'Arduino Uno', default => LearningCourses::title(CourseAssessments::selectedCourse())
+        }])
             ->header('Cache-Control', 'private, no-store');
     }
 

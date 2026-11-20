@@ -7,6 +7,7 @@ use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Models\TeacherLessonPlan;
 use App\Services\CourseAssessments;
+use App\Services\LearningCourses;
 use App\Services\LessonService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -29,12 +30,14 @@ class TeacherLessonController extends Controller
             return redirect()->route('teacher.login');
         }
         $teacher = $this->teacher();
+        $catalog = $service->catalog(CourseAssessments::selectedCourse());
 
         return response()->view('teacher-lessons', [
             'teacher' => $teacher, 'rooms' => $teacher->classrooms()->withCount('students')->orderBy('grade')->orderBy('section')->get(),
-            'catalog' => $service->catalog(null),
+            'catalog' => $catalog,
             'plans' => TeacherLessonPlan::with('classroom')->where('teacher_account_id', $teacher->id)
-                ->whereHas('classroom', fn ($query) => $query->where('teacher_account_id', $teacher->id))->latest()->get(),
+                ->whereHas('classroom', fn ($query) => $query->where('teacher_account_id', $teacher->id))->latest()->get()
+                ->filter(fn ($plan) => isset($catalog[$plan->lesson_key]) || LearningCourses::lessonCourse($plan->lesson_key) === CourseAssessments::selectedCourse()),
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -66,7 +69,7 @@ class TeacherLessonController extends Controller
             }
         });
 
-        return redirect()->route('teacher.lessons')->with('lesson_notice', 'Lesson plan saved for the selected sections.');
+        return redirect()->route('teacher.lessons', CourseAssessments::courseQuery($service->lesson($data['lesson_key'])['course'] ?? 'cpp'))->with('lesson_notice', 'Lesson plan saved for the selected sections.');
     }
 
     private function owns(TeacherLessonPlan $plan, TeacherAccount $teacher): void
@@ -79,7 +82,7 @@ class TeacherLessonController extends Controller
         $this->owns($plan, $this->teacher());
         $plan->update($this->details($request));
 
-        return redirect()->route('teacher.lessons')->with('lesson_notice', 'Lesson plan updated.');
+        return redirect()->route('teacher.lessons', CourseAssessments::courseQuery(LearningCourses::lessonCourse($plan->lesson_key)))->with('lesson_notice', 'Lesson plan updated.');
     }
 
     public function destroy(TeacherLessonPlan $plan)
@@ -87,7 +90,7 @@ class TeacherLessonController extends Controller
         $this->owns($plan, $this->teacher());
         $plan->delete();
 
-        return redirect()->route('teacher.lessons')->with('lesson_notice', 'Lesson assignment removed. Saved learning progress is kept.');
+        return redirect()->route('teacher.lessons', CourseAssessments::courseQuery(LearningCourses::lessonCourse($plan->lesson_key)))->with('lesson_notice', 'Lesson assignment removed. Saved learning progress is kept.');
     }
 
     public function progress(Request $request, LessonService $service)
@@ -123,6 +126,6 @@ class TeacherLessonController extends Controller
         $progress->update([...$data, 'feedback_by_teacher_id' => $teacher->id, 'feedback_at' => now()]);
 
         return redirect()->route('teacher.lessons.progress', ['classroom' => $progress->student->classroom_id, 'lesson' => $progress->lesson_key]
-            + CourseAssessments::courseQuery(isset(config('arduino_curriculum.lessons')[$progress->lesson_key]) ? 'arduino-uno' : 'cpp'))->with('lesson_notice', 'Feedback saved. The student can read it in this lesson.');
+            + CourseAssessments::courseQuery(LearningCourses::lessonCourse($progress->lesson_key)))->with('lesson_notice', 'Feedback saved. The student can read it in this lesson.');
     }
 }

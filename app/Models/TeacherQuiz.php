@@ -9,17 +9,17 @@ class TeacherQuiz extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['teacher_account_id', 'classroom_id', 'title', 'instructions', 'questions', 'status', 'xp', 'time_limit', 'opens_at', 'closes_at', 'untimed', 'question_seconds'];
+    protected $fillable = ['teacher_account_id', 'classroom_id', 'title', 'instructions', 'questions', 'status', 'xp', 'time_limit', 'opens_at', 'closes_at', 'untimed', 'question_seconds', 'course'];
 
     protected function casts(): array
     {
-        return ['questions' => 'array', 'xp' => 'integer', 'time_limit' => 'integer', 'opens_at' => 'datetime', 'closes_at' => 'datetime', 'untimed'=>'boolean', 'question_seconds'=>'integer'];
+        return ['questions' => 'array', 'xp' => 'integer', 'time_limit' => 'integer', 'opens_at' => 'datetime', 'closes_at' => 'datetime', 'untimed' => 'boolean', 'question_seconds' => 'integer'];
     }
 
     public function isOpen(): bool
     {
-        return (!$this->opens_at || now()->gte($this->opens_at))
-            && (!$this->closes_at || now()->lt($this->closes_at));
+        return (! $this->opens_at || now()->gte($this->opens_at))
+            && (! $this->closes_at || now()->lt($this->closes_at));
     }
 
     public function classroom()

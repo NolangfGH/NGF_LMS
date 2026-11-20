@@ -36,7 +36,7 @@ class IlawPlanTemplate
 
     public static function defaults(array $lesson): array
     {
-        if (($lesson['course'] ?? null) === 'arduino-uno') {
+        if (isset($lesson['ilaw'])) {
             return $lesson['ilaw'];
         }
 

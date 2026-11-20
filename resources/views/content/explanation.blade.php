@@ -12,8 +12,8 @@
             @if(\App\Services\LessonMedia::embedUrl($section['video_url'] ?? null))<p class="mt-3 text-xs font-bold text-primary">Video attached · students can play it below this explanation.</p>@endif
         </div>
     </div>
-    <label class="mt-3">{{ $arduinoLesson ? 'Worked Arduino sketch (.ino)' : 'Worked C++ example' }}<textarea data-explanation-code id="explanation-{{ $index }}-code" name="sections[{{ $index }}][code]" rows="7" maxlength="20000" class="font-mono">{{ $section['code'] ?? '' }}</textarea></label>
-    @if($arduinoLesson)@include('wokwi-button', ['wokwiEditor'=>'explanation-'.$index.'-code'])@else @include('onecompiler-button', ['compilerEditor'=>'explanation-'.$index.'-code'])@endif
+    <label class="mt-3">{{ ($designLesson??false) ? 'Worked design example' : ($arduinoLesson ? 'Worked Arduino sketch (.ino)' : 'Worked C++ example') }}<textarea data-explanation-code id="explanation-{{ $index }}-code" name="sections[{{ $index }}][code]" rows="7" maxlength="20000" class="font-mono">{{ $section['code'] ?? '' }}</textarea></label>
+    @if($arduinoLesson)@include('wokwi-button', ['wokwiEditor'=>'explanation-'.$index.'-code'])@elseif(!($designLesson??false)) @include('onecompiler-button', ['compilerEditor'=>'explanation-'.$index.'-code'])@endif
     <label class="mt-3">Worked example output<textarea name="sections[{{ $index }}][output]" rows="3" maxlength="5000" class="font-mono">{{ $section['output'] ?? '' }}</textarea></label>
     <button type="button" data-explanation-remove class="mt-4 rounded-xl border bg-white px-3 py-2 text-xs font-bold text-primary">Remove explanation</button>
 </fieldset>

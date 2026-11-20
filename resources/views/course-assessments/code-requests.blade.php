@@ -1,7 +1,7 @@
 @extends('layouts.teacher-learning')
 
 @section('content')
-<nav class="mb-5 flex gap-3"><a href="{{ route('teacher.post-test.index') }}" class="font-bold underline">C++ codes</a><a href="{{ route('teacher.post-test.index',['course'=>'arduino-uno']) }}" class="font-bold underline">Arduino codes</a></nav>
+@include('course-navigation',['courseNavigationRoute'=>'teacher.post-test.index','selectedCourse'=>$courseQuery['course']??'cpp'])
 <p class="text-xs font-bold uppercase tracking-widest text-secondary">{{ $courseTitle }} Certification</p>
 <h1 class="mt-2 text-3xl font-extrabold text-primary">Post-test codes</h1>
 <p class="mt-2 max-w-3xl text-sm leading-6">Generate a personal code when a student in your class is ready. Share it privately with that student. A code expires after 24 hours or when the student starts the exam. Generating a new code replaces the old one.</p>

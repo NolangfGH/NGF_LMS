@@ -22,7 +22,7 @@ class LearningNotifications
 {
     public function postTestCodeRequested(Student $student, int $requestId): void
     {
-        $course = DB::table('course_post_test_attempts')->where('id', $requestId)->value('course') === 'arduino-uno' ? 'Arduino Uno' : 'C++';
+        $course = LearningCourses::title(DB::table('course_post_test_attempts')->where('id', $requestId)->value('course') ?? 'cpp');
         $this->send('teacher', $student->classroom?->teacher_account_id, 'quizzes', 'post-test-code:'.$requestId,
             'Post-test code requested', $student->nickname.' is ready for the '.$course.' certification exam. Open Post-test codes to issue a personal code.',
             'post_test_code', $requestId);
@@ -191,7 +191,7 @@ class LearningNotifications
         if (! $assigned) {
             return;
         }
-        $title = config('lessons.'.$progress->lesson_key.'.title', 'assigned C++ lesson');
+        $title = LearningCourses::lessons()[$progress->lesson_key]['title'] ?? 'assigned lesson';
         $this->send('teacher', $teacherId, 'lessons', 'lesson-completed:'.$progress->id, 'Assigned lesson completed',
             $student->nickname.' completed '.$title.'. Open learning progress to review the saved evidence.', 'lesson_progress', $progress->id);
     }

@@ -24,7 +24,7 @@ class LessonService
 
     public function catalogForTeacher(?int $teacherId, ?string $course = 'cpp'): array
     {
-        $catalog = [...config('lessons'), ...config('arduino_curriculum.lessons')];
+        $catalog = LearningCourses::lessons();
         $inCourse = static fn (array $lesson): bool => $course === null || ($lesson['course'] ?? 'cpp') === $course;
         if (! $teacherId) {
             return array_filter($catalog, $inCourse);
@@ -66,7 +66,7 @@ class LessonService
         $workspaces = $workspaces->keyBy('activity_key');
         $cards = [];
         $catalog = $this->catalogForTeacher($student->classroom?->teacher_account_id, $course);
-        $pretestRequired = ! app(CourseAssessments::class)->hasCompleted($student, $course === 'arduino-uno' ? CourseAssessments::ARDUINO_PRE : CourseAssessments::PRE);
+        $pretestRequired = ! app(CourseAssessments::class)->hasCompleted($student, LearningCourses::pretest($course));
         $reasoningRequired = ! app(CourseAssessments::class)->hasCompleted($student, CourseAssessments::REASONING);
         $previousComplete = true;
         foreach ($catalog as $key => $lesson) {
@@ -81,6 +81,6 @@ class LessonService
             ?? $available->filter(fn ($item) => $item['status'] !== 'completed' && $item['plan'])->first()
             ?? $available->firstWhere('status', 'not_started');
 
-        return ['course' => $course, 'title' => $course === 'arduino-uno' ? config('arduino_curriculum.title') : 'C++ Programming', 'cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count(), 'pretest_required' => $pretestRequired, 'reasoning_required' => $reasoningRequired];
+        return ['course' => $course, 'title' => LearningCourses::title($course), 'cards' => $cards, 'completed' => $cards->where('status', 'completed')->count(), 'started' => $progress->whereIn('lesson_key', array_keys($catalog))->count(), 'assigned' => $plans->whereIn('lesson_key', array_keys($catalog))->count(), 'practice_confirmed' => $cards->where('practice_progress.status', 'completed')->unique('practice')->count(), 'next' => $next, 'total' => $cards->count(), 'pretest_required' => $pretestRequired, 'reasoning_required' => $reasoningRequired];
     }
 }

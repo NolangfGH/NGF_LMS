@@ -2,7 +2,7 @@
 @section('content')
 <a href="{{ route('teacher.challenges') }}" class="text-sm font-bold text-primary underline">← Challenge Studio</a>
 <section class="mt-4 rounded-3xl border border-green-200 bg-white p-5 shadow-card sm:p-8">
-    <p class="text-xs font-bold uppercase tracking-widest text-secondary">Student-requested match · {{ $match->requested_grade }} · {{ $match->course==='arduino-uno' ? 'Arduino Uno Robotics' : 'C++ Programming' }}</p>
+    <p class="text-xs font-bold uppercase tracking-widest text-secondary">Student-requested match · {{ $match->requested_grade }} · {{ \App\Services\LearningCourses::title($match->course) }}</p>
     <h1 class="mt-2 text-3xl font-extrabold text-primary">{{ $match->title }}</h1><p class="mt-3 text-sm leading-7">Approve participation only after reviewing the task. Different supervising teachers must each approve. The host teacher verifies submissions and awards the winner; the other supervising teacher can monitor the shared match.</p>
     @if(session('peer_notice'))<p role="status" class="mt-4 rounded-xl bg-paper p-4 text-sm font-bold">{{ session('peer_notice') }}</p>@endif
     @if($errors->any())<div role="alert" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-900"><ul class="list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif

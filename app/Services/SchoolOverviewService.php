@@ -156,11 +156,11 @@ class SchoolOverviewService
             ->whereIn('workspace.student_id', $ids)->whereColumn('lab.teacher_account_id', 'classrooms.teacher_account_id')
             ->groupBy('workspace.student_id')->selectRaw('workspace.student_id, COUNT(DISTINCT workspace.id) AS submitted, COUNT(DISTINCT CASE WHEN lab.reviewed_at IS NOT NULL AND lab.score IS NOT NULL THEN workspace.id END) AS reviewed, MAX(lab.created_at) AS last_activity')->get()->keyBy('student_id');
         $catalogs = $classrooms->whereIn('id', $page->getCollection()->pluck('classroom_id'))->pluck('teacher_account_id')->unique()
-            ->mapWithKeys(fn ($id) => [$id => app(LessonService::class)->catalogForTeacher($id)]);
+            ->mapWithKeys(fn ($id) => [$id => app(LessonService::class)->catalogForTeacher($id, null)]);
 
         return $page->through(function ($student) use ($classrooms, $catalogs, $lessons, $quizzes, $labs) {
             $room = $classrooms->firstWhere('id', $student->classroom_id);
-            $catalog = $catalogs[$room->teacher_account_id];
+            $catalog = array_filter($catalogs[$room->teacher_account_id], fn (array $lesson): bool => ($lesson['course'] ?? 'cpp') === LearningCourses::recommendedForGrade($room->grade));
             $history = $lessons->where('student_id', $student->id)->whereIn('lesson_key', array_keys($catalog));
             $completed = $history->whereNotNull('completed_at')->count();
             $results = $quizzes->where('student_id', $student->id);
@@ -207,7 +207,7 @@ class SchoolOverviewService
             $definitions = LessonContent::whereIn('teacher_account_id', $rows->getCollection()->pluck('teacher_account_id'))->whereIn('lesson_key', $rows->getCollection()->pluck('lesson_key'))
                 ->get(['teacher_account_id', 'lesson_key', 'definition'])->keyBy(fn ($content) => $content->teacher_account_id.':'.$content->lesson_key);
             $rows->through(function ($plan) use ($classrooms, $teachers, $definitions) {
-                $definition = $definitions->get($plan->teacher_account_id.':'.$plan->lesson_key)?->definition ?? config('lessons.'.$plan->lesson_key, config('arduino_curriculum.lessons.'.$plan->lesson_key, config('legacy_lessons.'.$plan->lesson_key, [])));
+                $definition = $definitions->get($plan->teacher_account_id.':'.$plan->lesson_key)?->definition ?? (LearningCourses::lessons()[$plan->lesson_key] ?? config('legacy_lessons.'.$plan->lesson_key, []));
 
                 return ['title' => $definition['title'] ?? 'Saved lesson plan', 'teacher' => $teachers->get($plan->teacher_account_id)?->fullName(), 'sections' => $this->section($classrooms->firstWhere('id', $plan->classroom_id)),
                     'status' => $plan->status, 'instructions' => $plan->instructions, 'due_at' => $plan->due_at, 'definition' => $this->lessonDefinition($definition)];

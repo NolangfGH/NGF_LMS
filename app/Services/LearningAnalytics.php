@@ -23,7 +23,7 @@ class LearningAnalytics
                 ->orderBy('attempt_number', $attempt === 'latest' ? 'desc' : 'asc')->get()->unique('student_id');
             $source = 'post_test';
         } else {
-            $assessment = $kind === 'reasoning' ? CourseAssessments::REASONING : ($course === 'arduino-uno' ? CourseAssessments::ARDUINO_PRE : CourseAssessments::PRE);
+            $assessment = $kind === 'reasoning' ? CourseAssessments::REASONING : LearningCourses::pretest($course);
             $rows = DB::table('course_assessment_results')->whereIn('student_id', $students)->where('assessment', $assessment)->get();
             $source = 'course_assessment';
         }
