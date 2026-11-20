@@ -1,5 +1,6 @@
 @extends('layouts.teacher-learning', ['pageTitle'=>'Edit Lesson'])
 @section('content')
+<link rel="stylesheet" href="{{ asset('css/lesson-rich-text.css') }}?v=20261120">
 @php($courseKey = $definition['course'] ?? \App\Services\CourseAssessments::selectedCourse())
 @php($arduinoLesson = \App\Services\LearningCourses::environment($courseKey) === 'arduino-uno')
 @php($academicLesson = \App\Services\LearningCourses::isAcademic($courseKey))
@@ -22,5 +23,5 @@
 </section>
 <div class="flex flex-wrap gap-3"><button name="status" value="published" class="rounded-xl bg-primary px-5 py-3 font-bold text-white">Save & publish lesson</button><button name="status" value="draft" class="rounded-xl border px-5 py-3 font-bold text-primary">Save as draft / unpublish</button><a href="{{ route('teacher.content', \App\Services\CourseAssessments::courseQuery($courseKey)) }}" class="px-4 py-3 text-sm font-bold text-primary underline">Back to content</a></div>
 </form><style>.content-editor label{display:block;font-size:12px;font-weight:700;color:#0b4e00}.content-editor :is(input:not([type=hidden]),select,textarea){display:block;width:100%;border:1px solid #dce6d5;border-radius:10px;padding:11px;margin-top:7px;background:white;font-size:13px;font-weight:400;color:#263723}.content-editor :is(input,select,textarea):focus{outline:2px solid #63834f;outline-offset:2px} .content-editor input[type=checkbox]{width:1rem;height:1rem;padding:0;margin:0;display:inline-block}</style>
-<script src="{{ asset('js/lesson-content-editor.js') }}" defer></script><script src="{{ asset('js/lesson-explanations.js') }}?v=20261119-media" defer></script>
+<script src="{{ asset('js/lesson-content-editor.js') }}" defer></script><script src="{{ asset('js/lesson-explanations.js') }}?v=20261119-media" defer></script><script src="{{ asset('js/lesson-formatting.js') }}?v=20261120" defer></script>
 @endsection

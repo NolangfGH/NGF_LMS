@@ -103,13 +103,18 @@
             const option = document.createElement('option');
             option.value = String(words.length); option.textContent = passage.dataset.lessonSpeech;
             section.appendChild(option);
-            const fragment = document.createDocumentFragment();
-            passage.textContent.split(/(\s+)/).filter(Boolean).forEach(part => {
-                if (/^\s+$/.test(part)) { fragment.appendChild(document.createTextNode(part)); return; }
-                const element = document.createElement('span'); element.textContent = part;
-                fragment.appendChild(element); elements.push(element); words.push({ text: part, passage: index });
+            const walker = document.createTreeWalker(passage, 4);
+            const textNodes = [];
+            while (walker.nextNode()) textNodes.push(walker.currentNode);
+            textNodes.forEach(node => {
+                const fragment = document.createDocumentFragment();
+                node.textContent.split(/(\s+)/).filter(Boolean).forEach(part => {
+                    if (/^\s+$/.test(part)) { fragment.appendChild(document.createTextNode(part)); return; }
+                    const element = document.createElement('span'); element.textContent = part;
+                    fragment.appendChild(element); elements.push(element); words.push({ text: part, passage: index });
+                });
+                node.replaceWith(fragment);
             });
-            passage.replaceChildren(fragment);
         });
         let active = -1, activePassage = -1, voices = [];
         const player = createNarrationPlayer({

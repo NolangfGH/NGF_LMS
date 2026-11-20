@@ -60,7 +60,7 @@ class LessonMedia
                 throw ValidationException::withMessages(['sections.'.$index.'.media_key' => 'This explanation changed. Refresh the lesson before saving.']);
             }
             $old = $key ? $owned->get($key) : [];
-            $value = Arr::only($section, ['title', 'text', 'code', 'output', 'image_alt', 'video_url']);
+            $value = LessonTextFormatting::normalize(Arr::only($section, ['title', 'text', 'formatted_text', 'code', 'output', 'image_alt', 'video_url']), $index);
             $value['media_key'] = $key ?: (string) Str::uuid();
             if (empty($section['remove_image']) && ! empty($old['image_path'])) {
                 $value += Arr::only($old, ['image_path', 'image_mime']);
