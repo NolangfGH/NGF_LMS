@@ -50,8 +50,8 @@
             launcher.replaceChildren(open, node('p', 'Copies this submitted sketch. Paste into Wokwi’s sketch.ino, configure the circuit and test. The saved submission stays unchanged.', 'wokwi-note'), status, help);
         }
         details.append(code);
-        if (state.course !== 'ct7') details.append(launcher);
-        const download=node('a',state.course==='ct7' ? 'Download design notebook' : (['arduino-uno','ct10'].includes(state.course) ? 'Download .ino for testing' : 'Download .cpp for testing'),'mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
+        if (['cpp','arduino-uno','ct10'].includes(state.course) || !state.course) details.append(launcher);
+        const download=node('a',state.course==='ct7' ? 'Download design notebook' : (['arduino-uno','ct10'].includes(state.course) ? 'Download .ino for testing' : (state.course==='cpp' || !state.course ? 'Download .cpp for testing' : 'Download study notebook')),'mt-3 inline-block text-xs font-bold text-primary underline');download.href=submission.download_url;details.append(download);card.append(details);
         const form=node('form');form.method='POST';form.action=config.reviewUrl.replace('/submissions/0/','/submissions/'+submission.id+'/');
         const csrf=node('input');csrf.type='hidden';csrf.name='_token';csrf.value=config.csrf;form.append(csrf);
         const verdict=field(form,'Teacher verification *','verdict','select');

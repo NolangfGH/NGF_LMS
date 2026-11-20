@@ -83,11 +83,12 @@ class ParentPortalController extends Controller
         $selected = $request->filled('child') ? $approved->firstWhere('id', (int) $request->query('child')) : $approved->first();
         abort_if($request->filled('child') && ! $selected, 404);
         $overview = $selected ? $dashboard->student($selected->student) : null;
+        $subjectProgress = $overview['subjectProgress'] ?? [];
         $scores = $selected ? DB::table('quiz_submissions')->join('teacher_quizzes', 'teacher_quizzes.id', '=', 'quiz_submissions.teacher_quiz_id')->where('quiz_submissions.student_id', $selected->student_id)->whereNotNull('quiz_submissions.graded_at')->orderByDesc('quiz_submissions.graded_at')->limit(15)->get(['teacher_quizzes.title', 'quiz_submissions.score', 'quiz_submissions.total_questions']) : collect();
         $feedback = $selected ? LabSubmission::whereHas('workspace', fn ($q) => $q->where('student_id', $selected->student_id))->whereNotNull('reviewed_at')->latest('reviewed_at')->limit(10)->get(['score', 'feedback', 'reviewed_at']) : collect();
         $attendance = $selected ? DB::table('attendance_entries')->where('student_id', $selected->student_id)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status') : collect();
 
-        return response()->view('parent-dashboard', compact('parent', 'links', 'approved', 'selected', 'overview', 'scores', 'feedback', 'attendance'))->header('Cache-Control', 'private, no-store');
+        return response()->view('parent-dashboard', compact('parent', 'links', 'approved', 'selected', 'overview', 'scores', 'feedback', 'attendance', 'subjectProgress'))->header('Cache-Control', 'private, no-store');
     }
 
     public function link(Request $request): Response

@@ -35,7 +35,7 @@ class RecitationService
     private function awardsForTerm(RecitationRound $round): Builder
     {
         return RecitationAward::join('recitation_rounds as term_rounds', 'term_rounds.id', '=', 'recitation_awards.recitation_round_id')
-            ->where('term_rounds.school_year', $round->school_year)->where('term_rounds.term', $round->term);
+            ->where('term_rounds.school_year', $round->school_year)->where('term_rounds.term', $round->term)->where('term_rounds.course', $round->course);
     }
 
     private function progress(int $correct, int $score): array
@@ -45,7 +45,7 @@ class RecitationService
 
     public function termProgress(RecitationRound $round, Student $student, bool $lock = false): array
     {
-        $roundIds = RecitationRound::where('school_year', $round->school_year)->where('term', $round->term)->select('id');
+        $roundIds = RecitationRound::where('school_year', $round->school_year)->where('term', $round->term)->where('course', $round->course)->select('id');
         $awards = RecitationAward::where('student_id', $student->id)->whereIn('recitation_round_id', $roundIds)
             ->when($lock, fn (Builder $query): Builder => $query->lockForUpdate())->get(['id', 'score']);
 
@@ -55,9 +55,9 @@ class RecitationService
     public function studentTermTotals(Student $student): Collection
     {
         return RecitationAward::join('recitation_rounds as term_rounds', 'term_rounds.id', '=', 'recitation_awards.recitation_round_id')
-            ->where('recitation_awards.student_id', $student->id)->groupBy('term_rounds.school_year', 'term_rounds.term')
-            ->selectRaw('term_rounds.school_year, term_rounds.term, COUNT(*) AS correct_answers, SUM(recitation_awards.score) AS points')->get()
-            ->mapWithKeys(fn ($total): array => [$total->school_year.':'.$total->term => $this->progress((int) $total->correct_answers, (int) $total->points)]);
+            ->where('recitation_awards.student_id', $student->id)->groupBy('term_rounds.school_year', 'term_rounds.term', 'term_rounds.course')
+            ->selectRaw('term_rounds.school_year, term_rounds.term, term_rounds.course, COUNT(*) AS correct_answers, SUM(recitation_awards.score) AS points')->get()
+            ->mapWithKeys(fn ($total): array => [$total->school_year.':'.$total->term.':'.($total->course ?? 'general') => $this->progress((int) $total->correct_answers, (int) $total->points)]);
     }
 
     public function termStandings(RecitationRound $round, Collection $studentIds): Collection

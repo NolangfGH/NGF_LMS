@@ -9,6 +9,7 @@ use App\Models\RecitationDraft;
 use App\Models\RecitationRound;
 use App\Models\Student;
 use App\Models\TeacherAccount;
+use App\Services\LearningCourses;
 use App\Services\RecitationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,7 @@ class RecitationController extends Controller
     private function validated(Request $request, TeacherAccount $teacher): array
     {
         $data = $request->validate(['classroom_id' => ['required', 'integer', Rule::exists('classrooms', 'id')->where('teacher_account_id', $teacher->id)->whereNull('archived_at')], 'title' => ['required', 'string', 'max:160'], 'term' => ['required', Rule::in(['Term1', 'Term2', 'Term3'])], 'school_year' => ['sometimes', 'required', 'string', 'regex:/^20\d{2}-20\d{2}$/'], 'question' => ['required', 'string', 'max:5000'], 'accepted_answers' => ['required', 'string', 'max:20000'], 'case_sensitive' => ['required', 'boolean'], 'status' => ['required', Rule::in(['draft', 'open'])]]);
+        $data += $request->validate(['course' => ['sometimes', 'nullable', Rule::in(LearningCourses::keys())]]);
         if (isset($data['school_year']) && (int) substr($data['school_year'], 5) !== (int) substr($data['school_year'], 0, 4) + 1) {
             throw ValidationException::withMessages(['school_year' => 'Use consecutive school years, such as 2026-2027.']);
         }

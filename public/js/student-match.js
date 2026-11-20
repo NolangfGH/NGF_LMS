@@ -129,7 +129,7 @@
     });
     get('match-download').addEventListener('click',()=>{
         const url=URL.createObjectURL(new Blob([editor.value],{type:'text/plain;charset=utf-8'})), link=document.createElement('a');
-        link.href=url;link.download=state.course==='ct7' ? 'design-notebook.txt' : (['arduino-uno','ct10'].includes(state.course) ? 'sketch.ino' : 'main.cpp');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        link.href=url;link.download=state.course==='ct7' ? 'design-notebook.txt' : (['arduino-uno','ct10'].includes(state.course) ? 'sketch.ino' : (state.course==='cpp' || !state.course ? 'main.cpp' : 'study-notebook.txt'));link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     });
     window.addEventListener('beforeunload',event=>{if (editor.value!==savedCode) {event.preventDefault();event.returnValue='';}});
     document.addEventListener('visibilitychange',()=>{if (!document.hidden) {tick();poll();}});

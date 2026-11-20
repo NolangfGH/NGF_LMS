@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AcademicCurriculum;
 use App\Services\CreativeTechnologyCurriculum;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,6 +21,7 @@ class CodeWorkspace extends Model
             return match ($this->assignment?->unit) {
                 'Arduino UNO R3', CreativeTechnologyCurriculum::ROBOTICS_UNIT => 'arduino-uno',
                 CreativeTechnologyCurriculum::DESIGN_UNIT => 'design',
+                AcademicCurriculum::UNIT => 'academic',
                 default => 'cpp',
             };
         }
@@ -32,6 +34,7 @@ class CodeWorkspace extends Model
         return match ($this->environment()) {
             'arduino-uno' => 'sketch.ino',
             'design' => 'design-notebook.txt',
+            'academic' => 'study-notebook.txt',
             default => 'main.cpp',
         };
     }

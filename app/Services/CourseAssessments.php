@@ -39,6 +39,24 @@ class CourseAssessments
         'ct10-post-test' => 'Creative Technology 10 Post-Test',
     ];
 
+    public static function title(string $assessment): string
+    {
+        if (isset(self::TITLES[$assessment])) {
+            return self::TITLES[$assessment];
+        }
+        $course = LearningCourses::assessmentCourse($assessment);
+        abort_unless($course, 404);
+
+        return LearningCourses::title($course).($assessment === LearningCourses::pretest($course) ? ' Pre-Test' : ' Post-Test');
+    }
+
+    public static function isStartingAssessment(string $assessment): bool
+    {
+        $course = LearningCourses::assessmentCourse($assessment);
+
+        return $assessment === self::REASONING || ($course !== null && $assessment === LearningCourses::pretest($course));
+    }
+
     public function hasCompleted(Student $student, string $assessment): bool
     {
         return DB::table('course_assessment_results')->where('student_id', $student->id)->where('assessment', $assessment)->exists();
@@ -93,6 +111,11 @@ class CourseAssessments
     public function questions(string $assessment): array
     {
         $course = LearningCourses::assessmentCourse($assessment);
+        if ($course && LearningCourses::isAcademic($course)) {
+            $key = $assessment === LearningCourses::pretest($course) ? 'pre' : 'post';
+
+            return array_map(static fn (array $question): array => ['type' => 'multiple_choice', 'prompt' => $question['prompt'], 'options' => $question['options'], 'correct' => [$question['options'][$question['correct']]], 'skill' => $question['skill']], AcademicCurriculum::pack($course)[$key]);
+        }
         if ($course && $course !== 'cpp') {
             $questions = [];
             $offset = $assessment === LearningCourses::pretest($course) ? 0 : 2;
@@ -178,7 +201,7 @@ class CourseAssessments
                 }
                 $points = count($numbers) * ($isCorrect ? self::STARTING_CORRECT_XP : -self::STARTING_WRONG_XP);
                 $ledger->change($current->id, 'starting-assessment:'.$assessment.':'.($isCorrect ? 'correct' : 'wrong'), $points,
-                    ['type' => 'course_assessment', 'id' => $resultId, 'title' => self::TITLES[$assessment],
+                    ['type' => 'course_assessment', 'id' => $resultId, 'title' => self::title($assessment),
                         'reason' => $isCorrect ? 'Correct starting-assessment answers' : 'Incorrect starting-assessment answers',
                         'details' => [count($numbers).($isCorrect ? ' correct × 5 XP = +' : ' incorrect × 3 XP = −').abs($points).' XP.',
                             'Question numbers: '.implode(', ', array_map(static fn (int $index): int => $index + 1, $numbers)).'.',

@@ -146,7 +146,7 @@ class ArduinoCurriculumTest extends TestCase
             file_put_contents($preview.'/lesson.html', $this->get(route('student.lesson.show', 'arduino-robotics'))->getContent());
         }
         $this->assertCount(25, app(LessonService::class)->catalogForTeacher(null));
-        $this->assertCount(100, app(LessonService::class)->catalogForTeacher(null, null));
+        $this->assertCount(460, app(LessonService::class)->catalogForTeacher(null, null));
         $this->assertSame(['completed' => 0, 'total' => 25], app(CourseAssessments::class)->progress($student));
     }
 

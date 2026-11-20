@@ -7,7 +7,7 @@
     <section id="topics-{{ $courseKey }}" class="home-anchor mb-9 last:mb-0" aria-labelledby="topics-title-{{ $courseKey }}" data-home-course @if(!$shown) hidden @endif>
         <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
-                <p class="text-xs font-bold text-secondary">{{ $course['grade'] }} · {{ $course['title'] }}</p>
+                <p class="text-xs font-bold text-secondary">{{ $course['grade'] }} · {{ $course['title'] }}{{ !empty($course['elective']) ? ' · RSHS elective' : '' }}</p>
                 <h3 id="topics-title-{{ $courseKey }}" class="mt-1 text-xl font-extrabold text-primary">{{ $course['heading'] }}</h3>
             </div>
             <span data-home-course-count class="rounded-full bg-secondary-soft px-3 py-1.5 text-xs font-bold text-primary">{{ $shown }} of {{ $course['count'] }} lessons</span>

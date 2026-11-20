@@ -25,6 +25,11 @@ class HomepageService
             'ct7' => ['title' => 'Creative Technology 7', 'heading' => 'Design, model and create', 'grade' => 'Grade 7', 'lessons' => LearningCourses::lessons('ct7')],
             'ct10' => ['title' => 'Creative Technology 10', 'heading' => 'Engineer and test robotics projects', 'grade' => 'Grade 10', 'lessons' => LearningCourses::lessons('ct10')],
         ];
+        foreach (LearningCourses::TITLES as $course => $title) {
+            if (LearningCourses::isAcademic($course)) {
+                $courses[$course] = ['title' => $title, 'heading' => $title, 'grade' => LearningCourses::grade($course), 'lessons' => LearningCourses::lessons($course), 'elective' => LearningCourses::isElective($course)];
+            }
+        }
         $catalog = [];
         foreach ($courses as $course => &$summary) {
             $number = 0;
@@ -33,7 +38,7 @@ class HomepageService
                     'key' => $key, 'course' => $course, 'number' => ++$number,
                     'title' => $lesson['title'], 'topic' => $lesson['topic'], 'objective' => $lesson['objective'],
                     'minutes' => $lesson['minutes'], 'icon' => $lesson['icon'],
-                    'search' => mb_strtolower(implode(' ', [$summary['title'], $lesson['title'], $lesson['topic'], $lesson['objective']])),
+                    'search' => mb_strtolower(implode(' ', [$summary['grade'], $summary['title'], $lesson['title'], $lesson['topic'], $lesson['objective']])),
                     'url' => route('student.lesson.show', ['lesson' => $key, ...CourseAssessments::courseQuery($course)]),
                 ];
             }

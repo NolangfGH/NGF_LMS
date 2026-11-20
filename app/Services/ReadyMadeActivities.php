@@ -10,9 +10,11 @@ class ReadyMadeActivities
         $catalog = [];
         $arduino = LearningCourses::environment($course) === 'arduino-uno';
         $creative = LearningCourses::isCreative($course);
+        $academic = LearningCourses::isAcademic($course);
+        $pack = $academic ? AcademicCurriculum::pack($course) : null;
         $prefix = $creative ? 'creative_technology.'.$course : 'arduino_curriculum';
         foreach (LearningCourses::lessons($course) as $key => $lesson) {
-            $template = config($course === 'cpp' ? 'ready_made_activities.'.$key : $prefix.'.activities.'.$key);
+            $template = $academic ? $pack['activities'][$key] : config($course === 'cpp' ? 'ready_made_activities.'.$key : $prefix.'.activities.'.$key);
             if ($template === null) {
                 continue;
             }
@@ -40,7 +42,7 @@ class ReadyMadeActivities
                 'question' => $question['question'],
                 'accepted_answers' => implode("\n", $question['accepted_answers']),
                 'case_sensitive' => $question['case_sensitive'],
-            ], $recitations = config($creative ? $prefix.'.recitations.'.$key : 'ready_made_recitations.'.$key, []), array_keys($recitations));
+            ], $recitations = $academic ? $pack['recitations'][$key] : config($creative ? $prefix.'.recitations.'.$key : 'ready_made_recitations.'.$key, []), array_keys($recitations));
             foreach (['assignment', 'challenge'] as $kind) {
                 $catalog[$key][$kind] = $template[$kind] + [
                     'kind' => $kind,
@@ -51,13 +53,13 @@ class ReadyMadeActivities
                     'csta_standard' => null,
                 ];
             }
-            $article = config($course === 'cpp' ? 'ready_made_articles.'.$key : $prefix.'.articles.'.$key);
+            $article = $academic ? $pack['articles'][$key] : config($course === 'cpp' ? 'ready_made_articles.'.$key : $prefix.'.articles.'.$key);
             if ($article !== null) {
                 $parts = ['Learning goal', $lesson['objective'], $article['introduction']];
                 foreach ($lesson['sections'] as $section) {
                     $parts[] = $section['title']."\n".$section['text'];
                 }
-                $parts[] = ($arduino ? "Arduino sketch (.ino)\n" : ($creative ? "Worked design example\n" : "C++ example\n")).$lesson['code'];
+                $parts[] = ($academic ? "Worked classroom example\n" : ($arduino ? "Arduino sketch (.ino)\n" : ($creative ? "Worked design example\n" : "C++ example\n"))).$lesson['code'];
                 $parts[] = ($arduino ? "Expected behavior / output\n" : "Expected output\n").$lesson['output'];
                 $parts[] = "Your private response\n".implode("\n\n", array_map(static fn (string $prompt, int $index): string => ($index + 1).'. '.$prompt, $article['prompts'], array_keys($article['prompts'])));
                 $parts[] = 'Explain your reasoning in your own words. You may attach a code screenshot or record a voice response. Your comments and teacher replies stay private between you and your teacher.';
@@ -91,9 +93,20 @@ class ReadyMadeActivities
             foreach (['Term1', 'Term2', 'Term3'] as $term) {
                 $lessons = array_filter($catalog, static fn (array $lesson): bool => $lesson['term'] === $term);
                 $questions = [];
-                for ($position = 0; $position < 10; $position++) {
-                    foreach ($lessons as $lesson) {
-                        $questions[] = $lesson['quiz']['questions'][$position];
+                if (LearningCourses::isAcademic($course)) {
+                    $balanced = [[], [], []];
+                    $position = 0;
+                    foreach (AcademicCurriculum::pack($course)['exam'][$term] as $round) {
+                        foreach ($round as $question) {
+                            $balanced[$position++ % 3][] = ['type' => 'multiple_choice', 'prompt' => $question['prompt'], 'options' => $question['options'], 'correct' => [$question['options'][$question['correct']]], 'explanation' => $question['why']];
+                        }
+                    }
+                    $questions = array_merge(...$balanced);
+                } else {
+                    for ($position = 0; $position < 10; $position++) {
+                        foreach ($lessons as $lesson) {
+                            $questions[] = $lesson['quiz']['questions'][$position];
+                        }
                     }
                 }
                 foreach (['summative-1' => 'Summative Test 1', 'summative-2' => 'Summative Test 2', 'term-exam' => 'Term Exam'] as $index => $label) {

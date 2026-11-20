@@ -1,5 +1,6 @@
 @extends('layouts.student', ['pageTitle' => 'Assignments', 'active' => 'assignments'])
 @section('content')
+@include('subject-filter',['subjectFilterRoute'=>'student.assignments'])
 @if(session('excuse_notice'))<p role="status" class="mb-5 rounded-xl bg-green-100 p-4">{{ session('excuse_notice') }}</p>@endif
 <div class="mb-7">
     <span class="font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">{{ $classroom->name }}</span>

@@ -18,7 +18,7 @@
         @else
             <p class="mt-3 text-sm font-bold text-primary">{{ \App\Services\CourseAssessments::practiceBand($result->score, $result->total_questions) }}</p>
             <p class="mt-2 text-sm leading-6">Practise the areas with the fewest correct answers first. For each area and the overall result, 90–100% suggests a stretch task, 70–89% is secure, 40–69% is developing, and below 40% suggests starting with guided examples.</p>
-            <p class="mt-4 text-sm font-bold text-primary">Starting requirement complete for both C++ Programming and Arduino Uno Robotics.</p>
+            <p class="mt-4 text-sm font-bold text-primary">Shared reasoning requirement complete for all learning subjects. Each subject still requires its own pre-test.</p>
             <a href="{{ $pretest ? route('student.learn', $courseQuery) : route('student.assessments.show', [\App\Services\LearningCourses::pretest($courseKey)]) }}" class="mt-4 inline-block rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">{{ $pretest ? 'Open learning path' : 'Continue to course pre-test' }} →</a>
         @endif
     </div>

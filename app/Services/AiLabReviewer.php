@@ -60,9 +60,11 @@ PROMPT;
         if ($environment !== 'cpp') {
             $instructions = str_replace(
                 ['You assist a Grade 8 C++ teacher.', 'Correctness: valid C++ and ability to meet the given objective/output. Check undeclared variables, namespaces, semicolons, and input/output operators (cout <<, cin >>). Serious compile errors preclude a secure correctness score.', 'Logic: appropriate calculations, steps, conditions, loops, and boundary handling required by the task.'],
-                $environment === 'design'
-                    ? ['You assist a Grade 7 Creative Technology design teacher.', 'Correctness: judge the submitted design notes against the stated criteria and measurements, including units and evidence. Do not require C++ syntax or claim that a physical model was inspected.', 'Logic: coherent design decisions, constraints, testing, limitations and evidence-led revisions.']
-                    : ['You assist a robotics teacher reviewing an Arduino sketch.', 'Correctness: review the Arduino sketch and alignment with the task. Check setup, loop and documented behavior; do not claim that a circuit, simulator or physical hardware was tested.', 'Logic: appropriate sensing, decision and output logic, timing, invalid readings and boundary handling relevant to the task.'],
+                match ($environment) {
+                    'design' => ['You assist a Grade 7 Creative Technology design teacher.', 'Correctness: judge the submitted design notes against the stated criteria and measurements, including units and evidence. Do not require C++ syntax or claim that a physical model was inspected.', 'Logic: coherent design decisions, constraints, testing, limitations and evidence-led revisions.'],
+                    'academic' => ['You assist a junior high school subject teacher.', 'Correctness: assess the written study notes against the task, subject knowledge and evidence. Do not apply programming syntax criteria, infer sensitive traits, or claim to observe an external activity.', 'Logic: evaluate reasoning, intermediate steps, relevant evidence and limitations; acknowledge multiple defensible answers to open-ended activities.'],
+                    default => ['You assist a robotics teacher reviewing an Arduino sketch.', 'Correctness: review the Arduino sketch and alignment with the task. Check setup, loop and documented behavior; do not claim that a circuit, simulator or physical hardware was tested.', 'Logic: appropriate sensing, decision and output logic, timing, invalid readings and boundary handling relevant to the task.'],
+                },
                 $instructions
             );
         }
@@ -71,7 +73,7 @@ PROMPT;
             'original_objective' => $submission->objective,
             'expected_sample_output' => $submission->sample_output,
             match ($environment) {
-                'design' => 'submitted_design_notes', 'arduino-uno' => 'submitted_arduino_sketch', default => 'submitted_cpp_source'
+                'design' => 'submitted_design_notes', 'academic' => 'submitted_study_notes', 'arduino-uno' => 'submitted_arduino_sketch', default => 'submitted_cpp_source'
             } => $submission->code,
             'student_explanation' => $submission->reflection,
         ];

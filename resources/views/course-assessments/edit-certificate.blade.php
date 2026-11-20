@@ -1,7 +1,7 @@
 @extends('layouts.teacher-learning')
 
 @section('content')
-<nav class="mb-5 flex flex-wrap gap-3">@foreach(\App\Services\LearningCourses::TITLES as $key=>$label)<a href="{{ route('teacher.certificates.edit', [$student->id,'course'=>$key]) }}" @if(($courseQuery['course']??'cpp')===$key) aria-current="page" @endif class="rounded-xl border px-4 py-2 text-sm font-bold {{ ($courseQuery['course']??'cpp')===$key?'bg-secondary-soft':'bg-white' }}">{{ $label }}</a>@endforeach</nav>
+@include('course-navigation',['courseNavigationRoute'=>'teacher.certificates.edit','courseNavigationParameters'=>[$student->id],'selectedCourse'=>$courseQuery['course']??'cpp'])
 <a href="{{ route('teacher.students.show', $student->id) }}" class="text-sm font-bold text-primary">← Student details</a>
 <h1 class="mt-4 text-3xl font-extrabold text-primary">Course certificate</h1>
 <p class="mt-2 text-sm">{{ $student->nickname }} · {{ $courseProgress['completed'] }} / {{ $courseProgress['total'] }} core checkpoints completed</p>

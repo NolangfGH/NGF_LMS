@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AcademicCurriculum;
 use App\Services\LearningCourses;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,6 +21,9 @@ class QuizBeeMatch extends Model
 
     public static function questionBank(string $course): array
     {
+        if (LearningCourses::isAcademic($course)) {
+            return AcademicCurriculum::pack($course)['bee'];
+        }
         if (LearningCourses::isCreative($course)) {
             return config('creative_technology.'.$course.'.bee');
         }

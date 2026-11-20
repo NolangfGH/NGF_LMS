@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AcademicCurriculum;
 use App\Services\CodingMatchService;
 use App\Services\CreativeTechnologyCurriculum;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,7 @@ class TeacherAssignment extends Model
 
     protected $hidden = ['test_cases'];
 
-    protected $fillable = ['kind', 'teacher_account_id', 'classroom_id', 'title', 'unit', 'school_term', 'objective', 'due_at', 'difficulty', 'xp', 'status', 'starter_code', 'sample_output', 'csta_standard', 'time_limit_minutes', 'test_cases', 'hints'];
+    protected $fillable = ['kind', 'teacher_account_id', 'classroom_id', 'title', 'unit', 'course', 'school_term', 'objective', 'due_at', 'difficulty', 'xp', 'status', 'starter_code', 'sample_output', 'csta_standard', 'time_limit_minutes', 'test_cases', 'hints'];
 
     protected function casts(): array
     {
@@ -36,6 +37,7 @@ class TeacherAssignment extends Model
     {
         return $this->starter_code ?: match ($this->unit) {
             CreativeTechnologyCurriculum::DESIGN_UNIT => CodingMatchService::starterCode('ct7'),
+            AcademicCurriculum::UNIT => AcademicCurriculum::STARTER,
             CreativeTechnologyCurriculum::ROBOTICS_UNIT, 'Arduino UNO R3' => CodingMatchService::starterCode('arduino-uno'),
             default => config('code_lab.assignment_starter'),
         };

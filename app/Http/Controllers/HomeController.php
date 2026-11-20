@@ -14,11 +14,13 @@ use App\Models\TeacherAccount;
 use App\Models\TeacherAssignment;
 use App\Models\TeacherQuiz;
 use App\Models\User;
+use App\Services\AcademicCurriculum;
 use App\Services\AchievementService;
 use App\Services\ChallengeService;
 use App\Services\CodeExecutionService;
 use App\Services\CodeLabTimer;
 use App\Services\CourseAssessments;
+use App\Services\CreativeTechnologyCurriculum;
 use App\Services\DashboardService;
 use App\Services\HomepageService;
 use App\Services\Judge0Client;
@@ -460,9 +462,11 @@ class HomeController extends Controller
         $practiceActivities = array_intersect_key(config('code_lab.activities'), array_flip($practiceKeys->all()));
 
         return view('code-lab', [...$data, 'labActivity' => $activity, 'workspace' => $workspace,
+            'labCourse' => $workspace->assignment?->course ?? LearningCourses::lessonCourse(str_replace('practice:', '', $workspace->activity_key)),
             'labSubmissions' => $workspace->submissions()->latest()->get(), 'practiceActivities' => $practiceActivities,
             'arduinoLab' => $workspace->isArduino(),
-            'designLab' => $workspace->environment() === 'design',
+            'designLab' => in_array($workspace->environment(), ['design', 'academic'], true),
+            'academicLab' => $workspace->environment() === 'academic',
             'compilerConfigured' => $workspace->environment() === 'cpp' && app(Judge0Client::class)->configured(),
             'codeRuns' => CodeRun::where('code_workspace_id', $workspace->id)->latest()->limit(10)->get(),
             'visibleTests' => collect(app(CodeExecutionService::class)->cases($workspace))->filter(fn ($case) => empty($case['hidden']))->values(),
@@ -558,6 +562,10 @@ class HomeController extends Controller
             return $data;
         }
         $data['publishedAssignments'] = $data['publishedAssignments']->where('kind', 'assignment')->values();
+        $data['selectedSubject'] = request()->validate(['course' => ['nullable', Rule::in(LearningCourses::keys())]])['course'] ?? null;
+        if ($data['selectedSubject']) {
+            $data['publishedAssignments'] = $data['publishedAssignments']->where('course', $data['selectedSubject'])->values();
+        }
         $data['assignmentWorkspaces'] = CodeWorkspace::where('student_id', $data['student']->id)
             ->whereIn('teacher_assignment_id', $data['publishedAssignments']->pluck('id'))->get()->keyBy('teacher_assignment_id');
         $data['assignmentServerTime'] = now()->getTimestampMs();
@@ -573,8 +581,9 @@ class HomeController extends Controller
         }
         $data['quizAttempts'] = QuizAttempt::where('student_id', $data['student']->id)->orderBy('attempt_number')->get()->keyBy('teacher_quiz_id');
         $data['quizServerTime'] = now()->getTimestampMs();
+        $data['selectedSubject'] = request()->validate(['course' => ['nullable', Rule::in(LearningCourses::keys())]])['course'] ?? null;
         $data['quizzes'] = TeacherQuiz::forClassroom($data['student']->classroom_id)
-            ->where('status', 'published')->latest()->get();
+            ->where('status', 'published')->when($data['selectedSubject'], fn ($query) => $query->where('course', $data['selectedSubject']))->latest()->get();
         $data['quizResults'] = DB::table('quiz_submissions')
             ->where('student_id', $data['student']->id)->orderBy('attempt_number')->get()->keyBy('teacher_quiz_id');
         $data['quizFinalResults'] = DB::table('quiz_submissions')->where('student_id', $data['student']->id)->where('attempt_number', 2)->get()->keyBy('teacher_quiz_id');
@@ -589,13 +598,15 @@ class HomeController extends Controller
             return redirect()->route('teacher.login');
         }
         $classroom = $teacher->classrooms()->latest()->first();
-        $quizzes = TeacherQuiz::with(['classroom', 'classrooms'])->where('teacher_account_id', $teacher->id)->latest()->get();
+        $selectedSubject = request()->validate(['course' => ['nullable', Rule::in(LearningCourses::keys())]])['course'] ?? null;
+        $quizzes = TeacherQuiz::with(['classroom', 'classrooms'])->where('teacher_account_id', $teacher->id)->when($selectedSubject, fn ($query) => $query->where('course', $selectedSubject))->latest()->get();
 
         return view('teacher-quizzes', [
             'teacher' => $teacher,
             'classroom' => $classroom,
             'classrooms' => $teacher->classrooms()->withCount('students')->orderBy('grade')->orderBy('section')->get(),
             'quizzes' => $quizzes,
+            'selectedSubject' => $selectedSubject,
             'editableQuizzes' => $quizzes->map(fn ($quiz) => [
                 'id' => $quiz->id, 'title' => $quiz->title, 'instructions' => $quiz->instructions, 'course' => $quiz->course,
                 'classroom_id' => $quiz->classroom_id, 'xp' => $quiz->xp, 'time_limit' => $quiz->time_limit,
@@ -752,7 +763,7 @@ class HomeController extends Controller
 
         $classroom = $teacher->classrooms()->latest()->first();
         $classrooms = $teacher->classrooms()->withCount('students')->orderBy('grade')->orderBy('section')->get();
-        $query = $request->validate(['edit' => ['nullable', 'integer', 'min:1']]);
+        $query = $request->validate(['edit' => ['nullable', 'integer', 'min:1'], 'course' => ['nullable', Rule::in(LearningCourses::keys())]]);
         $editingAssignment = ! empty($query['edit'])
             ? TeacherAssignment::with('classrooms')->where('teacher_account_id', $teacher->id)->where('kind', $builderKind)->findOrFail($query['edit'])
             : null;
@@ -781,10 +792,11 @@ class HomeController extends Controller
             'studentsCount' => $classrooms->sum('students_count'),
             'classrooms' => $classrooms,
             'editingAssignment' => $editingAssignment,
+            'selectedAssignmentCourse' => $editingAssignment ? $editingAssignment->course : ($query['course'] ?? null),
             'assignmentEditor' => $assignmentEditor,
             'builderKind' => $builderKind,
             'assignmentIndexUrl' => route($builderKind === 'challenge' ? 'teacher.section-challenges' : 'teacher.assignments'),
-            'assignments' => TeacherAssignment::with(['classrooms', 'classroom'])->where('teacher_account_id', $teacher->id)->where('kind', $builderKind)->latest()->get(),
+            'assignments' => TeacherAssignment::with(['classrooms', 'classroom'])->where('teacher_account_id', $teacher->id)->where('kind', $builderKind)->when(isset($query['course']) && ! $editingAssignment, fn ($queryBuilder) => $queryBuilder->where('course', $query['course']))->latest()->get(),
         ]);
     }
 
@@ -819,6 +831,10 @@ class HomeController extends Controller
         $teacher = TeacherAccount::find(session('teacher_id'));
         abort_unless($teacher && (int) $assignment->teacher_account_id === $teacher->id, 403);
         $data = $this->validatedAssignmentData($request, $teacher, $assignment->kind);
+        if (array_key_exists('course', $data) && $data['course'] !== $assignment->course) {
+            throw ValidationException::withMessages(['course' => 'Keep the original subject of this assignment. Create a new activity for a different subject.']);
+        }
+        unset($data['unit']);
         if (isset($data['kind']) && $data['kind'] !== $assignment->kind) {
             throw ValidationException::withMessages(['kind' => 'Keep the activity in its original assignment or challenge category.']);
         }
@@ -857,6 +873,7 @@ class HomeController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'kind' => ['nullable', 'in:assignment,challenge'],
+            'course' => ['sometimes', 'nullable', Rule::in(LearningCourses::keys())],
             'school_term' => ['required', 'in:Term1,Term2,Term3'],
             'classroom_ids' => ['required', 'array', 'min:1', 'max:100'],
             'classroom_ids.*' => ['required', 'integer', 'distinct', Rule::exists('classrooms', 'id')->where('teacher_account_id', $teacher->id)],
@@ -880,6 +897,18 @@ class HomeController extends Controller
 
         if ($request->boolean('tests_included') && ! array_key_exists('test_cases', $data)) {
             $data['test_cases'] = [];
+        }
+        if (! empty($data['course'])) {
+            $data['unit'] = match (LearningCourses::environment($data['course'])) {
+                'academic' => AcademicCurriculum::UNIT,
+                'design' => CreativeTechnologyCurriculum::DESIGN_UNIT,
+                'arduino-uno' => $data['course'] === 'ct10' ? CreativeTechnologyCurriculum::ROBOTICS_UNIT : 'Arduino UNO R3',
+                default => 'C++ Programming',
+            };
+            if (LearningCourses::environment($data['course']) !== 'cpp') {
+                $data['test_cases'] = [];
+                $data['csta_standard'] = null;
+            }
         }
         if ($request->boolean('tests_included') && ! array_key_exists('hints', $data)) {
             $data['hints'] = [];

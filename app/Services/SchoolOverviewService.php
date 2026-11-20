@@ -29,8 +29,9 @@ class SchoolOverviewService
     public function build(TeacherAccount $teacher, Request $request): array
     {
         $filter = $request->validate(['tab' => ['nullable', Rule::in(array_keys(self::TABS))], 'classroom' => ['nullable', 'integer', 'min:1'], 'page' => ['nullable', 'integer', 'min:1'], 'content_page' => ['nullable', 'integer', 'min:1'],
-            'scope' => ['nullable', Rule::in(['overall', 'grade', 'section'])], 'grade' => ['nullable', 'string', 'max:80'], 'period' => ['nullable', Rule::in(['all', 'week', 'month'])]]);
+            'scope' => ['nullable', Rule::in(['overall', 'grade', 'section'])], 'grade' => ['nullable', 'string', 'max:80'], 'period' => ['nullable', Rule::in(['all', 'week', 'month'])], 'course' => ['nullable', Rule::in(LearningCourses::keys())]]);
         $tab = $filter['tab'] ?? 'overview';
+        $selectedCourse = $filter['course'] ?? null;
         $staff = TeacherAccount::where('school', $teacher->school)->where('staff_access_status', 'active')->get(['id', 'first_name', 'middle_initial', 'last_name', 'role']);
         $teachers = $staff->whereIn('role', ['teacher', 'school_admin'])->keyBy('id');
         $allClassrooms = Classroom::whereNull('archived_at')->whereIn('teacher_account_id', $teachers->keys())
@@ -82,7 +83,7 @@ class SchoolOverviewService
         $quizResults = $this->quizResults($roomIds);
         $data = ['teacher' => $teacher, 'tab' => $tab, 'tabs' => self::TABS, 'allClassrooms' => $allClassrooms, 'classrooms' => $classrooms,
             'teachers' => $teachers, 'selected' => $selected, 'sections' => $sections, 'visibleSections' => $visibleSections,
-            'grades' => $grades, 'rankingScope' => $rankingScope, 'rankingGrade' => $rankingGrade, 'rankingPeriod' => $rankingPeriod,
+            'grades' => $grades, 'rankingScope' => $rankingScope, 'rankingGrade' => $rankingGrade, 'rankingPeriod' => $rankingPeriod, 'selectedCourse' => $selectedCourse,
             'studentCount' => (clone $students)->count(), 'staffCount' => $staff->count(),
             'totalXp' => (int) (clone $students)->sum('xp'),
             'quizAverage' => DB::query()->fromSub($quizResults, 'results')->avg('percent'),
@@ -91,7 +92,7 @@ class SchoolOverviewService
             'updatedAt' => now(config('learning.timezone'))->format('M j, Y · g:i A')];
 
         if ($tab === 'students') {
-            $data['rows'] = $this->progress($roomIds, $classrooms);
+            $data['rows'] = $this->progress($roomIds, $classrooms, $selectedCourse);
         } elseif ($tab === 'attendance') {
             $data += app(SchoolAttendanceService::class)->build($classrooms, $teachers, $request, $selected);
         } elseif ($tab === 'leaderboard') {
@@ -122,7 +123,7 @@ class SchoolOverviewService
                     'badge' => config('achievements.'.$award->badge_code.'.name', 'Saved achievement'),
                     'requirement' => config('achievements.'.$award->badge_code.'.requirement', 'Achievement recorded in the learning profile.'), 'earned_at' => $award->earned_at]);
         } elseif (in_array($tab, ['lessons', 'quizzes', 'assignments', 'challenges'], true)) {
-            $data += $this->activities($tab, $classrooms, $teachers, $selected);
+            $data += $this->activities($tab, $classrooms, $teachers, $selected, $selectedCourse);
         }
 
         return $data;
@@ -133,34 +134,38 @@ class SchoolOverviewService
         return $room ? $room->grade.' · '.($room->section ?: $room->name) : 'Section unavailable';
     }
 
-    private function quizResults(Collection $roomIds): Builder
+    private function quizResults(Collection $roomIds, ?string $course = null): Builder
     {
         return DB::table('quiz_submissions as result')->join('students', 'students.id', '=', 'result.student_id')
             ->join('classrooms', 'classrooms.id', '=', 'students.classroom_id')->join('teacher_quizzes as quiz', 'quiz.id', '=', 'result.teacher_quiz_id')
             ->whereIn('students.classroom_id', $roomIds)->whereNull('students.deleted_at')->where('students.registration_status', 'approved')->whereNull('quiz.deleted_at')
-            ->whereColumn('quiz.teacher_account_id', 'classrooms.teacher_account_id')->where('result.total_questions', '>', 0)
+            ->whereColumn('quiz.teacher_account_id', 'classrooms.teacher_account_id')->when($course, fn ($query) => $query->where('quiz.course', $course))->where('result.total_questions', '>', 0)
             ->whereColumn('result.graded_questions', 'result.total_questions')->where('result.score', '>=', 0)->whereColumn('result.score', '<=', 'result.total_questions')
             ->groupBy('result.student_id', 'result.teacher_quiz_id')
             ->selectRaw('result.student_id, result.teacher_quiz_id, MAX(100.0 * result.score / result.total_questions) AS percent, MAX(result.created_at) AS last_activity');
     }
 
-    private function progress(Collection $roomIds, Collection $classrooms): LengthAwarePaginator
+    private function progress(Collection $roomIds, Collection $classrooms, ?string $course = null): LengthAwarePaginator
     {
         $page = Student::whereIn('classroom_id', $roomIds)->with('achievements:id,student_id,badge_code,earned_at')->orderBy('nickname')->orderBy('id')
             ->paginate(25, ['id', 'classroom_id', 'nickname', 'leaderboard_visible', 'xp', 'level', 'streak_days'])->withQueryString();
         $ids = $page->getCollection()->pluck('id');
         $lessons = LessonProgress::whereIn('student_id', $ids)->get(['student_id', 'lesson_key', 'completed_at', 'last_opened_at']);
-        $quizzes = $this->quizResults($roomIds)->whereIn('result.student_id', $ids)->get();
+        $quizzes = $this->quizResults($roomIds, $course)->whereIn('result.student_id', $ids)->get();
         $labs = DB::table('lab_submissions as lab')->join('code_workspaces as workspace', 'workspace.id', '=', 'lab.code_workspace_id')
             ->join('students', 'students.id', '=', 'workspace.student_id')->join('classrooms', 'classrooms.id', '=', 'students.classroom_id')
             ->whereIn('workspace.student_id', $ids)->whereColumn('lab.teacher_account_id', 'classrooms.teacher_account_id')
+            ->when($course, function ($query) use ($course): void {
+                $practice = array_map(fn ($lesson) => 'practice:'.$lesson['practice'], LearningCourses::lessons($course));
+                $query->where(fn ($scope) => $scope->whereIn('workspace.activity_key', $practice)->orWhereIn('workspace.teacher_assignment_id', TeacherAssignment::where('course', $course)->select('id')));
+            })
             ->groupBy('workspace.student_id')->selectRaw('workspace.student_id, COUNT(DISTINCT workspace.id) AS submitted, COUNT(DISTINCT CASE WHEN lab.reviewed_at IS NOT NULL AND lab.score IS NOT NULL THEN workspace.id END) AS reviewed, MAX(lab.created_at) AS last_activity')->get()->keyBy('student_id');
         $catalogs = $classrooms->whereIn('id', $page->getCollection()->pluck('classroom_id'))->pluck('teacher_account_id')->unique()
-            ->mapWithKeys(fn ($id) => [$id => app(LessonService::class)->catalogForTeacher($id, null)]);
+            ->mapWithKeys(fn ($id) => [$id => app(LessonService::class)->catalogForTeacher($id, $course)]);
 
-        return $page->through(function ($student) use ($classrooms, $catalogs, $lessons, $quizzes, $labs) {
+        return $page->through(function ($student) use ($classrooms, $catalogs, $lessons, $quizzes, $labs, $course) {
             $room = $classrooms->firstWhere('id', $student->classroom_id);
-            $catalog = array_filter($catalogs[$room->teacher_account_id], fn (array $lesson): bool => ($lesson['course'] ?? 'cpp') === LearningCourses::recommendedForGrade($room->grade));
+            $catalog = array_filter($catalogs[$room->teacher_account_id], fn (array $lesson): bool => ($lesson['course'] ?? 'cpp') === ($course ?? LearningCourses::recommendedForGrade($room->grade)));
             $history = $lessons->where('student_id', $student->id)->whereIn('lesson_key', array_keys($catalog));
             $completed = $history->whereNotNull('completed_at')->count();
             $results = $quizzes->where('student_id', $student->id);
@@ -198,11 +203,12 @@ class SchoolOverviewService
         return Arr::only($definition, ['title', 'objective', 'topic', 'minutes', 'sections', 'code', 'output']);
     }
 
-    private function activities(string $tab, Collection $classrooms, Collection $teachers, ?int $selected): array
+    private function activities(string $tab, Collection $classrooms, Collection $teachers, ?int $selected, ?string $course = null): array
     {
         if ($tab === 'lessons') {
             $rows = TeacherLessonPlan::whereIn('classroom_id', $classrooms->pluck('id'))
                 ->whereHas('classroom', fn ($query) => $query->whereColumn('classrooms.teacher_account_id', 'teacher_lesson_plans.teacher_account_id'))
+                ->when($course, fn ($query) => $query->where(fn ($scope) => $scope->whereIn('lesson_key', array_keys(LearningCourses::lessons($course)))->orWhereIn('lesson_key', LessonContent::whereIn('teacher_account_id', $teachers->keys())->where('definition->course', $course)->select('lesson_key'))))
                 ->latest()->paginate(12)->withQueryString();
             $definitions = LessonContent::whereIn('teacher_account_id', $rows->getCollection()->pluck('teacher_account_id'))->whereIn('lesson_key', $rows->getCollection()->pluck('lesson_key'))
                 ->get(['teacher_account_id', 'lesson_key', 'definition'])->keyBy(fn ($content) => $content->teacher_account_id.':'.$content->lesson_key);
@@ -213,6 +219,7 @@ class SchoolOverviewService
                     'status' => $plan->status, 'instructions' => $plan->instructions, 'due_at' => $plan->due_at, 'definition' => $this->lessonDefinition($definition)];
             });
             $contents = LessonContent::whereIn('teacher_account_id', $selected ? $classrooms->pluck('teacher_account_id')->unique() : $teachers->keys())
+                ->when($course, fn ($query) => $query->where('definition->course', $course))
                 ->latest()->paginate(12, ['id', 'teacher_account_id', 'definition', 'status'], 'content_page')->withQueryString()
                 ->through(fn ($content) => ['teacher' => $teachers->get($content->teacher_account_id)?->fullName(), 'status' => $content->status, 'definition' => $this->lessonDefinition($content->definition)]);
 
@@ -220,6 +227,9 @@ class SchoolOverviewService
         }
         $model = $tab === 'quizzes' ? TeacherQuiz::class : TeacherAssignment::class;
         $query = $this->activityQuery($model, $classrooms);
+        if ($course) {
+            $query->where('course', $course);
+        }
         if ($tab !== 'quizzes') {
             $query->where('kind', $tab === 'challenges' ? 'challenge' : 'assignment');
         }
@@ -241,6 +251,7 @@ class SchoolOverviewService
         if ($tab === 'challenges') {
             $matchRooms = Classroom::whereNull('archived_at')->whereIn('teacher_account_id', $teachers->keys())->get(['id', 'grade', 'section', 'name']);
             $data['matches'] = CodingMatch::whereIn('teacher_account_id', $teachers->keys())
+                ->when($course, fn ($query) => $query->where('course', $course))
                 ->whereHas('participants.student', fn ($query) => $query->whereIn('classroom_id', $classrooms->pluck('id')))
                 ->with(['participants' => fn ($query) => $query->select('id', 'coding_match_id', 'student_id', 'response')
                     ->whereHas('student', fn ($query) => $query->whereIn('classroom_id', $matchRooms->pluck('id')))

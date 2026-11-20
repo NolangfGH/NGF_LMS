@@ -31,6 +31,7 @@ class CourseAssessmentController extends Controller
 
     public function show(string $assessment): Response|RedirectResponse
     {
+        abort_unless(CourseAssessments::isStartingAssessment($assessment), 404);
         $student = Student::with('classroom')->find(session('student_id'));
         if (! $student) {
             return redirect()->route('student.login');
@@ -39,7 +40,7 @@ class CourseAssessmentController extends Controller
         $result = $results->get($assessment);
 
         return $this->studentView('course-assessments.show', $student, $results, [
-            'assessment' => $assessment, 'title' => CourseAssessments::TITLES[$assessment],
+            'assessment' => $assessment, 'title' => CourseAssessments::title($assessment),
             'result' => $result, 'skills' => $result ? json_decode($result->skill_scores, true, flags: JSON_THROW_ON_ERROR) : [],
             'questions' => $result ? [] : $this->assessments->publicQuestions($assessment),
         ]);
@@ -47,6 +48,7 @@ class CourseAssessmentController extends Controller
 
     public function submit(Request $request, string $assessment, QuizGrader $grader): RedirectResponse
     {
+        abort_unless(CourseAssessments::isStartingAssessment($assessment), 404);
         $student = Student::with('classroom')->find(session('student_id'));
         abort_unless($student, 401);
         if ($this->assessments->hasCompleted($student, $assessment)) {

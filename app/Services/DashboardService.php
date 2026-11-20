@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CodeRun;
 use App\Models\CodeWorkspace;
+use App\Models\LessonProgress;
 use App\Models\Student;
 use App\Models\TeacherAccount;
 use App\Models\TeacherAssignment;
@@ -20,7 +21,22 @@ class DashboardService
         $quizzes = TeacherQuiz::where('teacher_account_id', $student->classroom->teacher_account_id)->forClassroom($student->classroom_id)->where('status', 'published')->orderByRaw('closes_at IS NULL')->orderBy('closes_at')->limit(6)->get();
         $quizResults = DB::table('quiz_submissions')->where('student_id', $student->id)->whereIn('teacher_quiz_id', $quizzes->pluck('id'))->pluck('teacher_quiz_id');
 
-        return compact('path', 'assignments', 'workspaces', 'quizzes', 'quizResults');
+        $subjectProgress = $this->subjectProgress($student);
+
+        return compact('path', 'assignments', 'workspaces', 'quizzes', 'quizResults', 'subjectProgress');
+    }
+
+    public function subjectProgress(Student $student): array
+    {
+        $completed = LessonProgress::where('student_id', $student->id)->whereNotNull('completed_at')->pluck('lesson_key')->all();
+        $catalog = app(LessonService::class)->catalogForTeacher($student->classroom?->teacher_account_id, null);
+        $progress = [];
+        foreach (LearningCourses::groups()[$student->classroom?->grade] ?? [] as $course => $title) {
+            $keys = array_keys(array_filter($catalog, fn ($lesson) => ($lesson['course'] ?? 'cpp') === $course));
+            $progress[] = ['course' => $course, 'title' => $title, 'total' => count($keys), 'completed' => count(array_intersect($keys, $completed))];
+        }
+
+        return $progress;
     }
 
     public function teacher(TeacherAccount $teacher): array

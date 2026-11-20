@@ -24,7 +24,7 @@ class LessonService
 
     public function catalogForTeacher(?int $teacherId, ?string $course = 'cpp'): array
     {
-        $catalog = LearningCourses::lessons();
+        $catalog = LearningCourses::lessons($course);
         $inCourse = static fn (array $lesson): bool => $course === null || ($lesson['course'] ?? 'cpp') === $course;
         if (! $teacherId) {
             return array_filter($catalog, $inCourse);

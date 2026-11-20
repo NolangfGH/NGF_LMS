@@ -48,7 +48,7 @@ class HomepageLiveTest extends TestCase
             ->assertDontSee('A secret exam prompt')->assertDontSee('Private lesson task');
         $home = $response->viewData('home');
         $this->assertSame(['students' => 2, 'educators' => 2, 'sections' => 2, 'published_activities' => 2, 'published_assignments' => 1, 'published_quizzes' => 1], $home['metrics']);
-        $this->assertSame(100, $home['catalog_totals']['lessons']);
+        $this->assertSame(460, $home['catalog_totals']['lessons']);
         $this->assertSame(25, $home['courses']['arduino-uno']['count']);
         $this->assertSame(25, $home['courses']['ct7']['count']);
         $this->assertSame(25, $home['courses']['ct10']['count']);
@@ -139,9 +139,9 @@ class HomepageLiveTest extends TestCase
     public function test_course_search_uses_the_real_library_and_escapes_input(): void
     {
         $page = $this->get(route('home', ['q' => 'loops']))->assertOk()->assertSee('for loop')->assertSee('home-search');
-        $this->assertSame(100, count($page->viewData('home')['catalog']));
+        $this->assertSame(460, count($page->viewData('home')['catalog']));
         $this->get(route('home', ['q' => 'Arduino Uno Robotics']))->assertOk()
-            ->assertSee('25 of 100 lessons shown')->assertSee('Introduction to Robotics')->assertSee('Build with Arduino Uno');
+            ->assertSee('25 of 460 lessons shown')->assertSee('Introduction to Robotics')->assertSee('Build with Arduino Uno');
         $this->getJson(route('home.status'))->assertOk()->assertSee('Build with Arduino Uno');
         $this->get(route('home', ['q' => '<script>alert(1)</script>']))->assertOk()->assertDontSee('<script>alert(1)</script>', false)->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
         $this->getJson(route('home', ['q' => ['invalid']]))->assertUnprocessable();

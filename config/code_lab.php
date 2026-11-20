@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\AcademicCurriculum;
+
 $topics = (require __DIR__.'/cpp_curriculum.php')['lessons'];
 $templates = require __DIR__.'/ready_made_activities.php';
 $creative = require __DIR__.'/creative_technology.php';
@@ -13,6 +15,7 @@ foreach ($topics as $key => $lesson) {
 return [
     'assignment_starter' => "#include <iostream>\n\nint main() {\n    // Write your solution to the assignment here.\n    return 0;\n}\n",
     'activities' => [
+        ...AcademicCurriculum::practiceActivities(require __DIR__.'/academic_curriculum.php'),
         ...$creative['ct7']['practice'],
         ...$creative['ct10']['practice'],
         ...(require __DIR__.'/arduino_curriculum.php')['practice'],

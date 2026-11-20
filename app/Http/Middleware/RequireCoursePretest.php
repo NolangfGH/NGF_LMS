@@ -37,7 +37,7 @@ class RequireCoursePretest
             $redirect = route('student.assessments.show', [$required] + ($required === CourseAssessments::REASONING ? CourseAssessments::courseQuery($course) : []));
 
             return $request->expectsJson()
-                ? response()->json(['message' => 'Complete the '.CourseAssessments::TITLES[$required].' to unlock the lessons.', 'redirect' => $redirect], 403)
+                ? response()->json(['message' => 'Complete the '.CourseAssessments::title($required).' to unlock the lessons.', 'redirect' => $redirect], 403)
                 : redirect()->to($redirect);
         }
 

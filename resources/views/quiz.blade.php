@@ -1,5 +1,6 @@
 @extends('layouts.student', ['pageTitle' => 'Quiz', 'active' => 'quiz'])
 @section('content')
+@include('subject-filter',['subjectFilterRoute'=>'student.quiz'])
 @if(session('excuse_notice'))<p role="status" class="mb-5 rounded-xl bg-green-100 p-4">{{ session('excuse_notice') }}</p>@endif
 <div class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-secondary">{{ $classroom->grade }} · {{ $classroom->section ?: $classroom->name }}</p><h1 class="mt-2 text-3xl font-extrabold text-primary">My Quizzes</h1><p class="mt-2 text-sm text-muted">Check the schedule before you start. One regular timed attempt is allowed. An approved excuse can grant one final opportunity.</p></div>
 <p class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">New quiz, summative and term-exam attempts: each incorrect or unanswered graded question deducts 5 XP after grading. Ungraded questions are excluded. Your balance cannot go below zero. See Achievements for your complete XP history.</p><div class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Quiz XP rewards">

@@ -66,7 +66,7 @@ class TeachingLibraryController extends Controller
         abort_unless(in_array($kind, ['quiz', 'assignment', 'challenge', 'article', 'recitation'], true), 404);
         $lesson = $this->template($library, $key, $kind);
         if ($kind === 'recitation') {
-            return $this->storeRecitations($request, $teacher);
+            return $this->storeRecitations($request, $teacher, $lesson['course']);
         }
         if ($kind === 'article') {
             $post = new BlogPost(Arr::only($lesson['article'], ['title', 'category', 'body', 'is_graded', 'response_time_limit_minutes']));
@@ -88,6 +88,7 @@ class TeachingLibraryController extends Controller
             }
             if ($kind !== 'quiz') {
                 $attributes['school_term'] = $data['school_term'];
+                $attributes['course'] = $lesson['course'] ?? 'cpp';
             }
             $attributes += ['teacher_account_id' => $teacher->id, 'classroom_id' => $data['classroom_ids'][0], 'status' => 'draft'];
             $model = $kind === 'quiz' ? TeacherQuiz::class : TeacherAssignment::class;
@@ -107,7 +108,7 @@ class TeachingLibraryController extends Controller
             ->with('library_notice', 'Your private draft is ready. Review or edit it, set dates, and publish when ready. Students have not been notified.');
     }
 
-    private function storeRecitations(Request $request, TeacherAccount $teacher): RedirectResponse
+    private function storeRecitations(Request $request, TeacherAccount $teacher, string $course): RedirectResponse
     {
         abort_unless($teacher->hasStaffAccess(), 403);
         $data = $request->validate([
@@ -129,14 +130,14 @@ class TeachingLibraryController extends Controller
             $question['accepted_answers'] = app(RecitationService::class)->acceptedAnswers($question['accepted_answers'], 'questions.'.$index.'.accepted_answers');
         }
         unset($question);
-        DB::transaction(function () use ($teacher, $data): void {
+        DB::transaction(function () use ($teacher, $data, $course): void {
             TeacherAccount::whereKey($teacher->id)->lockForUpdate()->firstOrFail();
             $rooms = Classroom::whereIn('id', $data['classroom_ids'])->where('teacher_account_id', $teacher->id)->whereNull('archived_at')->orderBy('id')->lockForUpdate()->get();
             abort_unless($rooms->count() === count($data['classroom_ids']), 409, 'A selected class changed. Refresh and select your active classes again.');
             foreach ($rooms as $room) {
                 foreach ($data['questions'] as $question) {
                     RecitationRound::create([...$question, 'teacher_account_id' => $teacher->id, 'classroom_id' => $room->id,
-                        'term' => $data['school_term'], 'school_year' => $data['school_year'], 'status' => 'draft']);
+                        'term' => $data['school_term'], 'school_year' => $data['school_year'], 'course' => $course, 'status' => 'draft']);
                 }
             }
         });
@@ -146,10 +147,10 @@ class TeachingLibraryController extends Controller
 
     private function template(ReadyMadeActivities $library, string $key, string $kind): array
     {
-        if ($kind === 'quiz' && preg_match('/^(?:(?:arduino|ct7|ct10)-)?term[123]-/', $key)) {
-            $exam = $library->termExams(match (true) {
-                str_starts_with($key, 'arduino-') => 'arduino-uno', str_starts_with($key, 'ct7-') => 'ct7', str_starts_with($key, 'ct10-') => 'ct10', default => 'cpp'
-            })[$key] ?? null;
+        if ($kind === 'quiz' && preg_match('/^(?:([a-z0-9]+)-)?term[123]-/', $key, $matches)) {
+            $course = ($matches[1] ?? '') === 'arduino' ? 'arduino-uno' : (($matches[1] ?? '') ?: 'cpp');
+            abort_unless(in_array($course, LearningCourses::keys(), true), 404);
+            $exam = $library->termExams($course)[$key] ?? null;
             abort_unless($exam, 404);
 
             return $exam;

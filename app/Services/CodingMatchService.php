@@ -19,6 +19,7 @@ class CodingMatchService
     {
         return match (LearningCourses::environment($course)) {
             'design' => "Project title:\nCriteria and constraints:\nDesign steps and measurements:\nTest evidence and revision:\n",
+            'academic' => AcademicCurriculum::STARTER,
             'arduino-uno' => "void setup() {\n    // Set up your components here.\n}\n\nvoid loop() {\n    // Write your robot logic here.\n}\n",
             default => "#include <iostream>\n\nint main() {\n    // Write your solution here.\n    return 0;\n}\n",
         };
