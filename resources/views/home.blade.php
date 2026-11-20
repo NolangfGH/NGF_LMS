@@ -15,8 +15,8 @@
             <p class="mt-2 max-w-2xl text-sm leading-6 text-muted">Browse {{ $home['catalog_totals']['lessons'] }} lessons across four subjects with worked examples, checkpoints and practice.</p>
         </div>
         <form action="{{ route('home') }}#course-library" method="GET" class="flex w-full gap-2 sm:w-auto">
-            <label for="home-search" class="sr-only">Find a C++ or Arduino lesson</label>
-            <input id="home-search" name="q" type="search" value="{{ $search }}" maxlength="100" placeholder="Find loops, sensors, LEDs…" class="min-w-0 flex-1 rounded-xl border border-black/10 bg-white px-4 py-3 text-sm sm:w-64">
+            <label for="home-search" class="sr-only">Find a lesson in any subject</label>
+            <input id="home-search" name="q" type="search" value="{{ $search }}" maxlength="100" placeholder="Find design, loops, sensors…" class="min-w-0 flex-1 rounded-xl border border-black/10 bg-white px-4 py-3 text-sm sm:w-64">
             <button class="home-secondary">Find</button>
         </form>
     </div>

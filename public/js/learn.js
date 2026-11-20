@@ -26,7 +26,7 @@
     if (schoolTerm) schoolTerm.addEventListener('change', filter);
     if (headerSearch) {
         headerSearch.setAttribute('aria-label', 'Search lessons');
-        headerSearch.placeholder = 'Search C++ lessons...';
+        headerSearch.placeholder = 'Search lessons in this subject...';
         headerSearch.addEventListener('input', () => { search.value = headerSearch.value; filter(); });
     }
     document.getElementById('lesson-clear').addEventListener('click', () => {
